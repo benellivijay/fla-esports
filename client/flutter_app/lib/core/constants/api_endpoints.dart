@@ -1,7 +1,14 @@
 import 'package:flutter/foundation.dart';
 
 class ApiEndpoints {
+  // Set to true to connect app to your live Render backend
+  static const bool useCloudServer = true;
+  static const String cloudBaseUrl = 'https://fla-esports-api.onrender.com/api/v1';
+
   static String get baseUrl {
+    if (useCloudServer || kReleaseMode) {
+      return cloudBaseUrl;
+    }
     if (kIsWeb) {
       return 'http://localhost:4000/api/v1';
     }
