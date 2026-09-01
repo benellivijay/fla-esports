@@ -171,14 +171,12 @@ export default function DepositQueuePage() {
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
           {/* Status Tabs */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-hairline border-slate-200">
-            {(
-              [
-                { key: 'pending', label: 'Pending', count: statusFilter === 'pending' ? pendingCount : undefined },
-                { key: 'completed', label: 'Approved' },
-                { key: 'failed', label: 'Rejected' },
-                { key: 'all', label: 'All records' },
-              ] as const
-            ).map((tab) => (
+            {[
+              { key: 'pending' as const, label: 'Pending', count: pendingCount },
+              { key: 'completed' as const, label: 'Approved', count: undefined },
+              { key: 'failed' as const, label: 'Rejected', count: undefined },
+              { key: 'all' as const, label: 'All records', count: undefined },
+            ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setStatusFilter(tab.key)}
