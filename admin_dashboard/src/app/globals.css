@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F8FAFC;
+  --surface: #FFFFFF;
+  --border: #E2E8F0;
+}
+
+body {
+  background-color: var(--background);
+  color: #0F172A;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbars for dense administrative tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* 0.5px hairline utilities */
+.border-hairline {
+  border-width: 0.5px;
+}
+.border-t-hairline {
+  border-top-width: 0.5px;
+}
+.border-b-hairline {
+  border-bottom-width: 0.5px;
+}
+.border-l-hairline {
+  border-left-width: 0.5px;
+}
+.border-r-hairline {
+  border-right-width: 0.5px;
+}

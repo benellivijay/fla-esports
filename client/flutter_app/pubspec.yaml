@@ -1,0 +1,29 @@
+name: ff_esports_app
+description: "FF Esports Tournament App - Cross-platform Flutter Client"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  dio: ^5.4.1
+  flutter_secure_storage: ^9.0.0
+  image_picker: ^1.0.7
+  intl: ^0.19.0
+  google_fonts: ^6.1.0
+  qr_flutter: ^4.1.0
+  crypto: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

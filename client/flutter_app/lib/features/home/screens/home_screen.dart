@@ -1,0 +1,257 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
+import '../providers/tournament_provider.dart';
+import '../widgets/tournament_card.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../admin/screens/admin_create_tournament_screen.dart';
+import '../../wallet/providers/wallet_provider.dart';
+import '../../wallet/screens/wallet_screen.dart';
+import '../../notifications/providers/notification_provider.dart';
+import '../../notifications/screens/notification_inbox_screen.dart';
+
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      ref.read(tournamentListProvider.notifier).fetchTournaments();
+      ref.read(walletProvider.notifier).fetchSummary();
+      ref.read(notificationProvider.notifier).fetchUnreadCount();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final listState = ref.watch(tournamentListProvider);
+    final authState = ref.watch(authProvider);
+    final walletState = ref.watch(walletProvider);
+    final notificationState = ref.watch(notificationProvider);
+    final notifier = ref.read(tournamentListProvider.notifier);
+    final isAdmin = authState.user?.role == 'admin' || authState.user?.role == 'moderator';
+    final balance = walletState.summary?.balance ?? 0.0;
+    final unreadCount = notificationState.unreadCount;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
+          'FLA ESPORTS',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            letterSpacing: 0.5,
+          ),
+        ),
+        actions: [
+          // Notification Bell with Pill Unread Badge
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none_rounded, color: AppColors.textSecondary),
+                tooltip: 'Notifications',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NotificationInboxScreen()),
+                  );
+                },
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      unreadCount > 9 ? '9+' : '$unreadCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+
+          // Wallet Balance Pill with Hairline Border
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const WalletScreen()),
+              );
+            },
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppColors.border, width: 0.5),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.account_balance_wallet_outlined, color: AppColors.textPrimary, size: 15),
+                  const SizedBox(width: 6),
+                  Text(
+                    '₹${balance.toStringAsFixed(0)}',
+                    style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondary, size: 20),
+            onPressed: () {
+              notifier.fetchTournaments();
+              ref.read(walletProvider.notifier).fetchSummary();
+              ref.read(notificationProvider.notifier).fetchUnreadCount();
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Filter Chips Section with 0.5px hairline bottom border
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+            ),
+            child: Column(
+              children: [
+                // Entry Type Filters
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('All matches', 'all', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Paid entries', 'paid', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Free entries', 'free', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Game Mode Filters
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('All modes', 'all', listState.filters.mode, (val) => notifier.setFilters(mode: val)),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Solo', 'solo', listState.filters.mode, (val) => notifier.setFilters(mode: val)),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Duo', 'duo', listState.filters.mode, (val) => notifier.setFilters(mode: val)),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Squad', 'squad', listState.filters.mode, (val) => notifier.setFilters(mode: val)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Tournament List
+          Expanded(
+            child: listState.isLoading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+                : listState.tournaments.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.sports_esports_outlined, size: 40, color: AppColors.textMuted),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'No tournaments match current filters.',
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: () => notifier.setFilters(entryType: 'all', mode: 'all', map: 'all'),
+                              child: const Text('Reset filters', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: () => notifier.fetchTournaments(),
+                        color: AppColors.primary,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: listState.tournaments.length,
+                          itemBuilder: (context, index) {
+                            return TournamentCard(tournament: listState.tournaments[index]);
+                          },
+                        ),
+                      ),
+          ),
+        ],
+      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminCreateTournamentScreen()),
+                );
+              },
+              backgroundColor: AppColors.primary,
+              elevation: 0,
+              focusElevation: 0,
+              hoverElevation: 0,
+              highlightElevation: 0,
+              shape: const StadiumBorder(),
+              icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+              label: const Text('New tournament', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, String selectedValue, Function(String) onSelect) {
+    final isSelected = selectedValue == value;
+    return InkWell(
+      onTap: () => onSelect(value),
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(999), // Pill shape
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: 0.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+}

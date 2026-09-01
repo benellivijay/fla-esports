@@ -1,0 +1,41 @@
+{
+  "name": "mia-bot",
+  "version": "1.0.0",
+  "description": "Mia - Advanced Antinuke & Multipurpose Discord Bot",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node src/deploy-commands.js",
+    "test": "node tests/antinuke.test.js"
+  },
+  "keywords": [
+    "discord",
+    "antinuke",
+    "security",
+    "moderation",
+    "multipurpose",
+    "discord-bot"
+  ],
+  "author": "ishow Dev Team",
+  "license": "ISC",
+  "dependencies": {
+    "@discordjs/voice": "^0.19.2",
+    "@distube/ytdl-core": "^4.16.12",
+    "@noble/ciphers": "^2.3.0",
+    "@snazzah/davey": "^0.1.12",
+    "@stablelib/xchacha20poly1305": "^2.0.1",
+    "better-sqlite3": "^13.0.3",
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7",
+    "ffmpeg-static": "^5.3.0",
+    "libsodium-wrappers": "^0.8.4",
+    "ms": "^2.1.3",
+    "opusscript": "^0.0.8",
+    "play-dl": "^1.9.7",
+    "prism-media": "^1.3.5",
+    "sodium-native": "^5.1.0",
+    "yt-dlp-exec": "^1.0.2",
+    "yt-search": "^2.13.1"
+  }
+}

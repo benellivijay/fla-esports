@@ -1,0 +1,26 @@
+# Node
+node_modules/
+dist/
+.next/
+.env
+.env.local
+*.log
+
+# Databases & local uploads
+*.db
+*.db-wal
+*.db-shm
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Flutter / Android
+client/flutter_app/.dart_tool/
+client/flutter_app/.flutter-plugins
+client/flutter_app/.flutter-plugins-dependencies
+client/flutter_app/build/
+client/flutter_app/android/.gradle/
+client/flutter_app/android/local.properties
+
+# OS
+.DS_Store
+Thumbs.db
