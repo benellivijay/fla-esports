@@ -4,6 +4,7 @@ import path from 'path';
 import { config } from '../config/env';
 import { CryptoUtil } from '../utils/crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { SCHEMA_SQL } from './schema_sql';
 
 export class DatabaseManager {
   private static instance: DatabaseSync | null = null;
@@ -19,12 +20,8 @@ export class DatabaseManager {
       this.instance.exec('PRAGMA journal_mode = WAL;');
       this.instance.exec('PRAGMA foreign_keys = ON;');
 
-      // Initialize schema
-      const schemaPath = path.resolve(__dirname, 'schema.sql');
-      if (fs.existsSync(schemaPath)) {
-        const schema = fs.readFileSync(schemaPath, 'utf-8');
-        this.instance.exec(schema);
-      }
+      // Initialize schema (executes embedded SQL definition ensuring all tables exist in all environments)
+      this.instance.exec(SCHEMA_SQL);
 
       // Safe column migrations for existing databases
       try { this.instance.exec('ALTER TABLE users ADD COLUMN password_hash TEXT;'); } catch (_) {}
