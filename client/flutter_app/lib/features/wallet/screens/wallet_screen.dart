@@ -287,11 +287,11 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                             child: Text(
                               pickedScreenshot != null
                                   ? 'Screenshot attached (${pickedScreenshot!.name.length > 20 ? "${pickedScreenshot!.name.substring(0, 18)}..." : pickedScreenshot!.name})'
-                                  : 'Attach payment screenshot (optional proof)',
+                                  : 'Attach payment screenshot * (Mandatory)',
                               style: TextStyle(
-                                color: pickedScreenshot != null ? AppColors.success : AppColors.textSecondary,
+                                color: pickedScreenshot != null ? AppColors.success : AppColors.primary,
                                 fontSize: 12,
-                                fontWeight: pickedScreenshot != null ? FontWeight.w600 : FontWeight.w400,
+                                fontWeight: pickedScreenshot != null ? FontWeight.w600 : FontWeight.w500,
                               ),
                             ),
                           ),
@@ -329,6 +329,12 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                             if (utr.isEmpty || utr.length < 6) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Please enter a valid 12-digit UPI UTR number.')),
+                              );
+                              return;
+                            }
+                            if (pickedScreenshot == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Payment screenshot proof is mandatory. Please attach your payment screenshot.')),
                               );
                               return;
                             }

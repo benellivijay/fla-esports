@@ -271,6 +271,9 @@ export class WalletService {
     if (!cleanUtr || cleanUtr.length < 6) {
       throw new AppError('Please enter a valid UPI UTR / Transaction Reference Number (minimum 6 characters).', 400);
     }
+    if (!screenshotUrl || screenshotUrl.trim() === '') {
+      throw new AppError('Payment screenshot proof is mandatory. Please attach a screenshot of your UPI payment.', 400, 'PAYMENT_SCREENSHOT_REQUIRED');
+    }
 
     const db = getDb();
 
