@@ -14,13 +14,16 @@ import {
   LogOut,
   ShieldCheck,
   QrCode,
+  X,
 } from 'lucide-react';
 import { PillBadge } from '../ui/PillBadge';
 import { AdminApi } from '@/lib/api';
+import { useLayout } from './AdminLayout';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
+  const { isMobileSidebarOpen, closeMobileSidebar } = useLayout();
   const [user, setUser] = useState<any>(null);
   const [pendingReviewCount, setPendingReviewCount] = useState<number>(0);
 
@@ -67,16 +70,31 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-hairline border-slate-200 flex flex-col h-screen fixed left-0 top-0 z-30 select-none">
+    <aside
+      className={`w-64 bg-white border-r border-hairline border-slate-200 flex flex-col h-screen fixed left-0 top-0 z-50 select-none shadow-xl lg:shadow-none transition-transform duration-200 ease-in-out ${
+        isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}
+    >
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-5 border-b border-hairline border-slate-200 gap-3">
-        <div className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200 bg-slate-950 shrink-0 shadow-sm flex items-center justify-center">
-          <img src="/app_logo.png?v=3" alt="FLA Esports" className="w-full h-full object-cover" />
+      <div className="h-16 flex items-center justify-between px-5 border-b border-hairline border-slate-200">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200 bg-slate-950 shrink-0 shadow-sm flex items-center justify-center">
+            <img src="/app_logo.png?v=3" alt="FLA Esports" className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-slate-900 leading-tight">FLA ESPORTS</h1>
+            <p className="text-[11px] text-slate-400">Admin Console</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-sm font-bold text-slate-900 leading-tight">FLA ESPORTS</h1>
-          <p className="text-[11px] text-slate-400">Admin Console</p>
-        </div>
+        
+        {/* Mobile Close Button */}
+        <button
+          onClick={closeMobileSidebar}
+          className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg lg:hidden hover:bg-slate-100 transition-colors"
+          aria-label="Close navigation"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Navigation Links */}
@@ -92,7 +110,8 @@ export const Sidebar: React.FC = () => {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+              onClick={closeMobileSidebar}
+              className={`flex items-center justify-between px-3 py-2.5 text-xs font-medium rounded-lg transition-colors ${
                 isActive
                   ? 'bg-slate-900 text-white'
                   : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -120,7 +139,7 @@ export const Sidebar: React.FC = () => {
       <div className="p-3 border-t border-hairline border-slate-200 bg-slate-50/50">
         <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-hairline border-slate-200">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 text-xs font-bold">
+            <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 text-xs font-bold shrink-0">
               {user?.email ? user.email.charAt(0).toUpperCase() : 'A'}
             </div>
             <div className="truncate">
@@ -128,7 +147,7 @@ export const Sidebar: React.FC = () => {
                 {user?.email || 'admin@ffesports.com'}
               </p>
               <div className="flex items-center gap-1 mt-0.5">
-                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
                 <span className="text-[10px] text-slate-500 capitalize">{user?.role || 'Admin'}</span>
               </div>
             </div>
@@ -136,7 +155,7 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={handleLogout}
             title="Sign out"
-            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors shrink-0"
           >
             <LogOut className="w-3.5 h-3.5" />
           </button>
