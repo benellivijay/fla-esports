@@ -33,9 +33,11 @@ export class DatabaseManager {
       try { this.instance.exec('ALTER TABLE tournaments ADD COLUMN payout_executed_at DATETIME;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE tournaments ADD COLUMN payout_executed_by TEXT;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE payment_orders ADD COLUMN screenshot_url TEXT;'); } catch (_) {}
-      try { this.instance.exec('ALTER TABLE payment_orders ADD COLUMN rejection_reason TEXT;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE payment_orders ADD COLUMN processed_by TEXT;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE payment_orders ADD COLUMN processed_at DATETIME;'); } catch (_) {}
+      try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN actor_id TEXT;'); } catch (_) {}
+      try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN target_resource TEXT;'); } catch (_) {}
+      try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN target_id TEXT;'); } catch (_) {}
 
       // Seed default superadmin if not exists
       try {

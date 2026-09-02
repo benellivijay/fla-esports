@@ -235,13 +235,13 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE TABLE IF NOT EXISTS audit_logs (
     id TEXT PRIMARY KEY,
-    user_id TEXT,
+    actor_id TEXT,
     action TEXT NOT NULL,
-    resource_type TEXT NOT NULL,
-    resource_id TEXT,
+    target_resource TEXT,
+    target_id TEXT,
     details TEXT,
     ip_address TEXT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    FOREIGN KEY(actor_id) REFERENCES users(id)
 );
 `;
