@@ -321,6 +321,7 @@ export class AuthService {
   /**
    * POST /auth/google
    * Google OAuth sign-in / sign-up directly persisted into Google Drive Auth Store.
+   * Allows players to specify their preferred username when signing up with Google.
    */
   public static async googleAuth(payload: {
     idToken?: string;
@@ -328,11 +329,19 @@ export class AuthService {
     name?: string;
     avatarUrl?: string;
     googleId?: string;
+    username?: string;
+    checkOnly?: boolean;
   }): Promise<{
-    accessToken: string;
-    refreshToken: string;
-    user: User;
-    profile: Profile;
+    accessToken?: string;
+    refreshToken?: string;
+    user?: User;
+    profile?: Profile;
+    isNewUser: boolean;
+    suggestedUsername?: string;
+    email?: string;
+    name?: string;
+    avatarUrl?: string;
+    googleId?: string;
   }> {
     let verifiedEmail = payload.email?.trim().toLowerCase();
     let verifiedGoogleId = payload.googleId?.trim();
@@ -365,17 +374,51 @@ export class AuthService {
       }
     }
 
+    // Check if caller only wants to probe if player is new
+    if (payload.checkOnly && !player) {
+      let suggestedUsername = (verifiedName || verifiedEmail.split('@')[0]).replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase().slice(0, 20);
+      if (suggestedUsername.length < 3) suggestedUsername = `player_${suggestedUsername}`;
+      return {
+        isNewUser: true,
+        suggestedUsername,
+        email: verifiedEmail,
+        name: verifiedName,
+        avatarUrl: verifiedPicture,
+        googleId: verifiedGoogleId,
+      };
+    }
+
+    // Validate requested custom username if provided
+    let finalUsername: string | undefined;
+    if (payload.username) {
+      finalUsername = payload.username.trim().toLowerCase();
+      if (!/^[a-zA-Z0-9_]{3,30}$/.test(finalUsername)) {
+        throw new AppError('Username must be 3-30 alphanumeric characters or underscores.', 400, 'INVALID_USERNAME');
+      }
+      const collision = await GDriveAuthStore.getPlayer(finalUsername);
+      if (collision && collision.id !== player?.id) {
+        throw new AppError('This username is already taken. Please choose another username.', 409, 'USERNAME_TAKEN');
+      }
+    }
+
+    let isNewUser = false;
+
     // 2. If no player exists, create new Google player record in Google Drive
     if (!player) {
+      isNewUser = true;
       const userId = uuidv4();
-      let baseUsername = (verifiedName || verifiedEmail.split('@')[0]).replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
-      if (baseUsername.length < 3) baseUsername = `player_${baseUsername}`;
-      baseUsername = baseUsername.slice(0, 20);
+      
+      let username = finalUsername;
+      if (!username) {
+        let baseUsername = (verifiedName || verifiedEmail.split('@')[0]).replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+        if (baseUsername.length < 3) baseUsername = `player_${baseUsername}`;
+        baseUsername = baseUsername.slice(0, 20);
 
-      let username = baseUsername;
-      const collision = await GDriveAuthStore.getPlayer(username);
-      if (collision) {
-        username = `${baseUsername}_${Math.floor(1000 + Math.random() * 9000)}`;
+        username = baseUsername;
+        const collision = await GDriveAuthStore.getPlayer(username);
+        if (collision) {
+          username = `${baseUsername}_${Math.floor(1000 + Math.random() * 9000)}`;
+        }
       }
 
       const now = new Date().toISOString();
@@ -407,8 +450,16 @@ export class AuthService {
         action: 'USER_REGISTERED_GOOGLE_GDRIVE',
         targetResource: 'users',
         targetId: userId,
-        details: { email: verifiedEmail, googleId: verifiedGoogleId },
+        details: { email: verifiedEmail, googleId: verifiedGoogleId, username },
       });
+    } else if (finalUsername && finalUsername !== player.username) {
+      // Existing player updating username
+      player.username = finalUsername;
+      if (player.profile) {
+        player.profile.display_name = verifiedName || finalUsername;
+      }
+      player.updated_at = new Date().toISOString();
+      await GDriveAuthStore.savePlayer(player);
     }
 
     const user: User = {
@@ -443,7 +494,29 @@ export class AuthService {
     };
 
     const { accessToken, refreshToken } = this.generateTokenPair(user);
-    return { accessToken, refreshToken, user, profile };
+    return { accessToken, refreshToken, user, profile, isNewUser };
+  }
+
+  /**
+   * GET /auth/check-username
+   * Checks if a requested username is available in real time.
+   */
+  public static async checkUsername(username: string): Promise<{ available: boolean; message: string }> {
+    const clean = username.trim().toLowerCase();
+    if (!clean || clean.length < 3) {
+      return { available: false, message: 'Username must be at least 3 characters.' };
+    }
+    if (clean.length > 30) {
+      return { available: false, message: 'Username cannot exceed 30 characters.' };
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(clean)) {
+      return { available: false, message: 'Username can only contain letters, numbers, and underscores.' };
+    }
+    const player = await GDriveAuthStore.getPlayer(clean);
+    if (player) {
+      return { available: false, message: 'Username is already taken.' };
+    }
+    return { available: true, message: 'Username is available!' };
   }
 
   /**

@@ -89,26 +89,49 @@ async function runGDriveAuthTests() {
   }
   console.log('? Test 4 Passed: Free Fire UID linked and synced to Google Drive store.');
 
-  // Test 5: Google OAuth Sign-in & Storage
-  console.log('\nTest 5: Google OAuth Sign-in and persistent storage');
+  // Test 5: Google OAuth Sign-in & Username Choice
+  console.log('\nTest 5: Google OAuth Sign-in with player-chosen username');
   const googleEmail = `google_player_${Date.now()}@gmail.com`;
   const googleSub = `goog_${uuidv4()}`;
+
+  // 5a. CheckOnly probe
+  const probeResult = await AuthService.googleAuth({
+    email: googleEmail,
+    googleId: googleSub,
+    name: 'Google Champion Player',
+    avatarUrl: 'https://example.com/avatar.png',
+    checkOnly: true,
+  });
+
+  if (!probeResult.isNewUser || !probeResult.suggestedUsername) {
+    throw new Error('Google checkOnly probe failed to identify new user.');
+  }
+
+  // 5b. Check username availability
+  const customUsername = `champ_${Math.floor(1000 + Math.random() * 9000)}`;
+  const availResult = await AuthService.checkUsername(customUsername);
+  if (!availResult.available) {
+    throw new Error('Username should have been available.');
+  }
+
+  // 5c. Complete Google registration with custom entered username
   const googleResult = await AuthService.googleAuth({
     email: googleEmail,
     googleId: googleSub,
-    name: 'Google Test Player',
+    name: 'Google Champion Player',
     avatarUrl: 'https://example.com/avatar.png',
+    username: customUsername,
   });
 
-  if (!googleResult.accessToken || googleResult.user.email !== googleEmail) {
-    throw new Error('Google OAuth auth failed.');
+  if (!googleResult.accessToken || googleResult.user?.username !== customUsername) {
+    throw new Error(`Google OAuth registration did not use custom username. Expected ${customUsername}, got ${googleResult.user?.username}`);
   }
 
-  const googlePlayer = await GDriveAuthStore.getPlayerByGoogleId(googleSub);
-  if (!googlePlayer || googlePlayer.email !== googleEmail) {
-    throw new Error('Google player was not saved to Google Drive store.');
+  const googlePlayer = await GDriveAuthStore.getPlayer(customUsername);
+  if (!googlePlayer || googlePlayer.email !== googleEmail || googlePlayer.username !== customUsername) {
+    throw new Error('Google player with custom username was not saved to Google Drive store.');
   }
-  console.log('? Test 5 Passed: Google OAuth player registered and saved to Google Drive store.');
+  console.log(`✅ Test 5 Passed: Google OAuth player registered with custom chosen username '@${customUsername}' in Google Drive.`);
 
   // Test 6: Flush and restore registry
   console.log('\nTest 6: Flush and restore player registry from JSON format');
@@ -121,12 +144,12 @@ async function runGDriveAuthTests() {
   if (restoredCount < 2) {
     throw new Error(`Expected at least 2 restored players, got ${restoredCount}`);
   }
-  console.log(`? Test 6 Passed: Successfully flushed and restored ${restoredCount} players from JSON registry.`);
+  console.log(`✅ Test 6 Passed: Successfully flushed and restored ${restoredCount} players from JSON registry.`);
 
-  console.log('\n?? ALL GOOGLE DRIVE AUTH STORAGE TESTS PASSED 100%!');
+  console.log('\n🎉 ALL GOOGLE DRIVE AUTH STORAGE TESTS PASSED 100%!');
 }
 
 runGDriveAuthTests().catch((err) => {
-  console.error('? Test failed:', err);
+  console.error('❌ Test failed:', err);
   process.exit(1);
 });

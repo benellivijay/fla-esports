@@ -6,6 +6,40 @@ import '../models/auth_state.dart';
 import '../models/user_model.dart';
 import '../../profile/models/profile_model.dart';
 
+class GoogleAccountDetails {
+  final String? idToken;
+  final String email;
+  final String? displayName;
+  final String? photoUrl;
+  final String? googleId;
+
+  GoogleAccountDetails({
+    this.idToken,
+    required this.email,
+    this.displayName,
+    this.photoUrl,
+    this.googleId,
+  });
+}
+
+class GoogleAuthResult {
+  final bool success;
+  final bool isNewUser;
+  final bool cancelled;
+  final String? errorMessage;
+  final GoogleAccountDetails? account;
+  final String? suggestedUsername;
+
+  GoogleAuthResult({
+    required this.success,
+    this.isNewUser = false,
+    this.cancelled = false,
+    this.errorMessage,
+    this.account,
+    this.suggestedUsername,
+  });
+}
+
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
@@ -165,28 +199,113 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> signInWithGoogle() async {
+  /**
+   * Checks if a chosen username is available in real time.
+   */
+  Future<bool> checkUsernameAvailable(String username) async {
+    try {
+      final res = await _apiClient.dio.get(
+        ApiEndpoints.checkUsername,
+        queryParameters: {'username': username.trim().toLowerCase()},
+      );
+      if (res.statusCode == 200 && res.data['success'] == true) {
+        return res.data['data']?['available'] == true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /**
+   * Completes Google sign in / sign up with a chosen username or checks if new user.
+   */
+  Future<GoogleAuthResult> handleGoogleSignIn({
+    String? chosenUsername,
+    GoogleAccountDetails? accountDetails,
+  }) async {
     state = state.copyWith(status: AuthStatus.authenticating, errorMessage: null);
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-      );
+      GoogleAccountDetails? details = accountDetails;
 
-      final GoogleSignInAccount? account = await googleSignIn.signIn();
-      if (account == null) {
-        state = state.copyWith(status: AuthStatus.unauthenticated);
-        return false;
+      if (details == null) {
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+        );
+
+        final GoogleSignInAccount? account = await googleSignIn.signIn();
+        if (account == null) {
+          state = state.copyWith(status: AuthStatus.unauthenticated);
+          return GoogleAuthResult(success: false, cancelled: true);
+        }
+
+        final GoogleSignInAuthentication auth = await account.authentication;
+        details = GoogleAccountDetails(
+          idToken: auth.idToken,
+          email: account.email,
+          displayName: account.displayName,
+          photoUrl: account.photoUrl,
+          googleId: account.id,
+        );
       }
 
-      final GoogleSignInAuthentication auth = await account.authentication;
+      // If no username provided yet, check if this is an existing user or new user
+      if (chosenUsername == null) {
+        final checkRes = await _apiClient.dio.post(
+          ApiEndpoints.googleAuth,
+          data: {
+            'idToken': details.idToken,
+            'email': details.email,
+            'name': details.displayName,
+            'avatarUrl': details.photoUrl,
+            'googleId': details.googleId,
+            'checkOnly': true,
+          },
+        );
 
+        if (checkRes.statusCode == 200 && checkRes.data['success'] == true) {
+          final data = checkRes.data['data'];
+          final isNewUser = data['isNewUser'] == true;
+
+          if (isNewUser) {
+            // Player is new -> Prompt for username selection
+            state = state.copyWith(status: AuthStatus.unauthenticated);
+            return GoogleAuthResult(
+              success: true,
+              isNewUser: true,
+              account: details,
+              suggestedUsername: data['suggestedUsername'] ?? details.displayName?.replaceAll(' ', '_').toLowerCase(),
+            );
+          } else {
+            // Existing user -> Proceed with sign in
+            final user = UserModel.fromJson(data['user']);
+            final profile = ProfileModel.fromJson(data['profile']);
+
+            await _apiClient.saveTokens(
+              accessToken: data['accessToken'],
+              refreshToken: data['refreshToken'],
+            );
+
+            state = state.copyWith(
+              status: AuthStatus.authenticated,
+              user: user,
+              profile: profile,
+            );
+            return GoogleAuthResult(success: true, isNewUser: false);
+          }
+        }
+      }
+
+      // Complete registration with the chosen username
       final res = await _apiClient.dio.post(
         ApiEndpoints.googleAuth,
         data: {
-          'idToken': auth.idToken,
-          'email': account.email,
-          'name': account.displayName,
-          'avatarUrl': account.photoUrl,
+          'idToken': details.idToken,
+          'email': details.email,
+          'name': details.displayName,
+          'avatarUrl': details.photoUrl,
+          'googleId': details.googleId,
+          if (chosenUsername != null) 'username': chosenUsername.trim().toLowerCase(),
         },
       );
 
@@ -205,14 +324,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: user,
           profile: profile,
         );
-        return true;
+        return GoogleAuthResult(success: true, isNewUser: data['isNewUser'] == true);
       }
-      return false;
+      return GoogleAuthResult(success: false, errorMessage: 'Google sign-in could not be completed.');
     } catch (e) {
       final msg = (e as dynamic).response?.data?['message'] ?? 'Google authentication failed.';
       state = state.copyWith(status: AuthStatus.error, errorMessage: msg);
-      return false;
+      return GoogleAuthResult(success: false, errorMessage: msg);
     }
+  }
+
+  Future<bool> signInWithGoogle() async {
+    final res = await handleGoogleSignIn();
+    return res.success && !res.isNewUser;
   }
 
   Future<bool> sendOtp({required String identifier, required String type}) async {

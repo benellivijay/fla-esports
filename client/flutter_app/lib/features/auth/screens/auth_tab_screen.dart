@@ -5,6 +5,7 @@ import '../../../main.dart';
 import '../models/auth_state.dart';
 import '../providers/auth_provider.dart';
 import 'otp_code_screen.dart';
+import 'google_username_screen.dart';
 
 class AuthTabScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
@@ -94,11 +95,35 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
 
   Future<void> _handleGoogleAuth() async {
     final notifier = ref.read(authProvider.notifier);
-    final success = await notifier.signInWithGoogle();
-    if (success && mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-        (route) => false,
+    final result = await notifier.handleGoogleSignIn();
+
+    if (!mounted) return;
+
+    if (result.success) {
+      if (result.isNewUser && result.account != null) {
+        // Player is signing up with Google -> Ask for username
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GoogleUsernameScreen(
+              accountDetails: result.account!,
+              initialSuggestedUsername: result.suggestedUsername,
+            ),
+          ),
+        );
+      } else {
+        // Returning user already has a username -> Enter app
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          (route) => false,
+        );
+      }
+    } else if (!result.cancelled && result.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage!),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }

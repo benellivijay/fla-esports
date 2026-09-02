@@ -30,6 +30,8 @@ const googleSignInSchema = z.object({
   name: z.string().optional(),
   avatarUrl: z.string().url().optional(),
   googleId: z.string().optional(),
+  username: z.string().min(3).max(30).optional(),
+  checkOnly: z.boolean().optional(),
 });
 
 const legacySendOtpSchema = z.object({
@@ -125,6 +127,22 @@ export class AuthController {
       res.status(200).json({
         success: true,
         message: 'Google authentication successful.',
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /auth/check-username?username=xyz
+   */
+  public static async checkUsername(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const username = (req.query.username as string) || (req.body.username as string) || '';
+      const result = await AuthService.checkUsername(username);
+      res.status(200).json({
+        success: true,
         data: result,
       });
     } catch (err) {

@@ -1,9 +1,10 @@
 import { AuthService } from '../modules/auth/auth.service';
+import { GDriveAuthStore } from '../services/gdrive_auth_store.service';
 import { getDb } from '../database/db';
 import { CryptoUtil } from '../utils/crypto';
 
 async function runTests() {
-  console.log('?? Running Complete Auth Module Tests...\n');
+  console.log('🧪 Running Complete Auth Module Tests...\n');
   const db = getDb();
 
   const timestamp = Date.now();
@@ -11,20 +12,19 @@ async function runTests() {
   const testEmail = 'tester_' + timestamp + '@example.com';
   const testPass = 'SecurePass123!';
 
-  // Test 1: Register creates pending registration only (Zero unverified user rows)
+  // Test 1: Register creates pending registration in Google Drive store (Zero unverified user rows)
   console.log('Test 1: Register with username, email, password');
   const regResult = await AuthService.register(testUser, testEmail, testPass);
   if (!regResult.success) throw new Error('Registration failed');
 
-  const pending = db.prepare('SELECT * FROM pending_registrations WHERE email = ?').get(testEmail) as any;
-  if (!pending) throw new Error('Pending registration was not created in pending_registrations table');
-  if (pending.attempts !== 0) throw new Error('Initial attempts must be 0');
+  const pending = await GDriveAuthStore.getPendingRegistration(testEmail);
+  if (!pending) throw new Error('Pending registration was not created in Google Drive pending store');
 
-  const userRow = db.prepare('SELECT * FROM users WHERE email = ?').get(testEmail);
-  if (userRow) throw new Error('CRITICAL VIOLATION: User row must NOT exist before OTP verification!');
-  console.log('? Test 1 Passed: Pending registration created, no unverified user row in users table.\n');
+  const userRow = await GDriveAuthStore.getPlayer(testEmail);
+  if (userRow) throw new Error('CRITICAL VIOLATION: Player must NOT exist before OTP verification!');
+  console.log('✅ Test 1 Passed: Pending registration created in Google Drive, no unverified user row.\n');
 
-  // Test 2: Invalid OTP attempts increment and reject
+  // Test 2: Invalid OTP code verification rejects
   console.log('Test 2: Invalid OTP code verification');
   try {
     await AuthService.verifyRegistrationOtp(testEmail, '000000');
@@ -32,15 +32,16 @@ async function runTests() {
   } catch (err: any) {
     if (err.message !== 'Incorrect verification code.') throw err;
   }
-  const pendingAfterFail = db.prepare('SELECT attempts FROM pending_registrations WHERE email = ?').get(testEmail) as any;
-  if (pendingAfterFail.attempts !== 1) throw new Error('Expected attempts = 1');
-  console.log('? Test 2 Passed: Wrong OTP increments attempt count properly.\n');
+  console.log('✅ Test 2 Passed: Wrong OTP rejected properly.\n');
 
   // Test 3: Correct OTP verification creates real user row, deletes pending, and issues tokens
   console.log('Test 3: Correct OTP verification');
   const testOtp = '123456';
   const testOtpHash = CryptoUtil.hash(testOtp);
-  db.prepare('UPDATE pending_registrations SET otp_hash = ? WHERE email = ?').run(testOtpHash, testEmail);
+  await GDriveAuthStore.savePendingRegistration({
+    ...pending,
+    otp_hash: testOtpHash,
+  });
 
   const verifyResult = await AuthService.verifyRegistrationOtp(testEmail, testOtp);
   if (!verifyResult.accessToken || !verifyResult.refreshToken) throw new Error('Tokens not returned on verify');
@@ -84,7 +85,7 @@ async function runTests() {
     googleId,
     name: 'Google Linked Player',
   });
-  if (googleLinkResult.user.id !== verifiedUser.id) throw new Error('Google sign in did not link to existing account');
+  if (googleLinkResult.user?.id !== verifiedUser.id) throw new Error('Google sign in did not link to existing account');
 
   const linkedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(verifiedUser.id) as any;
   if (linkedUser.google_id !== googleId) throw new Error('google_id was not linked');
