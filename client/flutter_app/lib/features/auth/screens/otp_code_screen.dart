@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../main.dart';
 import '../models/auth_state.dart';
 import '../providers/auth_provider.dart';
 
@@ -89,11 +90,11 @@ class _OtpCodeScreenState extends ConsumerState<OtpCodeScreen> {
       code: code,
     );
 
-    if (success) {
-      if (mounted) {
-        // Pop all back to main app root
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
+    if (success && mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+        (route) => false,
+      );
     } else {
       if (mounted) {
         final authState = ref.read(authProvider);

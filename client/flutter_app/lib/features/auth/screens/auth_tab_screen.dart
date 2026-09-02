@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../main.dart';
 import '../models/auth_state.dart';
 import '../providers/auth_provider.dart';
 import 'otp_code_screen.dart';
@@ -55,10 +56,17 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
     if (!_signInFormKey.currentState!.validate()) return;
 
     final notifier = ref.read(authProvider.notifier);
-    await notifier.signIn(
+    final success = await notifier.signIn(
       identifier: _signInIdentifierController.text.trim(),
       password: _signInPasswordController.text,
     );
+
+    if (success && mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+        (route) => false,
+      );
+    }
   }
 
   Future<void> _handleRegister() async {
@@ -86,11 +94,26 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
 
   Future<void> _handleGoogleAuth() async {
     final notifier = ref.read(authProvider.notifier);
-    await notifier.signInWithGoogle();
+    final success = await notifier.signInWithGoogle();
+    if (success && mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.status == AuthStatus.authenticated && mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          (route) => false,
+        );
+      }
+    });
+
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.authenticating;
 
