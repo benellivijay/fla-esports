@@ -151,4 +151,18 @@ export class TournamentController {
       next(err);
     }
   }
+
+  public static async deleteTournament(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const adminId = req.user!.userId;
+      const tournamentId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      await TournamentService.deleteTournament(adminId, tournamentId);
+      res.status(200).json({
+        success: true,
+        message: 'Tournament deleted successfully.',
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

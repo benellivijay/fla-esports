@@ -325,6 +325,40 @@ export class TournamentService {
   }
 
   /**
+   * Admin: Permanently deletes a tournament and its associated records
+   */
+  public static async deleteTournament(adminId: string, tournamentId: string): Promise<void> {
+    const db = getDb();
+    const existing = db.prepare('SELECT id, title, status, filled_slots FROM tournaments WHERE id = ?').get(tournamentId) as any;
+
+    if (!existing) {
+      throw new AppError('Tournament not found.', 404);
+    }
+
+    try {
+      db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(tournamentId);
+    } catch (_) {}
+
+    try {
+      db.prepare('DELETE FROM tournament_results WHERE tournament_id = ?').run(tournamentId);
+    } catch (_) {}
+
+    try {
+      db.prepare('DELETE FROM payout_distributions WHERE tournament_id = ?').run(tournamentId);
+    } catch (_) {}
+
+    db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
+
+    Logger.audit({
+      actorId: adminId,
+      action: 'TOURNAMENT_DELETED',
+      targetResource: 'tournaments',
+      targetId: tournamentId,
+      details: { title: existing.title, status: existing.status, filledSlots: existing.filled_slots },
+    });
+  }
+
+  /**
    * Client & Admin: Lists tournaments with multi-dimensional filtering
    */
   public static async listTournaments(filters: TournamentFilters, userRole?: string): Promise<{ count: number; tournaments: Tournament[] }> {

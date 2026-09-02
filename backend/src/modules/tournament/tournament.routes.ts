@@ -14,5 +14,6 @@ router.put('/:id', authenticateToken, requireAdminOrModerator, TournamentControl
 router.patch('/:id/room', authenticateToken, requireAdminOrModerator, TournamentController.updateRoomCredentials);
 router.put('/:id/room-credentials', authenticateToken, requireAdminOrModerator, TournamentController.updateRoomCredentials);
 router.post('/:id/cancel', authenticateToken, requireAdminOrModerator, TournamentController.cancelTournament);
+router.delete('/:id', authenticateToken, requireAdminOrModerator, TournamentController.deleteTournament);
 
 export const tournamentRoutes = router;

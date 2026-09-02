@@ -14,6 +14,7 @@ import {
   KeyRound,
   Eye,
   XCircle,
+  Trash2,
   RefreshCw,
   Clock,
   Trophy,
@@ -126,6 +127,19 @@ export default function TournamentsPage() {
       fetchTournaments();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to cancel tournament.');
+    }
+  };
+
+  const handleDeleteTournament = async (t: TournamentItem) => {
+    if (!confirm(`Are you sure you want to permanently DELETE tournament "${t.title}"?\n\nThis will remove the match, lobby, and all associated participant records.`)) {
+      return;
+    }
+
+    try {
+      await AdminApi.deleteTournament(t.id);
+      fetchTournaments();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete tournament.');
     }
   };
 
@@ -304,11 +318,20 @@ export default function TournamentsPage() {
                             <button
                               onClick={() => handleCancelTournament(t)}
                               title="Cancel tournament and refund players"
-                              className="p-1.5 text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 rounded-lg border border-hairline border-slate-200 transition-colors"
+                              className="p-1.5 text-amber-600 hover:text-amber-700 bg-white hover:bg-amber-50 rounded-lg border border-hairline border-slate-200 transition-colors"
                             >
                               <XCircle className="w-3.5 h-3.5" />
                             </button>
                           )}
+
+                          {/* Delete Tournament Button */}
+                          <button
+                            onClick={() => handleDeleteTournament(t)}
+                            title="Permanently delete tournament"
+                            className="p-1.5 text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 rounded-lg border border-hairline border-rose-200 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>

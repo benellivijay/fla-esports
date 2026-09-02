@@ -29,6 +29,7 @@ router.patch('/tournaments/:id', TournamentController.updateTournament);
 router.patch('/tournaments/:id/room', TournamentController.updateRoomCredentials);
 router.post('/tournaments/:id/reveal-room', RoomController.revealRoomNow);
 router.post('/tournaments/:id/cancel', TournamentController.cancelTournament);
+router.delete('/tournaments/:id', TournamentController.deleteTournament);
 
 // Result Review Queue
 router.get('/results/queue', AdminController.getResultsQueue);

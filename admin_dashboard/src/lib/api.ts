@@ -70,6 +70,9 @@ export const AdminApi = {
   cancelTournament: (id: string, reason?: string) =>
     apiClient.post(`/admin/tournaments/${id}/cancel`, { reason }),
 
+  deleteTournament: (id: string) =>
+    apiClient.delete(`/admin/tournaments/${id}`),
+
   // Result Review Queue
   getResultsQueue: (params?: { tournamentId?: string; status?: string }) =>
     apiClient.get('/admin/results/queue', { params }),
