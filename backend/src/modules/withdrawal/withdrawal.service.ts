@@ -47,13 +47,13 @@ export class WithdrawalService {
       throw new AppError('Maximum withdrawal amount per request is ₹50,000.00.', 400);
     }
 
-    // 3. Check wallet balance
-    const currentBalance = WalletService.getWalletSummary(userId).balance;
-    if (currentBalance < amount) {
+    // 3. Check wallet withdrawable balance (Only tournament winnings can be withdrawn)
+    const walletSummary = WalletService.getWalletSummary(userId);
+    if (walletSummary.withdrawableBalance < amount) {
       throw new AppError(
-        `Insufficient wallet balance (Current: ₹${currentBalance.toFixed(2)}, Requested: ₹${amount.toFixed(2)}).`,
+        `Insufficient withdrawable balance. You have ₹${walletSummary.withdrawableBalance.toFixed(2)} in tournament winnings. Deposited funds cannot be withdrawn and can only be used for joining tournaments.`,
         400,
-        'INSUFFICIENT_FUNDS'
+        'INSUFFICIENT_WINNINGS'
       );
     }
 

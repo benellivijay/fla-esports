@@ -444,6 +444,63 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                       '₹${summary?.balance.toStringAsFixed(2) ?? '0.00'}',
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 32, fontWeight: FontWeight.w700),
                     ),
+                    const SizedBox(height: 14),
+
+                    // Cash Type Breakdown (Deposited vs Won)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.border, width: 0.5),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.lock_outline_rounded, size: 12, color: AppColors.textMuted),
+                                    SizedBox(width: 4),
+                                    Text('Deposit cash', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '₹${summary?.depositBalance.toStringAsFixed(2) ?? '0.00'}',
+                                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700),
+                                ),
+                                const Text('For match entry', style: TextStyle(color: AppColors.textSecondary, fontSize: 9)),
+                              ],
+                            ),
+                          ),
+                          Container(width: 0.5, height: 32, color: AppColors.border),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.emoji_events_outlined, size: 12, color: AppColors.success),
+                                    SizedBox(width: 4),
+                                    Text('Winnings cash', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '₹${summary?.withdrawableBalance.toStringAsFixed(2) ?? '0.00'}',
+                                  style: const TextStyle(color: AppColors.success, fontSize: 14, fontWeight: FontWeight.w700),
+                                ),
+                                const Text('Withdrawable (Min ₹100)', style: TextStyle(color: AppColors.textSecondary, fontSize: 9)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 16),
 
                     // Quick Actions: Deposit and Withdraw Pill Buttons

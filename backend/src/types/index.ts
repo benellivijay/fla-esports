@@ -166,8 +166,11 @@ export interface WalletLedgerEntry {
 
 export interface WalletSummary {
   balance: number;
+  withdrawableBalance: number;
+  depositBalance: number;
   totalDeposited: number;
   totalWinnings: number;
+  totalWithdrawn?: number;
   totalSpent: number;
   totalRefunds: number;
   currency: string;

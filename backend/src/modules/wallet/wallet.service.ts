@@ -41,6 +41,7 @@ export class WalletService {
         COALESCE(SUM(CASE WHEN type = 'deposit' THEN amount ELSE 0 END), 0.0) as total_deposited,
         COALESCE(SUM(CASE WHEN type = 'prize_credit' THEN amount ELSE 0 END), 0.0) as total_winnings,
         COALESCE(SUM(CASE WHEN type = 'entry_fee_debit' THEN amount ELSE 0 END), 0.0) as total_spent,
+        COALESCE(SUM(CASE WHEN type = 'withdrawal' THEN amount ELSE 0 END), 0.0) as total_withdrawn,
         COALESCE(SUM(CASE WHEN type = 'refund' THEN amount ELSE 0 END), 0.0) as total_refunds,
         COALESCE(SUM(
           CASE 
@@ -53,10 +54,21 @@ export class WalletService {
       WHERE user_id = ?
     `).get(userId) as any;
 
+    const currentBalance = Number(row?.current_balance || 0.0);
+    const totalWinnings = Number(row?.total_winnings || 0.0);
+    const totalWithdrawn = Number(row?.total_withdrawn || 0.0);
+    
+    // Only won amounts (prize credits minus withdrawals) can be withdrawn
+    const withdrawableBalance = Math.min(currentBalance, Math.max(0, totalWinnings - totalWithdrawn));
+    const depositBalance = Math.max(0, currentBalance - withdrawableBalance);
+
     return {
-      balance: Number(row?.current_balance || 0.0),
+      balance: currentBalance,
+      withdrawableBalance,
+      depositBalance,
       totalDeposited: Number(row?.total_deposited || 0.0),
-      totalWinnings: Number(row?.total_winnings || 0.0),
+      totalWinnings,
+      totalWithdrawn,
       totalSpent: Number(row?.total_spent || 0.0),
       totalRefunds: Number(row?.total_refunds || 0.0),
       currency: 'INR',

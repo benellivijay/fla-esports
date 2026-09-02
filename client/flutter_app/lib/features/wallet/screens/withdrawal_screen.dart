@@ -13,14 +13,14 @@ class WithdrawalScreen extends ConsumerStatefulWidget {
 }
 
 class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
-  final TextEditingController _amountController = TextEditingController(text: '500');
+  final TextEditingController _amountController = TextEditingController(text: '100');
   String _payoutMethod = 'upi'; // 'upi' | 'bank_transfer'
   final TextEditingController _upiController = TextEditingController();
   final TextEditingController _accountNumberController = TextEditingController();
   final TextEditingController _ifscController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
 
-  double _requestedAmount = 500.0;
+  double _requestedAmount = 100.0;
 
   @override
   void initState() {
@@ -45,9 +45,22 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
 
   void _handleSubmit() async {
     final amount = double.tryParse(_amountController.text.trim()) ?? 0.0;
+    final walletSummary = ref.read(walletProvider).summary;
+    final withdrawableBalance = walletSummary?.withdrawableBalance ?? 0.0;
+
     if (amount < 100) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Minimum withdrawal amount is ₹100.00.')),
+        const SnackBar(content: Text('Minimum withdrawal limit is ₹100.00.')),
+      );
+      return;
+    }
+
+    if (amount > withdrawableBalance) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Insufficient withdrawable winnings balance (₹${withdrawableBalance.toStringAsFixed(2)}). Deposited funds cannot be withdrawn and must be used to join matches.'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
@@ -93,6 +106,8 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
     final walletState = ref.watch(walletProvider);
     final withdrawalState = ref.watch(withdrawalProvider);
     final currentBalance = walletState.summary?.balance ?? 0.0;
+    final withdrawableBalance = walletState.summary?.withdrawableBalance ?? 0.0;
+    final depositBalance = walletState.summary?.depositBalance ?? 0.0;
 
     final tdsDeducted = _requestedAmount * 0.30;
     final netPayable = (_requestedAmount - tdsDeducted).clamp(0.0, double.infinity);
@@ -119,24 +134,59 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Available Balance Card
+            // Available Winnings Balance Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: AppTheme.cardDecoration(),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Available to withdraw', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
-                      SizedBox(height: 2),
-                      Text('Net wallet balance', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Available to withdraw', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
+                          SizedBox(height: 2),
+                          Text('Won prize balance', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      Text(
+                        '₹${withdrawableBalance.toStringAsFixed(2)}',
+                        style: const TextStyle(color: AppColors.success, fontSize: 22, fontWeight: FontWeight.w700),
+                      ),
                     ],
                   ),
-                  Text(
-                    '₹${currentBalance.toStringAsFixed(2)}',
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
+                  const Divider(height: 20, thickness: 0.5, color: AppColors.border),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Total balance: ₹${currentBalance.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      Text('Deposit cash: ₹${depositBalance.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Rule Notice
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border, width: 0.5),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: AppColors.textSecondary),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Only won match prizes can be withdrawn (Min ₹100). Deposited money can only be used for match entry.',
+                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    ),
                   ),
                 ],
               ),
@@ -159,14 +209,14 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                     decoration: const InputDecoration(
                       prefixText: '₹ ',
                       prefixStyle: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
-                      hintText: '500',
+                      hintText: '100',
                     ),
                   ),
                   const SizedBox(height: 10),
 
                   // Quick pill chips
                   Row(
-                    children: [200, 500, 1000, 2000].map((amt) {
+                    children: [100, 200, 500, 1000].map((amt) {
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: InkWell(
