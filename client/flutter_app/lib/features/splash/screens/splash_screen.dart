@@ -13,82 +13,42 @@ class SplashScreen extends ConsumerStatefulWidget {
   ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _textFadeAnimation;
+class _SplashScreenState extends ConsumerState<SplashScreen> {
+  bool _animate = false;
 
   @override
   void initState() {
     super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeOutBack),
-      ),
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-      ),
-    );
-
-    _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.4, 1.0, curve: Curves.easeIn),
-      ),
-    );
-
-    _controller.forward();
-
-    _navigateToNext();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _animate = true);
+        _startNavigationTimer();
+      }
+    });
   }
 
-  Future<void> _navigateToNext() async {
+  void _startNavigationTimer() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+
     try {
-      // Wait for the animation and authentication check
-      await Future.delayed(const Duration(milliseconds: 1800));
-      if (!mounted) return;
-
       final authState = ref.read(authProvider);
-
-      Widget targetScreen;
-      if (authState.status == AuthStatus.authenticated) {
-        targetScreen = const MainNavigationScreen();
-      } else {
-        targetScreen = const PhoneLoginScreen();
-      }
+      final Widget targetScreen = (authState.status == AuthStatus.authenticated)
+          ? const MainNavigationScreen()
+          : const PhoneLoginScreen();
 
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
+        Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => targetScreen),
         );
       }
     } catch (_) {
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
+        Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const PhoneLoginScreen()),
         );
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 
   @override
@@ -102,33 +62,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
             const Spacer(),
 
             // Animated Logo
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: child,
+            AnimatedScale(
+              scale: _animate ? 1.0 : 0.7,
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutBack,
+              child: AnimatedOpacity(
+                opacity: _animate ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 600),
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: AppColors.border, width: 0.5),
                   ),
-                );
-              },
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border, width: 0.5),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: Image.asset(
-                    'assets/images/app_logo.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.sports_esports,
-                      size: 48,
-                      color: AppColors.primary,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: Image.asset(
+                      'assets/images/app_logo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.sports_esports,
+                        size: 48,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                 ),
@@ -137,14 +94,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
             const SizedBox(height: 20),
 
             // Animated Title and Slogan
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _textFadeAnimation,
-                  child: child,
-                );
-              },
+            AnimatedOpacity(
+              opacity: _animate ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 800),
               child: const Column(
                 children: [
                   Text(
@@ -179,7 +131,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                 color: AppColors.primary,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 36),
           ],
         ),
       ),
