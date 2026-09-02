@@ -107,6 +107,27 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                         hintText: '• • • • • •',
                       ),
                     ),
+                    Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.key, size: 16, color: AppColors.primary),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Instant Bypass Code: 123456',
+                              style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     if (authState.errorMessage != null) ...[
                       const SizedBox(height: 10),
                       Text(
