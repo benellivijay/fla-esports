@@ -12,16 +12,8 @@ export class EmailService {
     const pass = rawPass.trim().replace(/\s+/g, '');
 
     this.transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // Use STARTTLS
+      service: 'gmail',
       auth: { user, pass },
-      tls: {
-        rejectUnauthorized: false,
-      },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 10000,
     });
 
     return this.transporter;
