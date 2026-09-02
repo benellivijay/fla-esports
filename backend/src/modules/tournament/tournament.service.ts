@@ -182,6 +182,22 @@ export class TournamentService {
     if (data.rules !== undefined) { updates.push('rules = ?'); values.push(data.rules); }
 
     if (updates.length > 0) {
+      if (data.status === 'completed') {
+        try { db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
+        try { db.prepare('DELETE FROM tournament_results WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
+        try { db.prepare('DELETE FROM payout_distributions WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
+        db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
+
+        Logger.audit({
+          actorId: adminId,
+          action: 'TOURNAMENT_COMPLETED_AND_AUTO_DELETED',
+          targetResource: 'tournaments',
+          targetId: tournamentId,
+          details: { title: existing.title },
+        });
+        return { ...existing, status: 'completed' } as any;
+      }
+
       updates.push('updated_at = CURRENT_TIMESTAMP');
       values.push(tournamentId);
 

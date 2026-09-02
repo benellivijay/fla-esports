@@ -516,16 +516,21 @@ export class AdminService {
       }
     }
 
-    // Mark tournament payout status as completed and paid
-    db.prepare(`
-      UPDATE tournaments 
-      SET payout_status = 'paid', status = 'completed', payout_executed_at = CURRENT_TIMESTAMP, payout_executed_by = ?, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = ?
-    `).run(adminId, tournamentId);
+    // Mark tournament payout status as completed and paid, then delete tournament
+    try {
+      db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(tournamentId);
+    } catch (_) {}
+    try {
+      db.prepare('DELETE FROM tournament_results WHERE tournament_id = ?').run(tournamentId);
+    } catch (_) {}
+    try {
+      db.prepare('DELETE FROM payout_distributions WHERE tournament_id = ?').run(tournamentId);
+    } catch (_) {}
+    db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
 
     Logger.audit({
       actorId: adminId,
-      action: 'PAYOUT_RUN_EXECUTED',
+      action: 'PAYOUT_RUN_EXECUTED_AND_TOURNAMENT_AUTO_DELETED',
       targetResource: 'tournaments',
       targetId: tournamentId,
       details: {
