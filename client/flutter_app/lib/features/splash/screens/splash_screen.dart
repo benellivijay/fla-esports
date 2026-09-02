@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/models/auth_state.dart';
-import '../../auth/screens/phone_login_screen.dart';
+import '../../auth/screens/auth_tab_screen.dart';
 import '../../../main.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -35,7 +35,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       final authState = ref.read(authProvider);
       final Widget targetScreen = (authState.status == AuthStatus.authenticated)
           ? const MainNavigationScreen()
-          : const PhoneLoginScreen();
+          : const AuthTabScreen();
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -45,7 +45,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     } catch (_) {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const PhoneLoginScreen()),
+          MaterialPageRoute(builder: (_) => const AuthTabScreen()),
         );
       }
     }

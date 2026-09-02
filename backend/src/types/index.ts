@@ -3,12 +3,30 @@ export type UserStatus = 'active' | 'suspended' | 'banned';
 
 export interface User {
   id: string;
+  username?: string | null;
   phone?: string | null;
   email?: string | null;
+  google_id?: string | null;
   role: UserRole;
   status: UserStatus;
   is_phone_verified: boolean;
   is_email_verified: boolean;
+  email_verified?: boolean;
+  kyc_verified?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PendingRegistration {
+  id: string;
+  username: string;
+  email: string;
+  password_hash: string;
+  otp_hash: string;
+  attempts: number;
+  send_count: number;
+  first_sent_at: string;
+  expires_at: string;
   created_at: string;
   updated_at: string;
 }

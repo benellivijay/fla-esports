@@ -18,12 +18,16 @@ class ApiEndpoints {
   }
 
   // Auth
-  static const String sendOtp = '/auth/otp/send';
-  static const String verifyOtp = '/auth/otp/verify';
-  static const String verifySecondary = '/auth/verify-secondary';
+  static const String signin = '/auth/signin';
+  static const String register = '/auth/register';
+  static const String verifyOtp = '/auth/verify-otp';
+  static const String resendOtp = '/auth/resend-otp';
   static const String googleSignIn = '/auth/google';
+  static const String googleAuth = '/auth/google';
   static const String refreshToken = '/auth/refresh';
   static const String logout = '/auth/logout';
+  static const String sendOtp = '/auth/otp/send';
+  static const String verifySecondary = '/auth/verify-secondary';
 
   // Profile
   static const String profileMe = '/profile/me';

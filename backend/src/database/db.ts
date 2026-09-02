@@ -24,9 +24,30 @@ export class DatabaseManager {
       this.instance.exec(SCHEMA_SQL);
 
       // Safe column migrations for existing databases
+      try { this.instance.exec('ALTER TABLE users ADD COLUMN username TEXT;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE users ADD COLUMN password_hash TEXT;'); } catch (_) {}
+      try { this.instance.exec('ALTER TABLE users ADD COLUMN google_id TEXT;'); } catch (_) {}
+      try { this.instance.exec('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0;'); } catch (_) {}
+      try { this.instance.exec('ALTER TABLE users ADD COLUMN kyc_verified INTEGER NOT NULL DEFAULT 0;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE users ADD COLUMN totp_secret TEXT;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE users ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0;'); } catch (_) {}
+      try {
+        this.instance.exec(`
+          CREATE TABLE IF NOT EXISTS pending_registrations (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            otp_hash TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            send_count INTEGER NOT NULL DEFAULT 1,
+            first_sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            expires_at DATETIME NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+      } catch (_) {}
       try { this.instance.exec('ALTER TABLE tournaments ADD COLUMN room_revealed_at DATETIME;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE tournaments ADD COLUMN room_updated_at DATETIME;'); } catch (_) {}
       try { this.instance.exec("ALTER TABLE tournaments ADD COLUMN payout_status TEXT NOT NULL DEFAULT 'unpaid';"); } catch (_) {}
