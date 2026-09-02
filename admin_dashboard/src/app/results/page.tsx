@@ -311,7 +311,7 @@ export default function ResultsQueuePage() {
           <div className="rounded-lg overflow-hidden border border-hairline border-slate-200 bg-slate-950 flex items-center justify-center max-h-[65vh]">
             {previewImage && (
               <img
-                src={previewImage.startsWith('http') ? previewImage : `http://localhost:4000${previewImage}`}
+                src={previewImage.startsWith('http') ? previewImage : `https://fla-esports-api.onrender.com${previewImage}`}
                 alt="Match proof"
                 className="max-h-[60vh] max-w-full object-contain"
               />
@@ -321,7 +321,7 @@ export default function ResultsQueuePage() {
             <span>Inspect Free Fire scoreboard, player UID, rank & kill counter.</span>
             {previewImage && (
               <a
-                href={previewImage.startsWith('http') ? previewImage : `http://localhost:4000${previewImage}`}
+                href={previewImage.startsWith('http') ? previewImage : `https://fla-esports-api.onrender.com${previewImage}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1 text-slate-900 font-medium hover:underline"

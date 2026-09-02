@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { AdminApi } from '@/lib/api';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api/v1', '') : 'http://localhost:4000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace('/api/v1', '') : 'https://fla-esports-api.onrender.com';
 
 export default function DepositQueuePage() {
   const [deposits, setDeposits] = useState<any[]>([]);
