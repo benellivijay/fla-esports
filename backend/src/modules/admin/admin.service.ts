@@ -178,10 +178,14 @@ export class AdminService {
       totalUsers: usersCount?.count || 0,
       totalTournaments: totalTourneys?.count || 0,
       pendingWithdrawalsCount: pendingWithdrawals?.count || 0,
-      recentAuditLogs: recentLogs.map((log: any) => ({
-        ...log,
-        details: log.details ? JSON.parse(log.details) : {},
-      })),
+      recentAuditLogs: recentLogs.map((log: any) => {
+        let details = {};
+        if (typeof log.details === 'object' && log.details !== null) details = log.details;
+        else if (typeof log.details === 'string') {
+          try { details = JSON.parse(log.details); } catch (_) { details = {}; }
+        }
+        return { ...log, details };
+      }),
     };
   }
 
@@ -784,10 +788,14 @@ export class AdminService {
     const rows = db.prepare(query).all(...params) as any[];
 
     return {
-      logs: rows.map(r => ({
-        ...r,
-        details: r.details ? JSON.parse(r.details) : {},
-      })),
+      logs: rows.map(r => {
+        let details = {};
+        if (typeof r.details === 'object' && r.details !== null) details = r.details;
+        else if (typeof r.details === 'string') {
+          try { details = JSON.parse(r.details); } catch (_) { details = {}; }
+        }
+        return { ...r, details };
+      }),
       total,
       page,
       limit,
