@@ -9,11 +9,13 @@ import '../../wallet/screens/wallet_screen.dart';
 class ModeTournamentsScreen extends ConsumerStatefulWidget {
   final String gameModeKey;
   final String gameModeLabel;
+  final String? imageAsset;
 
   const ModeTournamentsScreen({
     super.key,
     required this.gameModeKey,
     required this.gameModeLabel,
+    this.imageAsset,
   });
 
   @override
@@ -87,7 +89,7 @@ class _ModeTournamentsScreenState extends ConsumerState<ModeTournamentsScreen> {
       ),
       body: Column(
         children: [
-          // Mode Filter Indicator Banner
+          // Mode Filter Indicator Banner with Graphic
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: const BoxDecoration(
@@ -96,6 +98,19 @@ class _ModeTournamentsScreenState extends ConsumerState<ModeTournamentsScreen> {
             ),
             child: Row(
               children: [
+                if (widget.imageAsset != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      widget.imageAsset!,
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.sports_esports, size: 20, color: AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(

@@ -11,6 +11,7 @@ import 'mode_tournaments_screen.dart';
 class GameModeItem {
   final String key;
   final String label;
+  final String imageAsset;
   final IconData icon;
   final Color iconBgColor;
   final Color iconColor;
@@ -20,6 +21,7 @@ class GameModeItem {
   const GameModeItem({
     required this.key,
     required this.label,
+    required this.imageAsset,
     required this.icon,
     required this.iconBgColor,
     required this.iconColor,
@@ -36,11 +38,12 @@ class GameModesScreen extends ConsumerStatefulWidget {
 }
 
 class _GameModesScreenState extends ConsumerState<GameModesScreen> {
-  // 8 Game modes in exact specified order
+  // 8 Game modes in exact specified order with custom character graphics
   static const List<GameModeItem> _modes = [
     GameModeItem(
       key: 'ff_max',
       label: 'FF Max',
+      imageAsset: 'assets/images/mode_ff_max.jpg',
       icon: Icons.local_fire_department_rounded,
       iconBgColor: Color(0xFFFEF2F2),
       iconColor: Color(0xFFEF4444),
@@ -49,6 +52,7 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
     GameModeItem(
       key: 'survival',
       label: 'Survival',
+      imageAsset: 'assets/images/mode_survival.jpg',
       icon: Icons.favorite_rounded,
       iconBgColor: Color(0xFFEFF6FF),
       iconColor: Color(0xFF3B82F6),
@@ -56,6 +60,7 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
     GameModeItem(
       key: 'free_match',
       label: 'Free match',
+      imageAsset: 'assets/images/mode_free_match.jpg',
       icon: Icons.confirmation_number_rounded,
       iconBgColor: Color(0xFFF0FDF4),
       iconColor: Color(0xFF16A34A),
@@ -64,6 +69,7 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
     GameModeItem(
       key: 'lone_wolf',
       label: 'Lone wolf',
+      imageAsset: 'assets/images/mode_lone_wolf.jpg',
       icon: Icons.dark_mode_rounded,
       iconBgColor: Color(0xFFF5F3FF),
       iconColor: Color(0xFF8B5CF6),
@@ -71,6 +77,7 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
     GameModeItem(
       key: 'headshot_only',
       label: 'Headshot only',
+      imageAsset: 'assets/images/mode_headshot_only.jpg',
       icon: Icons.gps_fixed_rounded,
       iconBgColor: Color(0xFFFFFBEB),
       iconColor: Color(0xFFD97706),
@@ -78,6 +85,7 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
     GameModeItem(
       key: 'one_tap',
       label: 'One tap',
+      imageAsset: 'assets/images/mode_one_tap.jpg',
       icon: Icons.bolt_rounded,
       iconBgColor: Color(0xFFFFF7ED),
       iconColor: Color(0xFFEA580C),
@@ -85,6 +93,7 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
     GameModeItem(
       key: 'sniper_1v1',
       label: 'Sniper 1v1',
+      imageAsset: 'assets/images/mode_sniper_1v1.jpg',
       icon: Icons.center_focus_strong_rounded,
       iconBgColor: Color(0xFFECFEFF),
       iconColor: Color(0xFF0891B2),
@@ -92,6 +101,7 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
     GameModeItem(
       key: 'lone_wolf_headshot',
       label: 'Lone wolf headshot',
+      imageAsset: 'assets/images/mode_lone_wolf_headshot.jpg',
       icon: Icons.sports_kabaddi_rounded,
       iconBgColor: Color(0xFFFAF5FF),
       iconColor: Color(0xFF9333EA),
@@ -377,82 +387,112 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border, width: 0.5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        child: Stack(
-          children: [
-            // Centered Icon & Label
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: mode.iconBgColor,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      mode.icon,
-                      size: 20,
-                      color: mode.iconColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    mode.label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                      height: 1.1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Top-Right Pill Badge (e.g. "N live", "No entry fee")
-            if (badgeText != null)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: badgeBgColor,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: badgeBorderColor, width: 0.5),
-                  ),
-                  child: Text(
-                    badgeText,
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                      color: badgeTextColor,
-                      letterSpacing: -0.2,
-                    ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Character Game Mode Graphic
+              Image.asset(
+                mode.imageAsset,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: mode.iconBgColor,
+                  child: Center(
+                    child: Icon(mode.icon, size: 28, color: mode.iconColor),
                   ),
                 ),
               ),
-          ],
+
+              // Bottom Gradient Overlay for ultra-crisp typography
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.25, 0.65, 1.0],
+                    colors: [
+                      Colors.black.withValues(alpha: 0.05),
+                      Colors.black.withValues(alpha: 0.50),
+                      Colors.black.withValues(alpha: 0.92),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Mode Title at Bottom
+              Positioned(
+                bottom: 8,
+                left: 4,
+                right: 4,
+                child: Text(
+                  mode.label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: -0.1,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black,
+                        blurRadius: 4,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                    height: 1.15,
+                  ),
+                ),
+              ),
+
+              // Top-Right Pill Badge (e.g. "1 live", "No entry fee")
+              if (badgeText != null)
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: badgeBgColor.withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: badgeBorderColor, width: 0.8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      badgeText,
+                      style: TextStyle(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                        color: badgeTextColor,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
