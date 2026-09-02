@@ -55,32 +55,34 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
   }
 
   Future<void> _navigateToNext() async {
-    // Wait for the animation and authentication check
-    await Future.delayed(const Duration(milliseconds: 2000));
-    if (!mounted) return;
+    try {
+      // Wait for the animation and authentication check
+      await Future.delayed(const Duration(milliseconds: 1800));
+      if (!mounted) return;
 
-    final authState = ref.read(authProvider);
+      final authState = ref.read(authProvider);
 
-    Widget targetScreen;
-    if (authState.status == AuthStatus.authenticated) {
-      targetScreen = const MainNavigationScreen();
-    } else {
-      targetScreen = const PhoneLoginScreen();
+      Widget targetScreen;
+      if (authState.status == AuthStatus.authenticated) {
+        targetScreen = const MainNavigationScreen();
+      } else {
+        targetScreen = const PhoneLoginScreen();
+      }
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => targetScreen),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const PhoneLoginScreen()),
+        );
+      }
     }
-
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
-        },
-      ),
-    );
   }
 
   @override
@@ -123,6 +125,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                   child: Image.asset(
                     'assets/images/app_logo.png',
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.sports_esports,
+                      size: 48,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),

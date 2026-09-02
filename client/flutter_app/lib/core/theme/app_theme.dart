@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Background & Surfaces
@@ -38,44 +37,43 @@ class AppColors {
 
 class AppTheme {
   static ThemeData get lightTheme {
-    final baseTextTheme = GoogleFonts.newsreaderTextTheme();
-
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
-      textTheme: baseTextTheme.copyWith(
-        displayLarge: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
-        displayMedium: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
-        displaySmall: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-        headlineLarge: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
-        headlineMedium: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-        headlineSmall: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-        titleLarge: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-        titleMedium: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
-        titleSmall: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
-        bodyLarge: GoogleFonts.newsreader(color: AppColors.textPrimary),
-        bodyMedium: GoogleFonts.newsreader(color: AppColors.textSecondary),
-        bodySmall: GoogleFonts.newsreader(color: AppColors.textMuted),
-        labelLarge: GoogleFonts.newsreader(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+      fontFamily: 'Roboto',
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 32),
+        displayMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 28),
+        displaySmall: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 24),
+        headlineLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 22),
+        headlineMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 20),
+        headlineSmall: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 18),
+        titleLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+        titleMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
+        titleSmall: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500, fontSize: 12),
+        bodyLarge: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+        bodyMedium: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        bodySmall: TextStyle(color: AppColors.textMuted, fontSize: 12),
+        labelLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
       ),
       
       // Flat App Bar with Hairline Border
-      appBarTheme: AppBarTheme(
+      appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        shape: const Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
-        titleTextStyle: GoogleFonts.newsreader(
+        shape: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+        titleTextStyle: TextStyle(
           color: AppColors.textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,
         ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 20),
+        iconTheme: IconThemeData(color: AppColors.textPrimary, size: 20),
       ),
 
       // Flat Card Theme with 12px corners & 0.5px border
@@ -94,8 +92,8 @@ class AppTheme {
         filled: true,
         fillColor: AppColors.surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        labelStyle: GoogleFonts.newsreader(color: AppColors.textSecondary, fontSize: 14),
-        hintStyle: GoogleFonts.newsreader(color: AppColors.textMuted, fontSize: 14),
+        labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.border, width: 0.5),
@@ -123,8 +121,8 @@ class AppTheme {
           disabledBackgroundColor: AppColors.surfaceMuted,
           disabledForegroundColor: AppColors.textMuted,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: const StadiumBorder(), // Pill shape
-          textStyle: GoogleFonts.newsreader(fontSize: 15, fontWeight: FontWeight.w600),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
 
@@ -134,8 +132,8 @@ class AppTheme {
           foregroundColor: AppColors.textPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           side: const BorderSide(color: AppColors.border, width: 0.5),
-          shape: const StadiumBorder(), // Pill shape
-          textStyle: GoogleFonts.newsreader(fontSize: 14, fontWeight: FontWeight.w500),
+          shape: const StadiumBorder(),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ),
 
@@ -143,20 +141,20 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          textStyle: GoogleFonts.newsreader(fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
 
-      chipTheme: ChipThemeData(
+      chipTheme: const ChipThemeData(
         backgroundColor: AppColors.surfaceMuted,
         disabledColor: AppColors.surfaceMuted,
         selectedColor: AppColors.primary,
         secondarySelectedColor: AppColors.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        labelStyle: GoogleFonts.newsreader(fontSize: 12, color: AppColors.textSecondary),
-        secondaryLabelStyle: GoogleFonts.newsreader(fontSize: 12, color: Colors.white),
-        shape: const StadiumBorder(),
-        side: const BorderSide(color: AppColors.border, width: 0.5),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        labelStyle: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        secondaryLabelStyle: TextStyle(fontSize: 12, color: Colors.white),
+        shape: StadiumBorder(),
+        side: BorderSide(color: AppColors.border, width: 0.5),
         elevation: 0,
       ),
     );
@@ -181,7 +179,7 @@ class AppTheme {
   }) {
     return BoxDecoration(
       color: backgroundColor,
-      borderRadius: BorderRadius.circular(999), // Pill
+      borderRadius: BorderRadius.circular(999),
       border: Border.all(
         color: borderColor,
         width: 0.5,
