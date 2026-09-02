@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { AuthService } from './auth.service';
+import { EmailService } from '../../services/email.service';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
 
 const sendOtpSchema = z.object({
