@@ -134,14 +134,18 @@ export class RoomService {
       WHERE tournament_id = ? AND status = 'confirmed'
     `).all(tournamentId) as any[];
 
-    await NotificationService.notifyRoomRevealed(
-      { id: tournament.id, title: tournament.title, roomId: tournament.room_id, roomPassword: tournament.room_password },
-      participants.map((p) => ({
-        userId: p.user_id,
-        playerIgn: p.player_ff_ign,
-        slotNumber: p.slot_number,
-      }))
-    );
+    try {
+      await NotificationService.notifyRoomRevealed(
+        { id: tournament.id, title: tournament.title, roomId: tournament.room_id, roomPassword: tournament.room_password },
+        participants.map((p) => ({
+          userId: p.user_id,
+          playerIgn: p.player_ff_ign,
+          slotNumber: p.slot_number,
+        }))
+      );
+    } catch (err) {
+      console.warn('[NOTIFICATIONS] Push notification skipped or failed:', err);
+    }
 
     return true;
   }
