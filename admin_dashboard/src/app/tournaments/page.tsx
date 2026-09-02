@@ -412,22 +412,37 @@ export default function TournamentsPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => setIsRoomModalOpen(false)}
-              className="px-4 py-2 text-xs text-slate-600 hover:text-slate-900 rounded-full border border-hairline border-slate-200 hover:bg-slate-50 transition-colors"
+              onClick={() => {
+                if (selectedTourney) {
+                  setIsRoomModalOpen(false);
+                  handleDeleteTournament(selectedTourney);
+                }
+              }}
+              className="px-3 py-1.5 text-xs text-red-600 hover:text-white hover:bg-red-600 rounded-lg border border-red-200 transition-colors flex items-center gap-1.5"
             >
-              Cancel
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete match</span>
             </button>
-            <button
-              type="submit"
-              disabled={isSavingRoom || !roomIdInput.trim()}
-              className="px-5 py-2 text-xs font-medium bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-full transition-colors flex items-center gap-1.5"
-            >
-              {isSavingRoom ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
-              <span>Save credentials</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRoomModalOpen(false)}
+                className="px-4 py-2 text-xs text-slate-600 hover:text-slate-900 rounded-full border border-hairline border-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingRoom || !roomIdInput.trim()}
+                className="px-5 py-2 text-xs font-medium bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-full transition-colors flex items-center gap-1.5"
+              >
+                {isSavingRoom ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : null}
+                <span>Save credentials</span>
+              </button>
+            </div>
           </div>
         </form>
       </Modal>
