@@ -13,7 +13,7 @@ export class AuthService {
   /**
    * Generates and sends OTP for phone or email authentication
    */
-  public static async sendOtp(identifier: string, type: 'phone' | 'email'): Promise<{ success: boolean; message: string; debugOtp?: string }> {
+  public static async sendOtp(identifier: string, type: 'phone' | 'email'): Promise<{ success: boolean; message: string; otp?: string; debugOtp?: string }> {
     const cleanIdentifier = identifier.trim().toLowerCase();
     const db = getDb();
 
