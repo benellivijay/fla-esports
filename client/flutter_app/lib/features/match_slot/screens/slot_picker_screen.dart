@@ -4,7 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../providers/slot_booking_provider.dart';
 import '../../home/models/tournament_model.dart';
 import '../../profile/providers/profile_provider.dart';
-import '../../auth/screens/phone_login_screen.dart';
+import '../../auth/screens/auth_tab_screen.dart';
 import 'my_matches_screen.dart';
 
 class SlotPickerScreen extends ConsumerStatefulWidget {
@@ -210,7 +210,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
         );
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const PhoneLoginScreen()),
+          MaterialPageRoute(builder: (_) => const AuthTabScreen()),
         );
       } else if (errorMsg.contains('Free Fire UID') || errorMsg.contains('FF_UID')) {
         _showQuickLinkUidDialog();

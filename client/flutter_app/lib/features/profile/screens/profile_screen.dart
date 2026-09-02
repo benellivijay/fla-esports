@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../auth/screens/phone_login_screen.dart';
+import '../../auth/screens/auth_tab_screen.dart';
 import '../providers/profile_provider.dart';
 import 'ff_uid_verification_screen.dart';
 
@@ -250,16 +250,7 @@ class ProfileScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.logout_rounded, size: 20),
             tooltip: 'Logout',
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PhoneLoginScreen()),
-                  (route) => false,
-                );
-              }
-            },
+            onPressed: () => _confirmLogout(context, ref),
           )
         ],
       ),
@@ -527,10 +518,82 @@ class ProfileScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 16),
+
+                    // Log Out Action Card
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: AppTheme.cardDecoration(),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.danger.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.logout_rounded, color: AppColors.danger, size: 18),
+                        ),
+                        title: const Text(
+                          'Log out of account',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Sign out of your player session on this device',
+                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                        onTap: () => _confirmLogout(context, ref),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text(
+          'Log out',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        content: const Text(
+          'Are you sure you want to log out of FLA ESPORTS?',
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AuthTabScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
     );
   }
 
