@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/home/screens/home_screen.dart';
+import 'features/home/screens/game_modes_screen.dart';
 import 'features/match_slot/screens/my_matches_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 
@@ -36,17 +37,26 @@ class FlaEsportsApp extends ConsumerWidget {
 }
 
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+  final int initialIndex;
+
+  const MainNavigationScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   final List<Widget> _screens = const [
     HomeScreen(),
+    GameModesScreen(),
     MyMatchesScreen(),
     ProfileScreen(),
   ];
@@ -69,8 +79,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           backgroundColor: AppColors.surface,
           selectedItemColor: AppColors.primary,
           unselectedItemColor: AppColors.textMuted,
-          selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+          selectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           items: const [
@@ -78,6 +88,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               icon: Icon(Icons.sports_esports_outlined, size: 22),
               activeIcon: Icon(Icons.sports_esports, size: 22),
               label: 'Tournaments',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.grid_view_rounded, size: 22),
+              activeIcon: Icon(Icons.grid_view_sharp, size: 22),
+              label: 'Game modes',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.bookmark_border_rounded, size: 22),

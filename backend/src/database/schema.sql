@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
     title TEXT NOT NULL,
     description TEXT,
     game TEXT NOT NULL DEFAULT 'Free Fire',
+    game_mode TEXT NOT NULL DEFAULT 'survival' CHECK(game_mode IN ('ff_max', 'survival', 'free_match', 'lone_wolf', 'headshot_only', 'one_tap', 'sniper_1v1', 'lone_wolf_headshot')),
     mode TEXT NOT NULL CHECK(mode IN ('solo', 'duo', 'squad')),
     map TEXT NOT NULL CHECK(map IN ('Bermuda', 'Purgatory', 'Kalahari', 'Alpine', 'NexTerra')),
     entry_type TEXT NOT NULL CHECK(entry_type IN ('free', 'paid')),

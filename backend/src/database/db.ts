@@ -50,6 +50,7 @@ export class DatabaseManager {
       } catch (_) {}
       try { this.instance.exec('ALTER TABLE tournaments ADD COLUMN room_revealed_at DATETIME;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE tournaments ADD COLUMN room_updated_at DATETIME;'); } catch (_) {}
+      try { this.instance.exec("ALTER TABLE tournaments ADD COLUMN game_mode TEXT NOT NULL DEFAULT 'survival';"); } catch (_) {}
       try { this.instance.exec("ALTER TABLE tournaments ADD COLUMN payout_status TEXT NOT NULL DEFAULT 'unpaid';"); } catch (_) {}
       try { this.instance.exec('ALTER TABLE tournaments ADD COLUMN payout_executed_at DATETIME;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE tournaments ADD COLUMN payout_executed_by TEXT;'); } catch (_) {}

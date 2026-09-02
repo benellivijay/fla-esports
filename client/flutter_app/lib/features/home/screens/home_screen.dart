@@ -7,6 +7,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../admin/screens/admin_create_tournament_screen.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../../wallet/screens/wallet_screen.dart';
+import 'game_modes_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/notification_inbox_screen.dart';
 
@@ -137,11 +138,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             child: Column(
               children: [
-                // Entry Type Filters
+                // Entry Type Filters + Game Modes Entry Point
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
+                      // Game Modes Grid Entry Point
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const GameModesScreen()),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceMuted,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.border, width: 0.5),
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.grid_view_rounded, size: 14, color: AppColors.primary),
+                              SizedBox(width: 6),
+                              Text(
+                                'Game modes',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       _buildFilterChip('All matches', 'all', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
                       const SizedBox(width: 8),
                       _buildFilterChip('Paid entries', 'paid', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),

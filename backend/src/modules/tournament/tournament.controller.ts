@@ -13,6 +13,8 @@ const createTournamentSchema = z.object({
   title: z.string().min(3).max(100),
   description: z.string().optional(),
   game: z.string().default('Free Fire'),
+  game_mode: z.enum(['ff_max', 'survival', 'free_match', 'lone_wolf', 'headshot_only', 'one_tap', 'sniper_1v1', 'lone_wolf_headshot']).optional(),
+  gameMode: z.enum(['ff_max', 'survival', 'free_match', 'lone_wolf', 'headshot_only', 'one_tap', 'sniper_1v1', 'lone_wolf_headshot']).optional(),
   mode: z.enum(['solo', 'duo', 'squad']),
   map: z.enum(['Bermuda', 'Purgatory', 'Kalahari', 'Alpine', 'NexTerra']),
   entryType: z.enum(['free', 'paid']),
@@ -33,6 +35,8 @@ const createTournamentSchema = z.object({
 const updateTournamentSchema = z.object({
   title: z.string().min(3).max(100).optional(),
   description: z.string().optional(),
+  game_mode: z.enum(['ff_max', 'survival', 'free_match', 'lone_wolf', 'headshot_only', 'one_tap', 'sniper_1v1', 'lone_wolf_headshot']).optional(),
+  gameMode: z.enum(['ff_max', 'survival', 'free_match', 'lone_wolf', 'headshot_only', 'one_tap', 'sniper_1v1', 'lone_wolf_headshot']).optional(),
   mode: z.enum(['solo', 'duo', 'squad']).optional(),
   map: z.enum(['Bermuda', 'Purgatory', 'Kalahari', 'Alpine', 'NexTerra']).optional(),
   entryType: z.enum(['free', 'paid']).optional(),
@@ -62,6 +66,7 @@ export class TournamentController {
     try {
       const filters = {
         game: req.query.game as string | undefined,
+        game_mode: (req.query.game_mode || req.query.gameMode) as string | undefined,
         mode: req.query.mode as string | undefined,
         map: req.query.map as string | undefined,
         entryType: req.query.entryType as string | undefined,
@@ -74,6 +79,15 @@ export class TournamentController {
       const userRole = req.user?.role;
       const data = await TournamentService.listTournaments(filters, userRole);
       res.status(200).json({ success: true, ...data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async getGameModeStats(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const stats = await TournamentService.getGameModeStats();
+      res.status(200).json({ success: true, stats });
     } catch (err) {
       next(err);
     }

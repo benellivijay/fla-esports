@@ -24,6 +24,7 @@ export default function CreateTournamentPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [gameMode, setGameMode] = useState<string>('survival');
   const [mode, setMode] = useState<'solo' | 'duo' | 'squad'>('squad');
   const [map, setMap] = useState<'Bermuda' | 'Purgatory' | 'Kalahari' | 'Alpine' | 'NexTerra'>('Bermuda');
   const [entryType, setEntryType] = useState<'free' | 'paid'>('paid');
@@ -75,6 +76,7 @@ export default function CreateTournamentPage() {
         title: title.trim(),
         description: description.trim() || undefined,
         game: 'Free Fire',
+        game_mode: gameMode,
         mode,
         map,
         entryType,
@@ -105,7 +107,7 @@ export default function CreateTournamentPage() {
     <AdminLayout>
       <Header
         title="Create new tournament"
-        subtitle="Configure matchmaking rules, prize matrix and early room details"
+        subtitle="Set match rules, slot configuration, and prize pool"
         actions={
           <Link
             href="/tournaments"
@@ -148,7 +150,27 @@ export default function CreateTournamentPage() {
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Game Mode <span className="text-rose-500">*</span>
+                Battle Game Mode <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={gameMode}
+                onChange={(e) => setGameMode(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900"
+              >
+                <option value="ff_max">FF Max</option>
+                <option value="survival">Survival (Battle Royale)</option>
+                <option value="free_match">Free match</option>
+                <option value="lone_wolf">Lone wolf</option>
+                <option value="headshot_only">Headshot only</option>
+                <option value="one_tap">One tap</option>
+                <option value="sniper_1v1">Sniper 1v1</option>
+                <option value="lone_wolf_headshot">Lone wolf headshot</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Team Format <span className="text-rose-500">*</span>
               </label>
               <select
                 value={mode}
@@ -222,14 +244,14 @@ export default function CreateTournamentPage() {
                 onChange={(e: any) => setEntryType(e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900"
               >
-                <option value="paid">Paid Entry (₹ INR)</option>
+                <option value="paid">Paid Entry (? INR)</option>
                 <option value="free">Free Entry</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Entry Fee (₹)
+                Entry Fee (?)
               </label>
               <input
                 type="number"
@@ -243,7 +265,7 @@ export default function CreateTournamentPage() {
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Total Prize Pool (₹) <span className="text-rose-500">*</span>
+                Total Prize Pool (?) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
@@ -257,7 +279,7 @@ export default function CreateTournamentPage() {
 
             <div className="sm:col-span-3">
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Per-Kill Bounty Rate (₹ per kill)
+                Per-Kill Bounty Rate (? per kill)
               </label>
               <input
                 type="number"
@@ -290,30 +312,21 @@ export default function CreateTournamentPage() {
               {distribution.map((d, index) => (
                 <div key={index} className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 w-12">Rank #</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={d.rank}
-                      onChange={(e) => updateDistributionRow(index, 'rank', Number(e.target.value))}
-                      className="w-20 px-3 py-1.5 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="text-xs text-slate-500">Prize ₹</span>
+                    <span className="text-xs text-slate-400 w-10">Rank #{d.rank}</span>
                     <input
                       type="number"
                       min={0}
                       value={d.amount}
                       onChange={(e) => updateDistributionRow(index, 'amount', Number(e.target.value))}
-                      className="w-32 px-3 py-1.5 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none font-semibold"
+                      className="w-32 px-3 py-1.5 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900"
+                      placeholder="? Amount"
                     />
                   </div>
                   {distribution.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeDistributionRow(index)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
+                      className="p-1 text-slate-400 hover:text-rose-600 rounded"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -324,77 +337,79 @@ export default function CreateTournamentPage() {
           </div>
         </Card>
 
-        {/* 3. Optional Early Room Credentials */}
+        {/* 3. In-Game Custom Room Early Settings */}
         <Card padding="md" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
-              3. Room credentials & reveal timing
+              3. In-game custom room credentials (Optional)
             </h2>
-            <span className="text-[11px] text-slate-400">Optional at tournament creation</span>
+            <span className="text-[11px] text-slate-500">Can be set later before start</span>
           </div>
-
-          <p className="text-xs text-slate-500">
-            You can enter the Free Fire Room ID and Password now or later. Entered credentials remain hidden from players until the reveal timing threshold fires.
-          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Room ID (Optional)
+                Room Reveal Window
+              </label>
+              <select
+                value={roomRevealTimeMinutes}
+                onChange={(e) => setRoomRevealTimeMinutes(Number(e.target.value))}
+                className="w-full px-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900"
+              >
+                <option value={10}>10 Minutes before start</option>
+                <option value={15}>15 Minutes before start (Default)</option>
+                <option value={20}>20 Minutes before start</option>
+                <option value={30}>30 Minutes before start</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Early Room ID
               </label>
               <input
                 type="text"
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value)}
-                placeholder="e.g. FF_ROOM_99218"
-                className="w-full px-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 font-mono"
+                placeholder="e.g. 8839201"
+                className="w-full px-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900"
               />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Room Password (Optional)
+                Early Room Password
               </label>
               <input
                 type="text"
                 value={roomPassword}
                 onChange={(e) => setRoomPassword(e.target.value)}
-                placeholder="e.g. 8482"
-                className="w-full px-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Reveal Threshold (Minutes before start)
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={roomRevealTimeMinutes}
-                onChange={(e) => setRoomRevealTimeMinutes(Number(e.target.value))}
+                placeholder="e.g. 1234"
                 className="w-full px-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900"
               />
             </div>
           </div>
         </Card>
 
-        {/* Submit Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        {/* Action Button */}
+        <div className="flex items-center justify-end gap-3 pt-4">
           <Link
             href="/tournaments"
-            className="px-5 py-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 rounded-full border border-hairline border-slate-200 hover:bg-slate-50 transition-colors"
+            className="px-4 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white border border-hairline border-slate-200 rounded-lg"
           >
             Cancel
           </Link>
           <button
             type="submit"
             disabled={isLoading}
-            className="px-6 py-2.5 text-xs font-medium bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full transition-colors flex items-center gap-2"
+            className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg disabled:opacity-50 flex items-center gap-1.5 transition-colors"
           >
-            <Trophy className="w-3.5 h-3.5" />
-            <span>{isLoading ? 'Publishing tournament...' : 'Create & publish tournament'}</span>
+            {isLoading ? (
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Plus className="w-3.5 h-3.5" />
+            )}
+            <span>Publish Tournament</span>
           </button>
         </div>
       </form>

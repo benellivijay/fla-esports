@@ -2,13 +2,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../../database/db';
 import { Logger } from '../../utils/logger';
 import { AppError } from '../../middleware/error.middleware';
-import { Tournament, TournamentMode, TournamentMap, EntryType, TournamentStatus, PrizeDistributionItem } from '../../types';
+import { Tournament, TournamentMode, GameMode, TournamentMap, EntryType, TournamentStatus, PrizeDistributionItem } from '../../types';
 import { NotificationService } from '../scheduler/notification.service';
 
 export interface CreateTournamentDTO {
   title: string;
   description?: string;
   game?: string;
+  game_mode?: GameMode;
+  gameMode?: GameMode;
   mode: TournamentMode;
   map: TournamentMap;
   entryType: EntryType;
@@ -29,6 +31,8 @@ export interface CreateTournamentDTO {
 export interface UpdateTournamentDTO {
   title?: string;
   description?: string;
+  game_mode?: GameMode;
+  gameMode?: GameMode;
   mode?: TournamentMode;
   map?: TournamentMap;
   entryType?: EntryType;
@@ -49,6 +53,8 @@ export interface UpdateTournamentDTO {
 
 export interface TournamentFilters {
   game?: string;
+  game_mode?: string;
+  gameMode?: string;
   mode?: string;
   map?: string;
   entryType?: string;
@@ -84,16 +90,17 @@ export class TournamentService {
     }
 
     const prizeDistributionJson = JSON.stringify(data.prizeDistribution || []);
+    const gameMode = data.game_mode || data.gameMode || 'survival';
 
     const stmt = db.prepare(`
       INSERT INTO tournaments (
-        id, title, description, game, mode, map, entry_type, entry_fee, 
+        id, title, description, game, game_mode, mode, map, entry_type, entry_fee, 
         prize_pool, prize_distribution, per_kill_prize, max_slots, filled_slots, 
         start_time, registration_closes_at, room_reveal_time_minutes, 
         room_id, room_password, room_revealed, status, banner_url, rules, 
         created_by, created_at, updated_at
       ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, 
         ?, ?, ?, ?, 0, 
         ?, ?, ?, 
         ?, ?, 0, 'upcoming', ?, ?, 
@@ -106,6 +113,7 @@ export class TournamentService {
       data.title.trim(),
       data.description || null,
       data.game || 'Free Fire',
+      gameMode,
       data.mode,
       data.map,
       data.entryType,
@@ -129,7 +137,7 @@ export class TournamentService {
       action: 'TOURNAMENT_CREATED',
       targetResource: 'tournaments',
       targetId: tournamentId,
-      details: { title: data.title, mode: data.mode, map: data.map, entryType: data.entryType, prizePool: data.prizePool },
+      details: { title: data.title, gameMode, mode: data.mode, map: data.map, entryType: data.entryType, prizePool: data.prizePool },
     });
 
     const created = await this.getTournamentById(tournamentId, 'admin');
@@ -164,6 +172,8 @@ export class TournamentService {
 
     if (data.title !== undefined) { updates.push('title = ?'); values.push(data.title.trim()); }
     if (data.description !== undefined) { updates.push('description = ?'); values.push(data.description); }
+    const gameMode = data.game_mode || data.gameMode;
+    if (gameMode !== undefined) { updates.push('game_mode = ?'); values.push(gameMode); }
     if (data.mode !== undefined) { updates.push('mode = ?'); values.push(data.mode); }
     if (data.map !== undefined) { updates.push('map = ?'); values.push(data.map); }
     if (data.entryType !== undefined) { updates.push('entry_type = ?'); values.push(data.entryType); }
@@ -387,6 +397,12 @@ export class TournamentService {
       params.push(filters.game);
     }
 
+    const requestedGameMode = filters.game_mode || filters.gameMode;
+    if (requestedGameMode && requestedGameMode !== 'all') {
+      whereClauses.push('game_mode = ?');
+      params.push(requestedGameMode);
+    }
+
     if (filters.mode && filters.mode !== 'all') {
       whereClauses.push('mode = ?');
       params.push(filters.mode);
@@ -454,6 +470,41 @@ export class TournamentService {
   }
 
   /**
+   * Client: Retrieves live and total match counts per game mode
+   */
+  public static async getGameModeStats(): Promise<Record<string, { liveCount: number; totalCount: number }>> {
+    const db = getDb();
+    const rows = db.prepare(`
+      SELECT game_mode, 
+             SUM(CASE WHEN status IN ('ongoing', 'open') THEN 1 ELSE 0 END) as live_count,
+             COUNT(*) as total_count
+      FROM tournaments 
+      WHERE status != 'cancelled'
+      GROUP BY game_mode
+    `).all() as any[];
+
+    const stats: Record<string, { liveCount: number; totalCount: number }> = {
+      ff_max: { liveCount: 0, totalCount: 0 },
+      survival: { liveCount: 0, totalCount: 0 },
+      free_match: { liveCount: 0, totalCount: 0 },
+      lone_wolf: { liveCount: 0, totalCount: 0 },
+      headshot_only: { liveCount: 0, totalCount: 0 },
+      one_tap: { liveCount: 0, totalCount: 0 },
+      sniper_1v1: { liveCount: 0, totalCount: 0 },
+      lone_wolf_headshot: { liveCount: 0, totalCount: 0 },
+    };
+
+    for (const r of rows) {
+      const modeKey = r.game_mode || 'survival';
+      stats[modeKey] = {
+        liveCount: Number(r.live_count || 0),
+        totalCount: Number(r.total_count || 0),
+      };
+    }
+    return stats;
+  }
+
+  /**
    * Client & Admin: Retrieves detailed tournament information
    */
   public static async getTournamentById(tournamentId: string, userRole?: string): Promise<Tournament> {
@@ -491,6 +542,7 @@ export class TournamentService {
       title: row.title,
       description: row.description,
       game: row.game,
+      game_mode: row.game_mode || 'survival',
       mode: row.mode,
       map: row.map,
       entry_type: row.entry_type,

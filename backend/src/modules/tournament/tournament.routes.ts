@@ -6,6 +6,7 @@ const router = Router();
 
 // Public / Player routes (with optional auth to identify admin roles and reveal room credentials if permitted)
 router.get('/', optionalAuthToken, TournamentController.listTournaments);
+router.get('/game-modes/stats', TournamentController.getGameModeStats);
 router.get('/:id', optionalAuthToken, TournamentController.getTournamentById);
 
 // Admin & Moderator routes

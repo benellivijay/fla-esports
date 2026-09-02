@@ -97,6 +97,15 @@ export interface JWTPayload {
 
 // Tournament Types
 export type TournamentMode = 'solo' | 'duo' | 'squad';
+export type GameMode =
+  | 'ff_max'
+  | 'survival'
+  | 'free_match'
+  | 'lone_wolf'
+  | 'headshot_only'
+  | 'one_tap'
+  | 'sniper_1v1'
+  | 'lone_wolf_headshot';
 export type TournamentMap = 'Bermuda' | 'Purgatory' | 'Kalahari' | 'Alpine' | 'NexTerra';
 export type EntryType = 'free' | 'paid';
 export type TournamentStatus = 'upcoming' | 'open' | 'ongoing' | 'completed' | 'cancelled';
@@ -112,6 +121,7 @@ export interface Tournament {
   title: string;
   description?: string | null;
   game: string;
+  game_mode?: GameMode | string;
   mode: TournamentMode;
   map: TournamentMap;
   entry_type: EntryType;

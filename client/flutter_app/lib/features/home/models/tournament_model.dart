@@ -31,6 +31,7 @@ class TournamentModel {
   final String title;
   final String? description;
   final String game;
+  final String gameMode; // 'ff_max' | 'survival' | 'free_match' | 'lone_wolf' | 'headshot_only' | 'one_tap' | 'sniper_1v1' | 'lone_wolf_headshot'
   final String mode; // 'solo' | 'duo' | 'squad'
   final String map; // 'Bermuda' | 'Purgatory' | 'Kalahari' | 'Alpine' | 'NexTerra'
   final String entryType; // 'free' | 'paid'
@@ -58,6 +59,7 @@ class TournamentModel {
     required this.title,
     this.description,
     required this.game,
+    this.gameMode = 'survival',
     required this.mode,
     required this.map,
     required this.entryType,
@@ -94,6 +96,7 @@ class TournamentModel {
       title: json['title'] as String,
       description: json['description'] as String?,
       game: json['game'] as String? ?? 'Free Fire',
+      gameMode: json['game_mode'] as String? ?? json['gameMode'] as String? ?? 'survival',
       mode: json['mode'] as String? ?? 'solo',
       map: json['map'] as String? ?? 'Bermuda',
       entryType: json['entry_type'] as String? ?? 'paid',
@@ -122,6 +125,37 @@ class TournamentModel {
       bannerUrl: json['banner_url'] as String?,
       rules: json['rules'] as String?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'game': game,
+      'game_mode': gameMode,
+      'mode': mode,
+      'map': map,
+      'entry_type': entryType,
+      'entry_fee': entryFee,
+      'prize_pool': prizePool,
+      'prize_distribution': prizeDistribution.map((p) => p.toJson()).toList(),
+      'per_kill_prize': perKillPrize,
+      'max_slots': maxSlots,
+      'filled_slots': filledSlots,
+      'start_time': startTime.toIso8601String(),
+      'registration_closes_at': registrationClosesAt?.toIso8601String(),
+      'room_reveal_time_minutes': roomRevealTimeMinutes,
+      'room_id': roomId,
+      'room_password': roomPassword,
+      'room_revealed': roomRevealed,
+      'room_revealed_at': roomRevealedAt?.toIso8601String(),
+      'room_updated_at': roomUpdatedAt?.toIso8601String(),
+      'room_updated_by': roomUpdatedBy,
+      'status': status,
+      'banner_url': bannerUrl,
+      'rules': rules,
+    };
   }
 
   bool get isPaid => entryType == 'paid';

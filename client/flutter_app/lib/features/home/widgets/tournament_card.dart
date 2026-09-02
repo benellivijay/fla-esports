@@ -76,6 +76,12 @@ class TournamentCard extends StatelessWidget {
                           Row(
                             children: [
                               _buildPillTag(
+                                _formatGameMode(tournament.gameMode),
+                                AppColors.accent,
+                                const Color(0xFFEFF6FF),
+                              ),
+                              const SizedBox(width: 6),
+                              _buildPillTag(
                                 _toSentenceCase(tournament.mode),
                                 AppColors.textSecondary,
                                 AppColors.surfaceMuted,
@@ -265,5 +271,28 @@ class TournamentCard extends StatelessWidget {
   String _toSentenceCase(String input) {
     if (input.isEmpty) return '';
     return input[0].toUpperCase() + input.substring(1).toLowerCase();
+  }
+
+  String _formatGameMode(String mode) {
+    switch (mode) {
+      case 'ff_max':
+        return 'FF Max';
+      case 'survival':
+        return 'Survival';
+      case 'free_match':
+        return 'Free Match';
+      case 'lone_wolf':
+        return 'Lone Wolf';
+      case 'headshot_only':
+        return 'Headshot Only';
+      case 'one_tap':
+        return 'One Tap';
+      case 'sniper_1v1':
+        return 'Sniper 1v1';
+      case 'lone_wolf_headshot':
+        return 'Lone Wolf HS';
+      default:
+        return _toSentenceCase(mode.replaceAll('_', ' '));
+    }
   }
 }
