@@ -328,7 +328,7 @@ export default function TournamentsPage() {
                           <button
                             onClick={() => handleDeleteTournament(t)}
                             title="Permanently delete tournament"
-                            className="p-1.5 text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 rounded-lg border border-hairline border-rose-200 transition-colors"
+                            className="p-1.5 text-red-600 hover:text-white bg-red-50 hover:bg-red-600 rounded-lg border border-red-200 transition-all flex items-center justify-center shadow-sm"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
