@@ -39,6 +39,20 @@ export const createApp = () => {
   });
   app.use('/api/', globalLimiter);
 
+  // Root Welcome Endpoint
+  app.get('/', (_req, res) => {
+    res.status(200).json({
+      service: 'FLA ESPORTS Tournament API',
+      status: 'online',
+      version: '1.0.0',
+      endpoints: {
+        health: '/health',
+        api: '/api/v1',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   // Health check endpoint
   app.get('/health', (_req, res) => {
     res.status(200).json({
