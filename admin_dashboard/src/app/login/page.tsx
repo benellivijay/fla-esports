@@ -16,7 +16,6 @@ export default function LoginPage() {
   const [totpCode, setTotpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showQr, setShowQr] = useState(false);
 
   // Step 1: Submit email & password
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -74,7 +73,7 @@ export default function LoginPage() {
           <p className="text-xs text-slate-500 mt-1">
             {step === 1
               ? 'Enter your internal staff credentials to proceed'
-              : 'Enter 6-digit TOTP code from your authenticator'}
+              : 'Enter 6-digit 2FA verification code'}
           </p>
         </div>
 
@@ -155,43 +154,9 @@ export default function LoginPage() {
         ) : (
           /* Form Step 2: TOTP 2FA */
           <form onSubmit={handleTotpSubmit} className="space-y-4">
-            <div className="p-3 bg-slate-50 rounded-lg border border-hairline border-slate-200 text-xs text-slate-600">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-semibold text-slate-800">Google Authenticator Required</span>
-                <button
-                  type="button"
-                  onClick={() => setShowQr(!showQr)}
-                  className="text-[11px] text-blue-600 hover:text-blue-700 font-medium underline"
-                >
-                  {showQr ? 'Hide QR' : 'Setup Authenticator QR'}
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Enter the live 6-digit code from your Google Authenticator app (or dev code <code className="font-mono font-bold text-slate-900">123456</code>).
-              </p>
-            </div>
-
-            {showQr && (
-              <div className="p-4 bg-white border border-slate-200 rounded-xl text-center space-y-3">
-                <p className="text-[11px] font-medium text-slate-700">
-                  Scan this QR code in <strong>Google Authenticator</strong>:
-                </p>
-                <div className="flex justify-center">
-                  <img
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=otpauth%3A%2F%2Ftotp%2FFLA%2520ESPORTS%3Aflaadmin40%40gmail.com%3Fsecret%3DJBSWY3DPEHPK3PXP%26issuer%3DFLA%2520ESPORTS%26algorithm%3DSHA1%26digits%3D6%26period%3D30"
-                    alt="Google Authenticator QR"
-                    className="w-40 h-40 border border-slate-200 rounded-lg p-1 bg-white shadow-sm"
-                  />
-                </div>
-                <div className="text-[11px] text-slate-500">
-                  Manual Entry Key: <strong className="font-mono text-slate-900 select-all">JBSWY3DPEHPK3PXP</strong>
-                </div>
-              </div>
-            )}
-
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                6-digit authenticator code
+                6-digit 2FA code
               </label>
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
