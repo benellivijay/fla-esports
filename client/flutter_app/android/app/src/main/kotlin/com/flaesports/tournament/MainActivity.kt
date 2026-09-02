@@ -1,4 +1,4 @@
-package com.example.ff_esports_app
+package com.flaesports.tournament
 
 import io.flutter.embedding.android.FlutterActivity
 

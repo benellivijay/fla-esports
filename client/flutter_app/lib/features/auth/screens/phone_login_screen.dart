@@ -93,6 +93,11 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                     child: Image.asset(
                       'assets/images/app_logo.png',
                       fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.sports_esports,
+                        size: 40,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                 ),
