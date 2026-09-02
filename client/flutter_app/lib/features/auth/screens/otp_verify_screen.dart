@@ -25,17 +25,6 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   final TextEditingController _otpController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final lastOtp = ref.read(authProvider).lastGeneratedOtp;
-      if (lastOtp != null && lastOtp.isNotEmpty && _otpController.text.isEmpty) {
-        _otpController.text = lastOtp;
-      }
-    });
-  }
-
-  @override
   void dispose() {
     _otpController.dispose();
     super.dispose();
@@ -67,7 +56,6 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final autoOtp = authState.lastGeneratedOtp;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -119,33 +107,6 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                         hintText: '• • • • • •',
                       ),
                     ),
-                    if (autoOtp != null) ...[
-                      Container(
-                        margin: const EdgeInsets.only(top: 12),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.mark_email_read, size: 18, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Verification Code: $autoOtp',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                     if (authState.errorMessage != null) ...[
                       const SizedBox(height: 10),
                       Text(

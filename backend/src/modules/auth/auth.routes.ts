@@ -10,5 +10,6 @@ router.post('/verify-secondary', authenticateToken, AuthController.verifySeconda
 router.post('/google', AuthController.googleSignIn);
 router.post('/refresh', AuthController.refreshToken);
 router.post('/logout', AuthController.logout);
+router.get('/test-email', AuthController.testEmail);
 
 export const authRoutes = router;

@@ -114,4 +114,18 @@ export class AuthController {
       next(err);
     }
   }
+
+  public static async testEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const to = (req.query.to as string || 'flaadmin40@gmail.com').trim();
+      const sent = await EmailService.sendOtpEmail(to, '888888');
+      res.status(200).json({
+        success: sent,
+        recipient: to,
+        message: sent ? 'Test OTP email sent successfully!' : 'Failed to send test OTP email.',
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

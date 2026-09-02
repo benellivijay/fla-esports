@@ -60,8 +60,6 @@ export class AuthService {
     return {
       success: true,
       message: `OTP sent successfully to ${type === 'phone' ? 'phone number' : 'email address'}.`,
-      otp: otpCode,
-      debugOtp: otpCode,
     };
   }
 

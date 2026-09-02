@@ -48,12 +48,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       if (res.statusCode == 200) {
-        final otp = res.data['otp'] ?? res.data['debugOtp'];
         state = state.copyWith(
           status: AuthStatus.otpSent,
           pendingIdentifier: identifier,
           identifierType: type,
-          lastGeneratedOtp: otp != null ? otp.toString() : null,
         );
         return true;
       }
