@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
+    "build": "cd admin_dashboard && npm install && npm run build",
     "start": "node index.js",
     "deploy": "node src/deploy-commands.js",
     "test": "node tests/antinuke.test.js"
