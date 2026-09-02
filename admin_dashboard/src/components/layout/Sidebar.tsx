@@ -70,8 +70,8 @@ export const Sidebar: React.FC = () => {
     <aside className="w-64 bg-white border-r border-hairline border-slate-200 flex flex-col h-screen fixed left-0 top-0 z-30 select-none">
       {/* Brand Header */}
       <div className="h-16 flex items-center px-5 border-b border-hairline border-slate-200 gap-3">
-        <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white font-black text-xs tracking-wider">
-          FLA
+        <div className="w-9 h-9 rounded-lg overflow-hidden border border-slate-200 bg-slate-950 shrink-0 shadow-sm">
+          <img src="/app_logo.png" alt="FLA Esports" className="w-full h-full object-cover" />
         </div>
         <div>
           <h1 className="text-sm font-bold text-slate-900 leading-tight">FLA ESPORTS</h1>

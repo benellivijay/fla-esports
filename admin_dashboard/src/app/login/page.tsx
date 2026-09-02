@@ -67,8 +67,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white rounded-2xl border border-hairline border-slate-200 p-8">
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center text-white mb-3">
-            <ShieldCheck className="w-6 h-6 text-emerald-400" />
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 mb-3 shadow-md">
+            <img src="/app_logo.png" alt="FLA Esports" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-lg font-bold text-slate-900">FLA ESPORTS Staff Portal</h1>
           <p className="text-xs text-slate-500 mt-1">
