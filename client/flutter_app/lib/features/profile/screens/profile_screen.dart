@@ -339,14 +339,14 @@ class ProfileScreen extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
                               _buildVerificationBadge(
-                                label: 'Phone',
-                                isVerified: kyc?.isPhoneVerified ?? false,
-                                verifiedIcon: Icons.phone_android_outlined,
-                              ),
-                              _buildVerificationBadge(
                                 label: 'Email',
                                 isVerified: kyc?.isEmailVerified ?? false,
                                 verifiedIcon: Icons.email_outlined,
+                              ),
+                              _buildVerificationBadge(
+                                label: 'Free Fire',
+                                isVerified: profile?.ffVerificationStatus == 'verified',
+                                verifiedIcon: Icons.sports_esports_outlined,
                               ),
                               _buildVerificationBadge(
                                 label: 'KYC status',
@@ -406,13 +406,13 @@ class ProfileScreen extends ConsumerWidget {
                           const SizedBox(height: 8),
                           Text(
                             isKycVerified
-                                ? 'Both your phone number and email address are verified. Your KYC is complete.'
-                                : 'Verify both your phone number and email address to automatically complete KYC verification.',
+                                ? 'Your email address is verified. Your account KYC is complete and verified.'
+                                : 'Verify your email address to automatically complete KYC verification.',
                             style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
                           ),
                           const SizedBox(height: 12),
 
-                          // Status of phone & email
+                          // Status of email
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
@@ -420,49 +420,24 @@ class ProfileScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: AppColors.border, width: 0.5),
                             ),
-                            child: Column(
+                            child: Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      kyc?.isPhoneVerified == true ? Icons.check_circle : Icons.radio_button_unchecked,
-                                      color: kyc?.isPhoneVerified == true ? AppColors.success : AppColors.textMuted,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Phone: ${kyc?.phone ?? 'Not linked'}',
-                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
-                                    ),
-                                    const Spacer(),
-                                    if (kyc?.isPhoneVerified != true)
-                                      TextButton(
-                                        onPressed: () => _showVerifyIdentifierDialog(context, ref, type: 'phone'),
-                                        child: const Text('Verify phone', style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
-                                      ),
-                                  ],
+                                Icon(
+                                  kyc?.isEmailVerified == true ? Icons.check_circle : Icons.radio_button_unchecked,
+                                  color: kyc?.isEmailVerified == true ? AppColors.success : AppColors.textMuted,
+                                  size: 16,
                                 ),
-                                const Divider(height: 1),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      kyc?.isEmailVerified == true ? Icons.check_circle : Icons.radio_button_unchecked,
-                                      color: kyc?.isEmailVerified == true ? AppColors.success : AppColors.textMuted,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Email: ${kyc?.email ?? 'Not linked'}',
-                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
-                                    ),
-                                    const Spacer(),
-                                    if (kyc?.isEmailVerified != true)
-                                      TextButton(
-                                        onPressed: () => _showVerifyIdentifierDialog(context, ref, type: 'email'),
-                                        child: const Text('Verify email', style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
-                                      ),
-                                  ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Email: ${kyc?.email ?? 'Not linked'}',
+                                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
                                 ),
+                                const Spacer(),
+                                if (kyc?.isEmailVerified != true)
+                                  TextButton(
+                                    onPressed: () => _showVerifyIdentifierDialog(context, ref, type: 'email'),
+                                    child: const Text('Verify email', style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ),
                               ],
                             ),
                           ),
