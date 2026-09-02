@@ -60,7 +60,8 @@ export class AuthService {
     return {
       success: true,
       message: `OTP sent successfully to ${type === 'phone' ? 'phone number' : 'email address'}.`,
-      ...(config.nodeEnv !== 'production' ? { debugOtp: otpCode } : {}),
+      otp: otpCode,
+      debugOtp: otpCode,
     };
   }
 

@@ -9,6 +9,7 @@ class AuthState {
   final ProfileModel? profile;
   final String? pendingIdentifier;
   final String? identifierType;
+  final String? lastGeneratedOtp;
   final String? errorMessage;
 
   const AuthState({
@@ -17,6 +18,7 @@ class AuthState {
     this.profile,
     this.pendingIdentifier,
     this.identifierType,
+    this.lastGeneratedOtp,
     this.errorMessage,
   });
 
@@ -26,6 +28,7 @@ class AuthState {
     ProfileModel? profile,
     String? pendingIdentifier,
     String? identifierType,
+    String? lastGeneratedOtp,
     String? errorMessage,
   }) {
     return AuthState(
@@ -34,6 +37,7 @@ class AuthState {
       profile: profile ?? this.profile,
       pendingIdentifier: pendingIdentifier ?? this.pendingIdentifier,
       identifierType: identifierType ?? this.identifierType,
+      lastGeneratedOtp: lastGeneratedOtp ?? this.lastGeneratedOtp,
       errorMessage: errorMessage,
     );
   }
