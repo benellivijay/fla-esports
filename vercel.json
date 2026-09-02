@@ -1,1 +1,1 @@
-{"buildCommand": "cd admin_dashboard && npm install && npm run build", "outputDirectory": "admin_dashboard/out", "cleanUrls": true}
+{"buildCommand": "npm run build", "outputDirectory": "public", "cleanUrls": true}
