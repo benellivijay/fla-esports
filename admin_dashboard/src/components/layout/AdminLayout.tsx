@@ -13,13 +13,13 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('admin_access_token');
       if (!token) {
-        router.push('/login');
+        window.location.replace('/login/');
       } else {
         setIsAuthenticated(true);
+        setLoading(false);
       }
-      setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   if (loading) {
     return (

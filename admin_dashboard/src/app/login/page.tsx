@@ -49,7 +49,7 @@ export default function LoginPage() {
       if (res.data?.success && res.data?.data?.accessToken) {
         localStorage.setItem('admin_access_token', res.data.data.accessToken);
         localStorage.setItem('admin_user', JSON.stringify(res.data.data.user));
-        router.push('/');
+        window.location.replace('/');
       } else {
         setError('2FA verification failed.');
       }
