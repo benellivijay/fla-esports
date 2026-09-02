@@ -4,22 +4,15 @@ import { Logger } from '../utils/logger';
 export class EmailService {
   private static transporter: nodemailer.Transporter | null = null;
 
-  private static getTransporter(): nodemailer.Transporter | null {
+  private static getTransporter(): nodemailer.Transporter {
     if (this.transporter) return this.transporter;
 
-    const user = process.env.EMAIL_USER || process.env.SMTP_USER;
-    const pass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
-    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const port = parseInt(process.env.SMTP_PORT || '465', 10);
-
-    if (!user || !pass) {
-      return null;
-    }
+    const user = (process.env.EMAIL_USER || process.env.SMTP_USER || 'flaadmin40@gmail.com').trim();
+    const rawPass = process.env.EMAIL_PASS || process.env.SMTP_PASS || 'qpht stha jrhf hjwh';
+    const pass = rawPass.trim().replace(/\s+/g, '');
 
     this.transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
+      service: 'gmail',
       auth: { user, pass },
     });
 
@@ -28,12 +21,7 @@ export class EmailService {
 
   public static async sendOtpEmail(to: string, otpCode: string): Promise<boolean> {
     const transporter = this.getTransporter();
-    const fromAddress = process.env.EMAIL_FROM || `"FLA ESPORTS" <${process.env.EMAIL_USER || 'no-reply@flaesports.com'}>`;
-
-    if (!transporter) {
-      Logger.warn(`[EMAIL] SMTP not configured. OTP for ${to} is ${otpCode}`);
-      return false;
-    }
+    const fromAddress = process.env.EMAIL_FROM || `"FLA ESPORTS" <flaadmin40@gmail.com>`;
 
     const htmlContent = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 0 auto; background: #0f141c; color: #ffffff; padding: 30px; border-radius: 12px; border: 1px solid #232d3f;">
@@ -55,13 +43,13 @@ export class EmailService {
     `;
 
     try {
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: fromAddress,
-        to,
+        to: to.trim().toLowerCase(),
         subject: `[FLA ESPORTS] Your OTP Verification Code: ${otpCode}`,
         html: htmlContent,
       });
-      Logger.info(`[EMAIL] Real OTP email successfully sent to ${to}`);
+      Logger.info(`[EMAIL] Real OTP email successfully sent to ${to} (MessageId: ${info.messageId})`);
       return true;
     } catch (err: any) {
       Logger.error(`[EMAIL] Failed to send email to ${to}: ${err.message}`);

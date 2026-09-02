@@ -48,13 +48,17 @@ export class AuthService {
 
     // Real Delivery via SMS / Email
     if (type === 'email' || cleanIdentifier.includes('@')) {
-      EmailService.sendOtpEmail(cleanIdentifier, otpCode).catch((err) =>
-        Logger.error(`[EMAIL] Failed to dispatch OTP email: ${err.message}`)
-      );
+      try {
+        await EmailService.sendOtpEmail(cleanIdentifier, otpCode);
+      } catch (err: any) {
+        Logger.error(`[EMAIL] Failed to dispatch OTP email: ${err.message}`);
+      }
     } else {
-      SmsService.sendOtpSms(cleanIdentifier, otpCode).catch((err) =>
-        Logger.error(`[SMS] Failed to dispatch OTP SMS: ${err.message}`)
-      );
+      try {
+        await SmsService.sendOtpSms(cleanIdentifier, otpCode);
+      } catch (err: any) {
+        Logger.error(`[SMS] Failed to dispatch OTP SMS: ${err.message}`);
+      }
     }
 
     return {
