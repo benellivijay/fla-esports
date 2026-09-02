@@ -8,6 +8,12 @@ import 'features/profile/screens/profile_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('FLUTTER RUNTIME ERROR: ${details.exception}');
+  };
+
   runApp(
     const ProviderScope(
       child: FlaEsportsApp(),

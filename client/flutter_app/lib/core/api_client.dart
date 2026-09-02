@@ -7,7 +7,12 @@ class ApiClient {
   factory ApiClient() => _instance;
 
   late final Dio dio;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+      resetOnError: true,
+    ),
+  );
 
   static const String keyAccessToken = 'ff_access_token';
   static const String keyRefreshToken = 'ff_refresh_token';
@@ -28,10 +33,12 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await _storage.read(key: keyAccessToken);
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
+          try {
+            final token = await _storage.read(key: keyAccessToken);
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          } catch (_) {}
           return handler.next(options);
         },
         onError: (DioException error, handler) async {
@@ -78,15 +85,33 @@ class ApiClient {
   }
 
   Future<void> saveTokens({required String accessToken, required String refreshToken}) async {
-    await _storage.write(key: keyAccessToken, value: accessToken);
-    await _storage.write(key: keyRefreshToken, value: refreshToken);
+    try {
+      await _storage.write(key: keyAccessToken, value: accessToken);
+      await _storage.write(key: keyRefreshToken, value: refreshToken);
+    } catch (_) {}
   }
 
   Future<void> clearTokens() async {
-    await _storage.delete(key: keyAccessToken);
-    await _storage.delete(key: keyRefreshToken);
+    try {
+      await _storage.delete(key: keyAccessToken);
+      await _storage.delete(key: keyRefreshToken);
+    } catch (_) {}
   }
 
-  Future<String?> getAccessToken() async => await _storage.read(key: keyAccessToken);
-  Future<bool> hasValidToken() async => (await _storage.read(key: keyAccessToken)) != null;
+  Future<String?> getAccessToken() async {
+    try {
+      return await _storage.read(key: keyAccessToken);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> hasValidToken() async {
+    try {
+      final token = await _storage.read(key: keyAccessToken);
+      return token != null && token.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
 }
