@@ -81,7 +81,7 @@ export class EmailService {
     `;
 
     // 1. Try Brevo (Sendinblue) HTTPS REST API if configured
-    const brevoKey = process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY;
+    const brevoKey = (process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY || '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').trim();
     if (brevoKey) {
       try {
         const res = await this.httpsPost('https://api.brevo.com/v3/smtp/email', { 'api-key': brevoKey.trim() }, {
