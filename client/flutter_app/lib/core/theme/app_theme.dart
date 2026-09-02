@@ -33,6 +33,8 @@ class AppColors {
   static const Color danger = Color(0xFFDC2626); // Red (danger / rejected / not set / full)
   static const Color dangerBg = Color(0xFFFEF2F2);
   static const Color dangerBorder = Color(0xFFFECACA);
+  static const Color error = danger;
+  static const Color errorBg = dangerBg;
 }
 
 class AppTheme {

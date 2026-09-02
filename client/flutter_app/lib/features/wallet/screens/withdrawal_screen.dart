@@ -59,7 +59,7 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Insufficient withdrawable winnings balance (₹${withdrawableBalance.toStringAsFixed(2)}). Deposited funds cannot be withdrawn and must be used to join matches.'),
-          backgroundColor: AppColors.error,
+          backgroundColor: AppColors.danger,
         ),
       );
       return;
