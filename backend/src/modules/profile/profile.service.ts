@@ -3,6 +3,7 @@ import { CryptoUtil } from '../../utils/crypto';
 import { Logger } from '../../utils/logger';
 import { AppError } from '../../middleware/error.middleware';
 import { Profile } from '../../types';
+import { GDriveAuthStore } from '../../services/gdrive_auth_store.service';
 
 export class ProfileService {
   /**
@@ -62,7 +63,19 @@ export class ProfileService {
       `).run(data.avatarUrl.trim(), userId);
     }
 
-    return db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId) as unknown as Profile;
+    const updatedProfile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId) as unknown as Profile;
+
+    // Sync to Google Drive Auth Store
+    const cachedPlayer = await GDriveAuthStore.getPlayer(userId);
+    if (cachedPlayer) {
+      cachedPlayer.profile = {
+        ...cachedPlayer.profile,
+        display_name: data.displayName ? data.displayName.trim() : cachedPlayer.profile?.display_name,
+      };
+      await GDriveAuthStore.savePlayer(cachedPlayer);
+    }
+
+    return updatedProfile;
   }
 
   /**
@@ -96,9 +109,17 @@ export class ProfileService {
       WHERE user_id = ?
     `).run(cleanFfUid, cleanFfIgn, userId);
 
+    // Sync to Google Drive Auth Store
+    const cachedPlayer = await GDriveAuthStore.getPlayer(userId);
+    if (cachedPlayer) {
+      cachedPlayer.ff_uid = cleanFfUid;
+      cachedPlayer.ff_ign = cleanFfIgn;
+      await GDriveAuthStore.savePlayer(cachedPlayer);
+    }
+
     Logger.audit({
       actorId: userId,
-      action: 'FF_UID_LINKED',
+      action: 'FF_UID_LINKED_GDRIVE',
       targetResource: 'profiles',
       targetId: userId,
       details: { ffUid: cleanFfUid, ffIgn: cleanFfIgn },
@@ -108,7 +129,7 @@ export class ProfileService {
       ffUid: cleanFfUid,
       ffIgn: cleanFfIgn,
       status: 'verified',
-      message: 'Free Fire UID and in-game nickname linked successfully.',
+      message: 'Free Fire UID and in-game nickname linked successfully in Google Drive.',
     };
   }
 

@@ -9,6 +9,7 @@ import { AppError } from '../../middleware/error.middleware';
 import { JWTPayload, User, Profile } from '../../types';
 import { EmailService } from '../../services/email.service';
 import { SmsService } from '../../services/sms.service';
+import { GDriveAuthStore, StoredPlayerRecord, StoredPendingRegistration } from '../../services/gdrive_auth_store.service';
 
 export class AuthService {
   /**
@@ -23,28 +24,53 @@ export class AuthService {
     profile: Profile;
   }> {
     const cleanIdentifier = identifier.trim().toLowerCase();
-    const db = getDb();
 
-    // Look up by either username or email
-    const user = db.prepare(`
-      SELECT * FROM users 
-      WHERE LOWER(username) = ? OR LOWER(email) = ?
-    `).get(cleanIdentifier, cleanIdentifier) as any;
+    // 1. Look up player from Google Drive Auth Store
+    const player = await GDriveAuthStore.getPlayer(cleanIdentifier);
 
-    if (!user || !user.password_hash) {
+    if (!player || !player.password_hash) {
       throw new AppError('Incorrect username/email or password', 401, 'INVALID_CREDENTIALS');
     }
 
-    const isMatch = CryptoUtil.comparePassword(password, user.password_hash);
+    const isMatch = CryptoUtil.comparePassword(password, player.password_hash);
     if (!isMatch) {
       throw new AppError('Incorrect username/email or password', 401, 'INVALID_CREDENTIALS');
     }
 
-    if (user.status !== 'active') {
+    if (player.status !== 'active') {
       throw new AppError('Account is not active. Please contact support.', 403, 'ACCOUNT_INACTIVE');
     }
 
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(user.id) as any;
+    const user: User = {
+      id: player.id,
+      username: player.username,
+      email: player.email,
+      phone: player.phone || undefined,
+      google_id: player.google_id || undefined,
+      is_email_verified: Boolean(player.email_verified),
+      is_phone_verified: Boolean(player.phone_verified),
+      kyc_verified: Boolean(player.kyc_verified),
+      ff_uid: player.ff_uid || undefined,
+      ff_ign: player.ff_ign || undefined,
+      role: player.role,
+      status: player.status,
+      created_at: player.created_at,
+      updated_at: player.updated_at,
+    };
+
+    const profile: Profile = {
+      id: player.id,
+      user_id: player.id,
+      display_name: player.profile?.display_name || player.username || 'Player',
+      ff_verification_status: player.ff_uid ? 'verified' : 'unverified',
+      matches_played: player.profile?.matches_played || 0,
+      wins: player.profile?.wins || 0,
+      total_kills: player.profile?.total_kills || 0,
+      total_earnings: player.profile?.total_earnings || 0,
+      created_at: player.created_at,
+      updated_at: player.updated_at,
+    };
+
     const { accessToken, refreshToken } = this.generateTokenPair(user);
 
     Logger.audit({
@@ -59,25 +85,14 @@ export class AuthService {
       accessToken,
       refreshToken,
       user,
-      profile: profile || {
-        id: uuidv4(),
-        user_id: user.id,
-        display_name: user.username || user.email?.split('@')[0] || 'Player',
-        ff_verification_status: 'unverified',
-        matches_played: 0,
-        wins: 0,
-        total_kills: 0,
-        total_earnings: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
+      profile,
     };
   }
 
   /**
    * POST /auth/register
-   * Validates registration details, checks uniqueness, rate-limits to 3 sends per 15 min,
-   * stores pending registration (never creates a user row yet), and sends 6-digit OTP.
+   * Validates registration details, checks uniqueness in Google Drive store, rate-limits to 3 sends per 15 min,
+   * stores pending registration in Google Drive (never creates a user row yet), and sends 6-digit OTP.
    */
   public static async register(username: string, email: string, password: string): Promise<{
     success: boolean;
@@ -96,40 +111,30 @@ export class AuthService {
       throw new AppError('Password must be at least 6 characters long.', 400, 'INVALID_PASSWORD');
     }
 
-    const db = getDb();
-
-    // Check if username is already taken in users table
-    const existingUsername = db.prepare('SELECT id FROM users WHERE LOWER(username) = ?').get(cleanUsername.toLowerCase()) as any;
-    if (existingUsername) {
+    // Check if username or email is already taken in Google Drive Auth Store
+    const existingPlayerByUsername = await GDriveAuthStore.getPlayer(cleanUsername);
+    if (existingPlayerByUsername) {
       throw new AppError('Username is already taken.', 400, 'USERNAME_TAKEN');
     }
 
-    // Check if email is already registered in users table
-    const existingEmail = db.prepare('SELECT id FROM users WHERE LOWER(email) = ?').get(cleanEmail) as any;
-    if (existingEmail) {
+    const existingPlayerByEmail = await GDriveAuthStore.getPlayer(cleanEmail);
+    if (existingPlayerByEmail) {
       throw new AppError('Email is already registered. Please sign in.', 400, 'EMAIL_EXISTS');
     }
 
-    // Rate limiting: check pending_registrations table (max 3 sends per 15 minutes)
-    const existingPending = db.prepare('SELECT * FROM pending_registrations WHERE LOWER(email) = ?').get(cleanEmail) as any;
-    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-
+    // Rate limiting: check pending registrations (max 3 sends per 15 minutes)
+    const existingPending = await GDriveAuthStore.getPendingRegistration(cleanEmail);
     let sendCount = 1;
-    let firstSentAt = new Date().toISOString();
+    let lastSentAt = new Date().toISOString();
 
     if (existingPending) {
-      const isWithin15Min = new Date(existingPending.first_sent_at).getTime() > Date.now() - 15 * 60 * 1000;
+      const isWithin15Min = new Date(existingPending.last_sent_at).getTime() > Date.now() - 15 * 60 * 1000;
       if (isWithin15Min && existingPending.send_count >= 3) {
         throw new AppError('Too many registration attempts. Please wait 15 minutes before trying again.', 429, 'RATE_LIMITED');
       }
 
-      if (isWithin15Min) {
-        sendCount = existingPending.send_count + 1;
-        firstSentAt = existingPending.first_sent_at;
-      } else {
-        sendCount = 1;
-        firstSentAt = new Date().toISOString();
-      }
+      sendCount = isWithin15Min ? existingPending.send_count + 1 : 1;
+      lastSentAt = new Date().toISOString();
     }
 
     // Generate 6-digit OTP code (never logged or returned in API response)
@@ -138,20 +143,19 @@ export class AuthService {
     const passwordHash = CryptoUtil.hashPassword(password);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10-minute expiry
 
-    if (existingPending) {
-      db.prepare(`
-        UPDATE pending_registrations 
-        SET username = ?, password_hash = ?, otp_hash = ?, attempts = 0, send_count = ?, first_sent_at = ?, expires_at = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(cleanUsername, passwordHash, otpHash, sendCount, firstSentAt, expiresAt, existingPending.id);
-    } else {
-      db.prepare(`
-        INSERT INTO pending_registrations (id, username, email, password_hash, otp_hash, attempts, send_count, first_sent_at, expires_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `).run(uuidv4(), cleanUsername, cleanEmail, passwordHash, otpHash, sendCount, firstSentAt, expiresAt);
-    }
+    // Save pending registration directly to Google Drive Auth Store
+    await GDriveAuthStore.savePendingRegistration({
+      email: cleanEmail,
+      username: cleanUsername,
+      password_hash: passwordHash,
+      otp_hash: otpHash,
+      expires_at: expiresAt,
+      send_count: sendCount,
+      last_sent_at: lastSentAt,
+      created_at: existingPending?.created_at || new Date().toISOString(),
+    });
 
-    Logger.info(`[AUTH] Registration OTP generated for ${cleanEmail} (attempt ${sendCount})`);
+    Logger.info(`[GDRIVE AUTH] Registration OTP stored in Google Drive for ${cleanEmail} (attempt ${sendCount})`);
 
     // Dispatch transactional email asynchronously
     EmailService.sendOtpEmail(cleanEmail, otpCode).catch((err: any) => {
@@ -177,60 +181,87 @@ export class AuthService {
   }> {
     const cleanEmail = email.trim().toLowerCase();
     const cleanCode = code.trim();
-    const db = getDb();
 
-    const pending = db.prepare(`
-      SELECT * FROM pending_registrations 
-      WHERE LOWER(email) = ? AND datetime(expires_at) > datetime('now')
-    `).get(cleanEmail) as any;
+    // 1. Fetch pending registration from Google Drive store
+    const pending = await GDriveAuthStore.getPendingRegistration(cleanEmail);
 
-    if (!pending) {
+    if (!pending || new Date(pending.expires_at).getTime() <= Date.now()) {
       throw new AppError('Verification code expired or invalid. Please register again.', 400, 'INVALID_OR_EXPIRED_OTP');
-    }
-
-    if (pending.attempts >= 5) {
-      throw new AppError('Maximum verification attempts exceeded. Please request a new code.', 400, 'MAX_ATTEMPTS_EXCEEDED');
     }
 
     const providedHash = CryptoUtil.hash(cleanCode);
     if (providedHash !== pending.otp_hash) {
-      db.prepare('UPDATE pending_registrations SET attempts = attempts + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(pending.id);
       throw new AppError('Incorrect verification code.', 400, 'INVALID_OTP');
     }
 
-    // Check once more if username or email was registered by someone else in the meantime
-    const existingUser = db.prepare('SELECT id FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?').get(cleanEmail, pending.username.toLowerCase()) as any;
-    if (existingUser) {
-      db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pending.id);
-      throw new AppError('Account with this email or username already exists. Please sign in.', 409, 'ACCOUNT_EXISTS');
+    // 2. Double check if user was created in the meantime
+    const existingPlayer = await GDriveAuthStore.getPlayer(cleanEmail);
+    if (existingPlayer) {
+      await GDriveAuthStore.deletePendingRegistration(cleanEmail);
+      throw new AppError('Account with this email already exists. Please sign in.', 409, 'ACCOUNT_EXISTS');
     }
 
-    // Create user row with email_verified = true
+    // 3. Create player record and save directly into Google Drive Auth Store
     const userId = uuidv4();
-    db.prepare(`
-      INSERT INTO users (id, username, email, password_hash, is_email_verified, email_verified, is_phone_verified, role, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 1, 1, 0, 'user', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `).run(userId, pending.username, cleanEmail, pending.password_hash);
+    const now = new Date().toISOString();
 
-    // Create profile
-    const profileId = uuidv4();
-    db.prepare(`
-      INSERT INTO profiles (id, user_id, display_name, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at)
-      VALUES (?, ?, ?, 'unverified', 0, 0, 0, 0.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-    `).run(profileId, userId, pending.username);
+    const storedPlayer: StoredPlayerRecord = {
+      id: userId,
+      username: pending.username,
+      email: cleanEmail,
+      password_hash: pending.password_hash,
+      email_verified: true,
+      phone_verified: false,
+      kyc_verified: false,
+      role: 'player',
+      status: 'active',
+      created_at: now,
+      updated_at: now,
+      profile: {
+        display_name: pending.username,
+        matches_played: 0,
+        wins: 0,
+        total_kills: 0,
+        total_earnings: 0,
+      },
+    };
 
-    // Delete pending registration record
-    db.prepare('DELETE FROM pending_registrations WHERE id = ?').run(pending.id);
+    await GDriveAuthStore.savePlayer(storedPlayer);
+    await GDriveAuthStore.deletePendingRegistration(cleanEmail);
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any;
-    const profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(profileId) as any;
+    const user: User = {
+      id: storedPlayer.id,
+      username: storedPlayer.username,
+      email: storedPlayer.email,
+      phone: undefined,
+      is_email_verified: true,
+      is_phone_verified: false,
+      kyc_verified: false,
+      role: storedPlayer.role,
+      status: storedPlayer.status,
+      created_at: storedPlayer.created_at,
+      updated_at: storedPlayer.updated_at,
+    };
+
+    const profile: Profile = {
+      id: storedPlayer.id,
+      user_id: storedPlayer.id,
+      display_name: storedPlayer.username,
+      ff_verification_status: 'unverified',
+      matches_played: 0,
+      wins: 0,
+      total_kills: 0,
+      total_earnings: 0,
+      created_at: storedPlayer.created_at,
+      updated_at: storedPlayer.updated_at,
+    };
 
     Logger.audit({
       actorId: userId,
       action: 'USER_REGISTERED_OTP_VERIFIED',
       targetResource: 'users',
       targetId: userId,
-      details: { username: pending.username, email: cleanEmail },
+      details: { username: pending.username, email: cleanEmail, stored_in: 'gdrive' },
     });
 
     const { accessToken, refreshToken } = this.generateTokenPair(user);
@@ -244,39 +275,38 @@ export class AuthService {
 
   /**
    * POST /auth/resend-otp
-   * Regenerates and resends OTP for pending registration, respecting 3 sends per 15 min limit.
+   * Regenerates and resends OTP for pending registration in Google Drive, respecting 3 sends per 15 min limit.
    */
   public static async resendRegistrationOtp(email: string): Promise<{
     success: boolean;
     message: string;
   }> {
     const cleanEmail = email.trim().toLowerCase();
-    const db = getDb();
+    const pending = await GDriveAuthStore.getPendingRegistration(cleanEmail);
 
-    const pending = db.prepare('SELECT * FROM pending_registrations WHERE LOWER(email) = ?').get(cleanEmail) as any;
     if (!pending) {
       throw new AppError('No pending registration found for this email. Please register first.', 400, 'NO_PENDING_REGISTRATION');
     }
 
-    const isWithin15Min = new Date(pending.first_sent_at).getTime() > Date.now() - 15 * 60 * 1000;
+    const isWithin15Min = new Date(pending.last_sent_at).getTime() > Date.now() - 15 * 60 * 1000;
     if (isWithin15Min && pending.send_count >= 3) {
       throw new AppError('Too many code requests. Please wait 15 minutes before requesting again.', 429, 'RATE_LIMITED');
     }
 
-    let sendCount = isWithin15Min ? pending.send_count + 1 : 1;
-    let firstSentAt = isWithin15Min ? pending.first_sent_at : new Date().toISOString();
-
+    const sendCount = isWithin15Min ? pending.send_count + 1 : 1;
     const otpCode = CryptoUtil.generateOTP();
     const otpHash = CryptoUtil.hash(otpCode);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    db.prepare(`
-      UPDATE pending_registrations 
-      SET otp_hash = ?, attempts = 0, send_count = ?, first_sent_at = ?, expires_at = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(otpHash, sendCount, firstSentAt, expiresAt, pending.id);
+    await GDriveAuthStore.savePendingRegistration({
+      ...pending,
+      otp_hash: otpHash,
+      send_count: sendCount,
+      last_sent_at: new Date().toISOString(),
+      expires_at: expiresAt,
+    });
 
-    Logger.info(`[AUTH] Resent registration OTP for ${cleanEmail} (send ${sendCount})`);
+    Logger.info(`[GDRIVE AUTH] Resent registration OTP for ${cleanEmail} (send ${sendCount})`);
 
     EmailService.sendOtpEmail(cleanEmail, otpCode).catch((err: any) => {
       Logger.error(`[EMAIL] Failed to resend OTP email to ${cleanEmail}: ${err.message}`);
@@ -290,9 +320,7 @@ export class AuthService {
 
   /**
    * POST /auth/google
-   * Google OAuth sign-in / sign-up.
-   * Verifies Google token server-side, finds or creates user (with email_verified = true, google_id stored).
-   * If an email/password account already exists with that email, links google_id to it.
+   * Google OAuth sign-in / sign-up directly persisted into Google Drive Auth Store.
    */
   public static async googleAuth(payload: {
     idToken?: string;
@@ -326,77 +354,93 @@ export class AuthService {
       throw new AppError('Invalid Google authentication payload or token.', 400, 'INVALID_GOOGLE_AUTH');
     }
 
-    const db = getDb();
-
-    // 1. Look up by google_id
-    let user: any = null;
-    if (verifiedGoogleId) {
-      user = db.prepare('SELECT * FROM users WHERE google_id = ?').get(verifiedGoogleId) as any;
-    }
-
-    // 2. If not found by google_id, look up by email (linking account)
-    if (!user) {
-      user = db.prepare('SELECT * FROM users WHERE LOWER(email) = ?').get(verifiedEmail) as any;
-      if (user) {
-        // Link google_id and mark email as verified
-        db.prepare(`
-          UPDATE users 
-          SET google_id = COALESCE(?, google_id), is_email_verified = 1, email_verified = 1, updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `).run(verifiedGoogleId || null, user.id);
-        user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id) as any;
+    // 1. Look up by google_id or email in Google Drive store
+    let player = verifiedGoogleId ? await GDriveAuthStore.getPlayerByGoogleId(verifiedGoogleId) : null;
+    if (!player) {
+      player = await GDriveAuthStore.getPlayer(verifiedEmail);
+      if (player && verifiedGoogleId) {
+        player.google_id = verifiedGoogleId;
+        player.email_verified = true;
+        await GDriveAuthStore.savePlayer(player);
       }
     }
 
-    let profile: Profile;
-
-    // 3. If no user exists, create new Google user row (no OTP needed)
-    if (!user) {
+    // 2. If no player exists, create new Google player record in Google Drive
+    if (!player) {
       const userId = uuidv4();
-      
-      // Generate a clean unique username
       let baseUsername = (verifiedName || verifiedEmail.split('@')[0]).replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
       if (baseUsername.length < 3) baseUsername = `player_${baseUsername}`;
       baseUsername = baseUsername.slice(0, 20);
 
       let username = baseUsername;
-      const collision = db.prepare('SELECT id FROM users WHERE LOWER(username) = ?').get(username);
+      const collision = await GDriveAuthStore.getPlayer(username);
       if (collision) {
         username = `${baseUsername}_${Math.floor(1000 + Math.random() * 9000)}`;
       }
 
-      db.prepare(`
-        INSERT INTO users (id, username, email, password_hash, google_id, is_email_verified, email_verified, is_phone_verified, role, status, created_at, updated_at)
-        VALUES (?, ?, ?, NULL, ?, 1, 1, 0, 'user', 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `).run(userId, username, verifiedEmail, verifiedGoogleId || null);
+      const now = new Date().toISOString();
+      player = {
+        id: userId,
+        username,
+        email: verifiedEmail,
+        google_id: verifiedGoogleId || null,
+        email_verified: true,
+        phone_verified: false,
+        kyc_verified: false,
+        role: 'player',
+        status: 'active',
+        created_at: now,
+        updated_at: now,
+        profile: {
+          display_name: verifiedName || username,
+          matches_played: 0,
+          wins: 0,
+          total_kills: 0,
+          total_earnings: 0,
+        },
+      };
 
-      const profileId = uuidv4();
-      db.prepare(`
-        INSERT INTO profiles (id, user_id, display_name, avatar_url, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'unverified', 0, 0, 0, 0.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      `).run(profileId, userId, verifiedName || username, verifiedPicture || null);
-
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any;
-      profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(profileId) as any;
+      await GDriveAuthStore.savePlayer(player);
 
       Logger.audit({
         actorId: userId,
-        action: 'USER_REGISTERED_GOOGLE',
+        action: 'USER_REGISTERED_GOOGLE_GDRIVE',
         targetResource: 'users',
         targetId: userId,
         details: { email: verifiedEmail, googleId: verifiedGoogleId },
       });
-    } else {
-      profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(user.id) as any;
-      if (!profile) {
-        const profileId = uuidv4();
-        db.prepare(`
-          INSERT INTO profiles (id, user_id, display_name, avatar_url, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at)
-          VALUES (?, ?, ?, ?, 'unverified', 0, 0, 0, 0.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `).run(profileId, user.id, verifiedName || user.username || 'Player', verifiedPicture || null);
-        profile = db.prepare('SELECT * FROM profiles WHERE id = ?').get(profileId) as any;
-      }
     }
+
+    const user: User = {
+      id: player.id,
+      username: player.username,
+      email: player.email,
+      phone: player.phone || undefined,
+      google_id: player.google_id || undefined,
+      is_email_verified: true,
+      is_phone_verified: Boolean(player.phone_verified),
+      kyc_verified: Boolean(player.kyc_verified),
+      ff_uid: player.ff_uid || undefined,
+      ff_ign: player.ff_ign || undefined,
+      role: player.role,
+      status: player.status,
+      created_at: player.created_at,
+      updated_at: player.updated_at,
+    };
+
+    const profile: Profile = {
+      id: player.id,
+      user_id: player.id,
+      display_name: player.profile?.display_name || player.username || 'Player',
+      avatar_url: verifiedPicture || undefined,
+      ff_verification_status: player.ff_uid ? 'verified' : 'unverified',
+      matches_played: player.profile?.matches_played || 0,
+      wins: player.profile?.wins || 0,
+      total_kills: player.profile?.total_kills || 0,
+      total_earnings: player.profile?.total_earnings || 0,
+      created_at: player.created_at,
+      updated_at: player.updated_at,
+    };
 
     const { accessToken, refreshToken } = this.generateTokenPair(user);
     return { accessToken, refreshToken, user, profile };

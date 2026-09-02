@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'admin' | 'moderator';
+export type UserRole = 'user' | 'player' | 'admin' | 'moderator';
 export type UserStatus = 'active' | 'suspended' | 'banned';
 
 export interface User {
@@ -13,6 +13,8 @@ export interface User {
   is_email_verified: boolean;
   email_verified?: boolean;
   kyc_verified?: boolean;
+  ff_uid?: string | null;
+  ff_ign?: string | null;
   created_at: string;
   updated_at: string;
 }
