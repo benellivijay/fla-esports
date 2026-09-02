@@ -162,13 +162,22 @@ export class AdminService {
     const debits = db.prepare("SELECT COALESCE(SUM(amount), 0) as total FROM wallet_ledger WHERE type IN ('entry_fee_debit', 'withdrawal')").get() as any;
     const totalBalance = Math.max(0, (credits?.total || 0) - (debits?.total || 0));
 
-    const recentLogs = db.prepare(`
-      SELECT a.*, u.email as actor_email, p.display_name as actor_name
-      FROM audit_logs a
-      LEFT JOIN users u ON a.actor_id = u.id
-      LEFT JOIN profiles p ON a.actor_id = p.user_id
-      ORDER BY a.created_at DESC LIMIT 6
-    `).all();
+    let recentLogs: any[] = [];
+    try {
+      recentLogs = db.prepare(`
+        SELECT a.*, u.email as actor_email, p.display_name as actor_name
+        FROM audit_logs a
+        LEFT JOIN users u ON COALESCE(a.actor_id, a.user_id) = u.id
+        LEFT JOIN profiles p ON COALESCE(a.actor_id, a.user_id) = p.user_id
+        ORDER BY a.created_at DESC LIMIT 6
+      `).all();
+    } catch (_) {
+      try {
+        recentLogs = db.prepare(`SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 6`).all();
+      } catch (_) {
+        recentLogs = [];
+      }
+    }
 
     return {
       pendingResultReviews: pendingResults?.count || 0,
@@ -762,8 +771,8 @@ export class AdminService {
     let query = `
       SELECT a.*, u.email as actor_email, p.display_name as actor_name
       FROM audit_logs a
-      LEFT JOIN users u ON a.actor_id = u.id
-      LEFT JOIN profiles p ON a.actor_id = p.user_id
+      LEFT JOIN users u ON COALESCE(a.actor_id, a.user_id) = u.id
+      LEFT JOIN profiles p ON COALESCE(a.actor_id, a.user_id) = p.user_id
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -774,7 +783,7 @@ export class AdminService {
     }
 
     if (actorId) {
-      query += ' AND a.actor_id = ?';
+      query += ' AND COALESCE(a.actor_id, a.user_id) = ?';
       params.push(actorId);
     }
 
