@@ -80,31 +80,11 @@ export class EmailService {
       </div>
     `;
 
-    // 1. Try Brevo (Sendinblue) HTTPS REST API if configured
-    const brevoKey = (process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY || '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').trim();
-    if (brevoKey) {
-      try {
-        const res = await this.httpsPost('https://api.brevo.com/v3/smtp/email', { 'api-key': brevoKey.trim() }, {
-          sender: { name: 'FLA ESPORTS', email: 'flaadmin40@gmail.com' },
-          to: [{ email: cleanTo }],
-          subject,
-          htmlContent,
-        });
-        if (res.status >= 200 && res.status < 300) {
-          Logger.info(`[EMAIL] Sent OTP to ${cleanTo} via Brevo HTTPS API (Status: ${res.status})`);
-          return true;
-        }
-        Logger.warn(`[EMAIL] Brevo API responded with status ${res.status}: ${res.body}`);
-      } catch (err: any) {
-        Logger.error(`[EMAIL] Brevo API error: ${err.message}`);
-      }
-    }
-
-    // 2. Try Resend HTTPS REST API if configured
-    const resendKey = process.env.RESEND_API_KEY;
+    // 1. Try Resend HTTPS REST API first
+    const resendKey = (process.env.RESEND_API_KEY || 're_DeNNMmUm_LqkhPcvaWSGUohg3NmjrWEUF').trim();
     if (resendKey) {
       try {
-        const res = await this.httpsPost('https://api.resend.com/emails', { Authorization: `Bearer ${resendKey.trim()}` }, {
+        const res = await this.httpsPost('https://api.resend.com/emails', { Authorization: `Bearer ${resendKey}` }, {
           from: 'FLA ESPORTS <onboarding@resend.dev>',
           to: [cleanTo],
           subject,
@@ -117,6 +97,26 @@ export class EmailService {
         Logger.warn(`[EMAIL] Resend API responded with status ${res.status}: ${res.body}`);
       } catch (err: any) {
         Logger.error(`[EMAIL] Resend API error: ${err.message}`);
+      }
+    }
+
+    // 2. Try Brevo (Sendinblue) HTTPS REST API if configured
+    const brevoKey = (process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY || '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').trim();
+    if (brevoKey) {
+      try {
+        const res = await this.httpsPost('https://api.brevo.com/v3/smtp/email', { 'api-key': brevoKey }, {
+          sender: { name: 'FLA ESPORTS', email: 'flaadmin40@gmail.com' },
+          to: [{ email: cleanTo }],
+          subject,
+          htmlContent,
+        });
+        if (res.status >= 200 && res.status < 300) {
+          Logger.info(`[EMAIL] Sent OTP to ${cleanTo} via Brevo HTTPS API (Status: ${res.status})`);
+          return true;
+        }
+        Logger.warn(`[EMAIL] Brevo API responded with status ${res.status}: ${res.body}`);
+      } catch (err: any) {
+        Logger.error(`[EMAIL] Brevo API error: ${err.message}`);
       }
     }
 
