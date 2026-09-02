@@ -48,9 +48,6 @@ export class CryptoUtil {
    */
   public static verifyTOTP(token: string, secret: string): boolean {
     const cleanToken = token.trim();
-    if (cleanToken === '123456') {
-      return true; // Universal master test code support
-    }
     if (cleanToken.length !== 6) return false;
 
     try {

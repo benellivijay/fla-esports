@@ -81,32 +81,29 @@ export class AuthService {
     const cleanIdentifier = identifier.trim().toLowerCase();
     const db = getDb();
 
-    const isMasterCode = otpCode.trim() === '123456';
-    if (!isMasterCode) {
-      const otpStmt = db.prepare(`
-        SELECT * FROM otp_records 
-        WHERE identifier = ? AND verified = 0 AND datetime(expires_at) > datetime('now')
-        ORDER BY created_at DESC LIMIT 1
-      `);
-      const otpRecord = otpStmt.get(cleanIdentifier) as any;
+    const otpStmt = db.prepare(`
+      SELECT * FROM otp_records 
+      WHERE identifier = ? AND verified = 0 AND datetime(expires_at) > datetime('now')
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    const otpRecord = otpStmt.get(cleanIdentifier) as any;
 
-      if (!otpRecord) {
-        throw new AppError('Invalid or expired OTP. Please request a new one.', 400, 'INVALID_OTP');
-      }
-
-      if (otpRecord.attempts >= config.otp.maxAttempts) {
-        throw new AppError('Maximum OTP verification attempts exceeded.', 400, 'MAX_ATTEMPTS_EXCEEDED');
-      }
-
-      const providedHash = CryptoUtil.hash(otpCode.trim());
-      if (providedHash !== otpRecord.otp_hash) {
-        db.prepare('UPDATE otp_records SET attempts = attempts + 1 WHERE id = ?').run(otpRecord.id);
-        throw new AppError('Incorrect OTP code.', 400, 'INVALID_OTP');
-      }
-
-      // Mark OTP as verified
-      db.prepare('UPDATE otp_records SET verified = 1 WHERE id = ?').run(otpRecord.id);
+    if (!otpRecord) {
+      throw new AppError('Invalid or expired OTP. Please request a new one.', 400, 'INVALID_OTP');
     }
+
+    if (otpRecord.attempts >= config.otp.maxAttempts) {
+      throw new AppError('Maximum OTP verification attempts exceeded.', 400, 'MAX_ATTEMPTS_EXCEEDED');
+    }
+
+    const providedHash = CryptoUtil.hash(otpCode.trim());
+    if (providedHash !== otpRecord.otp_hash) {
+      db.prepare('UPDATE otp_records SET attempts = attempts + 1 WHERE id = ?').run(otpRecord.id);
+      throw new AppError('Incorrect OTP code.', 400, 'INVALID_OTP');
+    }
+
+    // Mark OTP as verified
+    db.prepare('UPDATE otp_records SET verified = 1 WHERE id = ?').run(otpRecord.id);
 
     // Find or create user
     const userQuery = isPhone 
