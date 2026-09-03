@@ -309,6 +309,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           scopes: ['email', 'profile'],
         );
 
+        // Always sign out of GoogleSignIn client first so Android prompts the account chooser!
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+
         GoogleSignInAccount? account;
         try {
           account = await googleSignIn.signIn();
@@ -317,45 +322,39 @@ class AuthNotifier extends StateNotifier<AuthState> {
             state = state.copyWith(status: AuthStatus.unauthenticated);
             return GoogleAuthResult(success: false, cancelled: true);
           }
-          final persistentAcc = await _apiClient.getOrCreatePersistentGoogleAccount();
-          details = GoogleAccountDetails(
-            email: persistentAcc['email']!,
-            displayName: persistentAcc['displayName'],
-            googleId: persistentAcc['googleId'],
+          state = state.copyWith(
+            status: AuthStatus.error,
+            errorMessage: 'Google Sign-In failed: ${pe.message ?? pe.code}',
           );
-        } catch (_) {
-          final persistentAcc = await _apiClient.getOrCreatePersistentGoogleAccount();
-          details = GoogleAccountDetails(
-            email: persistentAcc['email']!,
-            displayName: persistentAcc['displayName'],
-            googleId: persistentAcc['googleId'],
+          return GoogleAuthResult(
+            success: false,
+            errorMessage: 'Google Sign-In failed: ${pe.message ?? pe.code}',
           );
+        } catch (e) {
+          state = state.copyWith(
+            status: AuthStatus.error,
+            errorMessage: 'Google sign-in was cancelled or failed.',
+          );
+          return GoogleAuthResult(success: false, errorMessage: 'Google sign-in was cancelled or failed.');
         }
 
-        if (details == null && account != null) {
-          GoogleSignInAuthentication? auth;
-          try {
-            auth = await account.authentication;
-          } catch (_) {}
-
-          details = GoogleAccountDetails(
-            idToken: auth?.idToken,
-            email: account.email,
-            displayName: account.displayName,
-            photoUrl: account.photoUrl,
-            googleId: account.id,
-          );
-          await _apiClient.savePersistentGoogleAccount(
-            email: account.email,
-            displayName: account.displayName,
-            googleId: account.id,
-          );
-        }
-
-        if (details == null) {
+        if (account == null) {
           state = state.copyWith(status: AuthStatus.unauthenticated);
           return GoogleAuthResult(success: false, cancelled: true);
         }
+
+        GoogleSignInAuthentication? auth;
+        try {
+          auth = await account.authentication;
+        } catch (_) {}
+
+        details = GoogleAccountDetails(
+          idToken: auth?.idToken,
+          email: account.email,
+          displayName: account.displayName,
+          photoUrl: account.photoUrl,
+          googleId: account.id,
+        );
       }
 
       // If no username provided yet, check if this is an existing user or new user
@@ -399,11 +398,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
               user: user.toJson(),
               profile: profile.toJson(),
             );
-            await _apiClient.savePersistentGoogleAccount(
-              email: details.email,
-              displayName: details.displayName,
-              googleId: details.googleId,
-            );
 
             state = state.copyWith(
               status: AuthStatus.authenticated,
@@ -438,11 +432,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
           refreshToken: data['refreshToken'],
           user: user.toJson(),
           profile: profile.toJson(),
-        );
-        await _apiClient.savePersistentGoogleAccount(
-          email: details.email,
-          displayName: details.displayName,
-          googleId: details.googleId,
         );
 
         state = state.copyWith(
@@ -541,6 +530,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (refresh != null) {
         await _apiClient.dio.post(ApiEndpoints.logout, data: {'refreshToken': refresh});
       }
+    } catch (_) {}
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+      await googleSignIn.signOut();
+      await googleSignIn.disconnect();
     } catch (_) {}
     await _apiClient.clearUserSession();
     state = const AuthState(status: AuthStatus.unauthenticated);

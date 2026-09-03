@@ -165,6 +165,9 @@ class ApiClient {
       await _storage.delete(key: keyIsLoggedIn);
       await _storage.delete(key: keyUserData);
       await _storage.delete(key: keyProfileData);
+      await _storage.delete(key: keyGoogleEmail);
+      await _storage.delete(key: keyGoogleName);
+      await _storage.delete(key: keyGoogleId);
     } catch (_) {}
   }
 
