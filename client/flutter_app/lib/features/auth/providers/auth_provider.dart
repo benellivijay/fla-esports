@@ -1,4 +1,6 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/api_client.dart';
 import '../../../core/constants/api_endpoints.dart';
@@ -26,6 +28,7 @@ class GoogleAuthResult {
   final bool success;
   final bool isNewUser;
   final bool cancelled;
+  final bool needsAccountEntryFallback;
   final String? errorMessage;
   final GoogleAccountDetails? account;
   final String? suggestedUsername;
@@ -34,6 +37,7 @@ class GoogleAuthResult {
     required this.success,
     this.isNewUser = false,
     this.cancelled = false,
+    this.needsAccountEntryFallback = false,
     this.errorMessage,
     this.account,
     this.suggestedUsername,
@@ -74,6 +78,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  String _extractErrorMessage(dynamic e, String defaultMsg) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map && data['message'] != null) {
+        return data['message'].toString();
+      }
+      if (e.message != null && e.message!.isNotEmpty) {
+        return e.message!;
+      }
+    } else if (e is PlatformException) {
+      if (e.message != null && e.message!.isNotEmpty) {
+        return e.message!;
+      }
+    }
+    return defaultMsg;
+  }
+
   Future<bool> signIn({
     required String identifier,
     required String password,
@@ -107,7 +128,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return false;
     } catch (e) {
-      final msg = (e as dynamic).response?.data?['message'] ?? 'Incorrect username/email or password';
+      final msg = _extractErrorMessage(e, 'Incorrect username/email or password');
       state = state.copyWith(status: AuthStatus.error, errorMessage: msg);
       return false;
     }
@@ -138,7 +159,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return false;
     } catch (e) {
-      final msg = (e as dynamic).response?.data?['message'] ?? 'Failed to send verification code.';
+      final msg = _extractErrorMessage(e, 'Failed to send verification code.');
       state = state.copyWith(status: AuthStatus.error, errorMessage: msg);
       return false;
     }
@@ -177,7 +198,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return false;
     } catch (e) {
-      final msg = (e as dynamic).response?.data?['message'] ?? 'Invalid verification code.';
+      final msg = _extractErrorMessage(e, 'Invalid verification code.');
       state = state.copyWith(status: AuthStatus.error, errorMessage: msg);
       return false;
     }
@@ -193,7 +214,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return res.statusCode == 200 && res.data['success'] == true;
     } catch (e) {
-      final msg = (e as dynamic).response?.data?['message'] ?? 'Failed to resend code.';
+      final msg = _extractErrorMessage(e, 'Failed to resend code.');
       state = state.copyWith(errorMessage: msg);
       return false;
     }
@@ -233,15 +254,40 @@ class AuthNotifier extends StateNotifier<AuthState> {
           scopes: ['email', 'profile'],
         );
 
-        final GoogleSignInAccount? account = await googleSignIn.signIn();
+        GoogleSignInAccount? account;
+        try {
+          account = await googleSignIn.signIn();
+        } on PlatformException catch (pe) {
+          state = state.copyWith(status: AuthStatus.unauthenticated);
+          if (pe.code == 'sign_in_canceled') {
+            return GoogleAuthResult(success: false, cancelled: true);
+          }
+          return GoogleAuthResult(
+            success: false,
+            needsAccountEntryFallback: true,
+            errorMessage: pe.message ?? 'Google Sign-In service not configured (${pe.code}).',
+          );
+        } catch (e) {
+          state = state.copyWith(status: AuthStatus.unauthenticated);
+          return GoogleAuthResult(
+            success: false,
+            needsAccountEntryFallback: true,
+            errorMessage: e.toString(),
+          );
+        }
+
         if (account == null) {
           state = state.copyWith(status: AuthStatus.unauthenticated);
           return GoogleAuthResult(success: false, cancelled: true);
         }
 
-        final GoogleSignInAuthentication auth = await account.authentication;
+        GoogleSignInAuthentication? auth;
+        try {
+          auth = await account.authentication;
+        } catch (_) {}
+
         details = GoogleAccountDetails(
-          idToken: auth.idToken,
+          idToken: auth?.idToken,
           email: account.email,
           displayName: account.displayName,
           photoUrl: account.photoUrl,
@@ -254,11 +300,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final checkRes = await _apiClient.dio.post(
           ApiEndpoints.googleAuth,
           data: {
-            'idToken': details.idToken,
-            'email': details.email,
-            'name': details.displayName,
-            'avatarUrl': details.photoUrl,
-            'googleId': details.googleId,
+            if (details.idToken != null) 'idToken': details.idToken,
+            'email': details.email.trim().toLowerCase(),
+            if (details.displayName != null && details.displayName!.trim().isNotEmpty) 'name': details.displayName!.trim(),
+            if (details.photoUrl != null && details.photoUrl!.isNotEmpty) 'avatarUrl': details.photoUrl,
+            if (details.googleId != null && details.googleId!.isNotEmpty) 'googleId': details.googleId,
             'checkOnly': true,
           },
         );
@@ -274,7 +320,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
               success: true,
               isNewUser: true,
               account: details,
-              suggestedUsername: data['suggestedUsername'] ?? details.displayName?.replaceAll(' ', '_').toLowerCase(),
+              suggestedUsername: data['suggestedUsername'] ??
+                  (details.displayName ?? details.email.split('@')[0])
+                      .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')
+                      .toLowerCase(),
             );
           } else {
             // Existing user -> Proceed with sign in
@@ -300,11 +349,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final res = await _apiClient.dio.post(
         ApiEndpoints.googleAuth,
         data: {
-          'idToken': details.idToken,
-          'email': details.email,
-          'name': details.displayName,
-          'avatarUrl': details.photoUrl,
-          'googleId': details.googleId,
+          if (details.idToken != null) 'idToken': details.idToken,
+          'email': details.email.trim().toLowerCase(),
+          if (details.displayName != null && details.displayName!.trim().isNotEmpty) 'name': details.displayName!.trim(),
+          if (details.photoUrl != null && details.photoUrl!.isNotEmpty) 'avatarUrl': details.photoUrl,
+          if (details.googleId != null && details.googleId!.isNotEmpty) 'googleId': details.googleId,
           if (chosenUsername != null) 'username': chosenUsername.trim().toLowerCase(),
         },
       );
@@ -326,9 +375,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         return GoogleAuthResult(success: true, isNewUser: data['isNewUser'] == true);
       }
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Google sign-in could not be completed.');
       return GoogleAuthResult(success: false, errorMessage: 'Google sign-in could not be completed.');
     } catch (e) {
-      final msg = (e as dynamic).response?.data?['message'] ?? 'Google authentication failed.';
+      final msg = _extractErrorMessage(e, 'Google authentication failed.');
       state = state.copyWith(status: AuthStatus.error, errorMessage: msg);
       return GoogleAuthResult(success: false, errorMessage: msg);
     }
@@ -357,7 +407,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return false;
     } catch (e) {
-      final msg = (e as dynamic).response?.data?['message'] ?? 'Failed to send OTP. Please try again.';
+      final msg = _extractErrorMessage(e, 'Failed to send OTP. Please try again.');
       state = state.copyWith(status: AuthStatus.error, errorMessage: msg);
       return false;
     }
@@ -400,7 +450,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return false;
     } catch (e) {
-      final msg = (e as dynamic).response?.data?['message'] ?? 'Invalid OTP code. Please check and retry.';
+      final msg = _extractErrorMessage(e, 'Invalid OTP code. Please check and retry.');
       state = state.copyWith(status: AuthStatus.error, errorMessage: msg);
       return false;
     }

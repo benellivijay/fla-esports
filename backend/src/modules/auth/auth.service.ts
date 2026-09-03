@@ -324,13 +324,13 @@ export class AuthService {
    * Allows players to specify their preferred username when signing up with Google.
    */
   public static async googleAuth(payload: {
-    idToken?: string;
-    email?: string;
-    name?: string;
-    avatarUrl?: string;
-    googleId?: string;
-    username?: string;
-    checkOnly?: boolean;
+    idToken?: string | null;
+    email?: string | null;
+    name?: string | null;
+    avatarUrl?: string | null;
+    googleId?: string | null;
+    username?: string | null;
+    checkOnly?: boolean | null;
   }): Promise<{
     accessToken?: string;
     refreshToken?: string;
@@ -343,10 +343,10 @@ export class AuthService {
     avatarUrl?: string;
     googleId?: string;
   }> {
-    let verifiedEmail = payload.email?.trim().toLowerCase();
-    let verifiedGoogleId = payload.googleId?.trim();
-    let verifiedName = payload.name?.trim();
-    let verifiedPicture = payload.avatarUrl?.trim();
+    let verifiedEmail = payload.email?.trim().toLowerCase() || undefined;
+    let verifiedGoogleId = payload.googleId?.trim() || undefined;
+    let verifiedName = payload.name?.trim() || undefined;
+    let verifiedPicture = payload.avatarUrl?.trim() || undefined;
 
     // Verify token server-side if idToken provided
     if (payload.idToken) {

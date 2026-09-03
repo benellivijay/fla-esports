@@ -25,13 +25,13 @@ const resendOtpSchema = z.object({
 });
 
 const googleSignInSchema = z.object({
-  idToken: z.string().optional(),
-  email: z.string().email('Invalid email address').optional(),
-  name: z.string().optional(),
-  avatarUrl: z.string().url().optional(),
-  googleId: z.string().optional(),
-  username: z.string().min(3).max(30).optional(),
-  checkOnly: z.boolean().optional(),
+  idToken: z.string().nullish(),
+  email: z.string().email('Invalid email address').nullish(),
+  name: z.string().nullish(),
+  avatarUrl: z.string().nullish(),
+  googleId: z.string().nullish(),
+  username: z.string().min(3).max(30).nullish(),
+  checkOnly: z.boolean().nullish(),
 });
 
 const legacySendOtpSchema = z.object({
