@@ -295,7 +295,9 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
                                 if (!mounted) return;
 
                                 if (res.success) {
-                                  Navigator.of(ctx).pop();
+                                  if (ctx.mounted) {
+                                    Navigator.of(ctx).pop();
+                                  }
                                   if (res.isNewUser && res.account != null) {
                                     navigator.push(
                                       MaterialPageRoute(

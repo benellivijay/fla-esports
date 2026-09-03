@@ -189,7 +189,7 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
       ),
 
-      dialogTheme: const DialogTheme(
+      dialogTheme: const DialogThemeData(
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
