@@ -23,6 +23,14 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
   final TextEditingController _teamNameController = TextEditingController();
   final List<TextEditingController> _teammateUidControllers = [];
   final List<TextEditingController> _teammateIgnControllers = [];
+  final List<TextEditingController> _substituteUidControllers = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
+  final List<TextEditingController> _substituteIgnControllers = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
 
   @override
   void initState() {
@@ -44,6 +52,8 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     _teamNameController.dispose();
     for (var c in _teammateUidControllers) { c.dispose(); }
     for (var c in _teammateIgnControllers) { c.dispose(); }
+    for (var c in _substituteUidControllers) { c.dispose(); }
+    for (var c in _substituteIgnControllers) { c.dispose(); }
     super.dispose();
   }
 
@@ -173,8 +183,26 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     for (int i = 0; i < _teammateUidControllers.length; i++) {
       final uid = _teammateUidControllers[i].text.trim();
       final ign = _teammateIgnControllers[i].text.trim();
-      if (uid.isNotEmpty && ign.isNotEmpty) {
-        teammatesList.add({'ffUid': uid, 'ffIgn': ign});
+      if (uid.isNotEmpty || ign.isNotEmpty) {
+        teammatesList.add({
+          'ffUid': uid.isNotEmpty ? uid : 'UID_PENDING',
+          'ffIgn': ign.isNotEmpty ? ign : 'Teammate #${i + 2}',
+          'role': 'main',
+        });
+      }
+    }
+
+    if (widget.tournament.mode == 'squad') {
+      for (int i = 0; i < _substituteUidControllers.length; i++) {
+        final uid = _substituteUidControllers[i].text.trim();
+        final ign = _substituteIgnControllers[i].text.trim();
+        if (uid.isNotEmpty || ign.isNotEmpty) {
+          teammatesList.add({
+            'ffUid': uid.isNotEmpty ? uid : 'UID_SUB',
+            'ffIgn': ign.isNotEmpty ? ign : 'Substitute #${i + 1}',
+            'role': 'substitute',
+          });
+        }
       }
     }
 
@@ -396,9 +424,15 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                         // Multi-player format inputs (Duo / Squad)
                         if (widget.tournament.mode != 'solo' && !isAlreadyJoined) ...[
                           const SizedBox(height: 20),
-                          const Text(
-                            'Team information',
-                            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                          Row(
+                            children: [
+                              const Icon(Icons.shield_outlined, size: 16, color: AppColors.primary),
+                              const SizedBox(width: 6),
+                              Text(
+                                widget.tournament.mode == 'squad' ? 'Squad Roster' : 'Duo Team Details',
+                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 10),
                           TextField(
@@ -406,12 +440,35 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                             decoration: const InputDecoration(
                               labelText: 'Team or clan name',
+                              hintText: 'e.g. Total Gaming / Team Elite',
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Starting Playing Lineup Header
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceMuted,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border, width: 0.5),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.group_outlined, size: 16, color: AppColors.primary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  widget.tournament.mode == 'squad' ? 'Main Playing Lineup (Starting 4)' : 'Partner Details',
+                                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 12),
+
                           for (int i = 0; i < _teammateUidControllers.length; i++) ...[
                             Text(
-                              'Teammate #${i + 2}',
+                              'Teammate #${i + 2} (Main Lineup)',
                               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 6),
@@ -420,9 +477,11 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                                 Expanded(
                                   child: TextField(
                                     controller: _teammateUidControllers[i],
+                                    keyboardType: TextInputType.number,
                                     style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                                     decoration: const InputDecoration(
                                       labelText: 'Free Fire UID',
+                                      hintText: 'e.g. 1029384812',
                                     ),
                                   ),
                                 ),
@@ -432,13 +491,97 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                                     controller: _teammateIgnControllers[i],
                                     style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                                     decoration: const InputDecoration(
-                                      labelText: 'In-game nickname',
+                                      labelText: 'In-Game Nickname (IGN)',
+                                      hintText: 'e.g. Shadow_07',
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 12),
+                          ],
+
+                          // 2 Substitution Players (For Squad Mode)
+                          if (widget.tournament.mode == 'squad') ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceMuted,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.border, width: 0.5),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.swap_horiz_rounded, size: 16, color: AppColors.accent),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Substitution Players (Optional • 2 Subs)',
+                                      style: TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Subs can replace main players if someone cannot join the match room.',
+                              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            ),
+                            const SizedBox(height: 12),
+
+                            for (int i = 0; i < _substituteUidControllers.length; i++) ...[
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: AppColors.border, width: 0.5),
+                                    ),
+                                    child: Text(
+                                      'SUB #${i + 1}',
+                                      style: const TextStyle(color: AppColors.accent, fontSize: 10, fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Substitute Player #${i + 1} (Optional)',
+                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _substituteUidControllers[i],
+                                      keyboardType: TextInputType.number,
+                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                                      decoration: InputDecoration(
+                                        labelText: 'Substitute #${i + 1} UID',
+                                        hintText: 'e.g. 5839201948',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _substituteIgnControllers[i],
+                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                                      decoration: InputDecoration(
+                                        labelText: 'Substitute #${i + 1} IGN',
+                                        hintText: 'e.g. Killer_Sub',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                            ],
                           ],
                         ],
 

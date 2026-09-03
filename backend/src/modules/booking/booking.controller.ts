@@ -4,8 +4,9 @@ import { BookingService } from './booking.service';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
 
 const teammateSchema = z.object({
-  ffUid: z.string().min(5).max(15),
-  ffIgn: z.string().min(2).max(30),
+  ffUid: z.string().min(3).max(25),
+  ffIgn: z.string().min(1).max(35),
+  role: z.string().optional(),
   phone: z.string().optional(),
 });
 
