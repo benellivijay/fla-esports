@@ -28,7 +28,6 @@ class GoogleAuthResult {
   final bool success;
   final bool isNewUser;
   final bool cancelled;
-  final bool needsAccountEntryFallback;
   final String? errorMessage;
   final GoogleAccountDetails? account;
   final String? suggestedUsername;
@@ -37,7 +36,6 @@ class GoogleAuthResult {
     required this.success,
     this.isNewUser = false,
     this.cancelled = false,
-    this.needsAccountEntryFallback = false,
     this.errorMessage,
     this.account,
     this.suggestedUsername,
@@ -264,14 +262,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
           }
           return GoogleAuthResult(
             success: false,
-            needsAccountEntryFallback: true,
-            errorMessage: pe.message ?? 'Google Sign-In service not configured (${pe.code}).',
+            errorMessage: pe.message ?? 'Google Sign-In failed (${pe.code}).',
           );
         } catch (e) {
           state = state.copyWith(status: AuthStatus.unauthenticated);
           return GoogleAuthResult(
             success: false,
-            needsAccountEntryFallback: true,
             errorMessage: e.toString(),
           );
         }
