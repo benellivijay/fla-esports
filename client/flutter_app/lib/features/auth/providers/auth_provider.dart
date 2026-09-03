@@ -268,16 +268,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
             state = state.copyWith(status: AuthStatus.unauthenticated);
             return GoogleAuthResult(success: false, cancelled: true);
           }
-          final uniqueSuffix = DateTime.now().millisecondsSinceEpoch.toString().substring(7);
+          final persistentAcc = await _apiClient.getOrCreatePersistentGoogleAccount();
           details = GoogleAccountDetails(
-            email: 'google_player_$uniqueSuffix@gmail.com',
-            displayName: 'Google Player',
+            email: persistentAcc['email']!,
+            displayName: persistentAcc['displayName'],
+            googleId: persistentAcc['googleId'],
           );
         } catch (_) {
-          final uniqueSuffix = DateTime.now().millisecondsSinceEpoch.toString().substring(7);
+          final persistentAcc = await _apiClient.getOrCreatePersistentGoogleAccount();
           details = GoogleAccountDetails(
-            email: 'google_player_$uniqueSuffix@gmail.com',
-            displayName: 'Google Player',
+            email: persistentAcc['email']!,
+            displayName: persistentAcc['displayName'],
+            googleId: persistentAcc['googleId'],
           );
         }
 
@@ -292,6 +294,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
             email: account.email,
             displayName: account.displayName,
             photoUrl: account.photoUrl,
+            googleId: account.id,
+          );
+          await _apiClient.savePersistentGoogleAccount(
+            email: account.email,
+            displayName: account.displayName,
             googleId: account.id,
           );
         }
@@ -321,7 +328,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           final isNewUser = data['isNewUser'] == true;
 
           if (isNewUser) {
-            // Player is new -> Prompt for username selection
+            // Player is new -> Prompt for username selection once
             state = state.copyWith(status: AuthStatus.unauthenticated);
             return GoogleAuthResult(
               success: true,
@@ -333,13 +340,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
                       .toLowerCase(),
             );
           } else {
-            // Existing user -> Proceed with sign in
+            // Existing user -> Automatically sign in directly without asking username!
             final user = UserModel.fromJson(data['user']);
             final profile = ProfileModel.fromJson(data['profile']);
 
             await _apiClient.saveTokens(
               accessToken: data['accessToken'],
               refreshToken: data['refreshToken'],
+            );
+            await _apiClient.savePersistentGoogleAccount(
+              email: details.email,
+              displayName: details.displayName,
+              googleId: details.googleId,
             );
 
             state = state.copyWith(
@@ -374,13 +386,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
           accessToken: data['accessToken'],
           refreshToken: data['refreshToken'],
         );
+        await _apiClient.savePersistentGoogleAccount(
+          email: details.email,
+          displayName: details.displayName,
+          googleId: details.googleId,
+        );
 
         state = state.copyWith(
           status: AuthStatus.authenticated,
           user: user,
           profile: profile,
         );
-        return GoogleAuthResult(success: true, isNewUser: data['isNewUser'] == true);
+        return GoogleAuthResult(success: true, isNewUser: false);
       }
       state = state.copyWith(status: AuthStatus.error, errorMessage: 'Google sign-in could not be completed.');
       return GoogleAuthResult(success: false, errorMessage: 'Google sign-in could not be completed.');

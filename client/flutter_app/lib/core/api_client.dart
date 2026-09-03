@@ -115,4 +115,53 @@ class ApiClient {
       return false;
     }
   }
+
+  static const String keyGoogleEmail = 'ff_google_email';
+  static const String keyGoogleName = 'ff_google_name';
+  static const String keyGoogleId = 'ff_google_id';
+
+  Future<Map<String, String>> getOrCreatePersistentGoogleAccount() async {
+    try {
+      final savedEmail = await _storage.read(key: keyGoogleEmail);
+      final savedName = await _storage.read(key: keyGoogleName);
+      final savedId = await _storage.read(key: keyGoogleId);
+
+      if (savedEmail != null && savedEmail.isNotEmpty) {
+        return {
+          'email': savedEmail,
+          'displayName': savedName ?? 'Google Player',
+          'googleId': savedId ?? '',
+        };
+      }
+    } catch (_) {}
+
+    // Generate a fixed, persistent ID for this installation
+    final uniqueId = DateTime.now().millisecondsSinceEpoch.toString().substring(5);
+    final newEmail = 'player_g$uniqueId@gmail.com';
+    const newName = 'Google Player';
+
+    try {
+      await _storage.write(key: keyGoogleEmail, value: newEmail);
+      await _storage.write(key: keyGoogleName, value: newName);
+      await _storage.write(key: keyGoogleId, value: uniqueId);
+    } catch (_) {}
+
+    return {
+      'email': newEmail,
+      'displayName': newName,
+      'googleId': uniqueId,
+    };
+  }
+
+  Future<void> savePersistentGoogleAccount({required String email, String? displayName, String? googleId}) async {
+    try {
+      await _storage.write(key: keyGoogleEmail, value: email);
+      if (displayName != null) {
+        await _storage.write(key: keyGoogleName, value: displayName);
+      }
+      if (googleId != null) {
+        await _storage.write(key: keyGoogleId, value: googleId);
+      }
+    } catch (_) {}
+  }
 }
