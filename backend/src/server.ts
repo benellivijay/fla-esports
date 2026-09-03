@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 import { config } from './config/env';
 import { getDb } from './database/db';
@@ -21,8 +22,30 @@ import { RoomRevealWorker } from './modules/scheduler/room_reveal.worker';
 import { errorHandler } from './middleware/error.middleware';
 import { Logger } from './utils/logger';
 
+// Locate static admin dashboard directory
+function getPublicDir(): string {
+  const possibleDirs = [
+    path.join(__dirname, '../public'),
+    path.join(__dirname, '../../public'),
+    path.join(process.cwd(), 'public'),
+    path.join(process.cwd(), 'backend/public'),
+    path.join(process.cwd(), 'admin_dashboard/out'),
+    path.join(__dirname, '../../admin_dashboard/out'),
+    path.join(process.cwd(), 'dist'),
+  ];
+
+  for (const dir of possibleDirs) {
+    if (fs.existsSync(dir) && (fs.existsSync(path.join(dir, 'index.html')) || fs.existsSync(path.join(dir, 'login.html')) || fs.existsSync(path.join(dir, 'login/index.html')))) {
+      return dir;
+    }
+  }
+  return path.join(process.cwd(), 'public');
+}
+
 export const createApp = () => {
   const app = express();
+  const publicDir = getPublicDir();
+  Logger.info(`[STATIC] Admin dashboard serving from: ${publicDir}`);
 
   // Basic security and parsing
   app.use(cors());
@@ -32,27 +55,18 @@ export const createApp = () => {
   // Static uploads directory for screenshot and proof access
   app.use('/uploads', express.static(config.uploads.directory));
 
-  // Global rate limiter
+  // Static Next.js dashboard assets (_next, images, css, etc.)
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+  }
+
+  // Global rate limiter for API endpoints
   const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 200,
     message: { success: false, message: 'Too many requests from this IP, please try again later.' },
   });
   app.use('/api/', globalLimiter);
-
-  // Root Welcome Endpoint
-  app.get('/', (_req, res) => {
-    res.status(200).json({
-      service: 'FLA ESPORTS Tournament API',
-      status: 'online',
-      version: '1.0.0',
-      endpoints: {
-        health: '/health',
-        api: '/api/v1',
-      },
-      timestamp: new Date().toISOString(),
-    });
-  });
 
   // Health check endpoint
   app.get('/health', (_req, res) => {
@@ -82,7 +96,52 @@ export const createApp = () => {
   app.use('/api/v1/admin/results', adminResultRoutes);
   app.use('/api/v1/admin', adminRoutes);
 
-  // 404 Handler
+  // Serve Next.js static pages for HTML routes (/login, /staff, /tournaments, etc.)
+  app.get('*', (req, res, next) => {
+    // Skip API or upload endpoints
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path === '/health') {
+      return next();
+    }
+
+    const cleanPath = req.path.replace(/^\/+|\/+$/g, '');
+
+    // 1. Root dashboard /
+    if (!cleanPath) {
+      const indexFile = path.join(publicDir, 'index.html');
+      if (fs.existsSync(indexFile)) {
+        return res.sendFile(indexFile);
+      }
+      return res.status(200).json({
+        service: 'FLA ESPORTS Tournament API',
+        status: 'online',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // 2. Specific static page (e.g. /login, /staff, /tournaments, /results, /deposits, /payouts, /wallet, /users, /audit-logs)
+    const candidates = [
+      path.join(publicDir, `${cleanPath}.html`),
+      path.join(publicDir, cleanPath, 'index.html'),
+      path.join(publicDir, cleanPath),
+    ];
+
+    for (const file of candidates) {
+      if (fs.existsSync(file) && fs.statSync(file).isFile()) {
+        return res.sendFile(file);
+      }
+    }
+
+    // 3. Fallback to index.html for client-side routing
+    const fallbackIndex = path.join(publicDir, 'index.html');
+    if (fs.existsSync(fallbackIndex)) {
+      return res.sendFile(fallbackIndex);
+    }
+
+    next();
+  });
+
+  // 404 Handler for undefined API routes
   app.use((req, res) => {
     res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
   });
