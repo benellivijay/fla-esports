@@ -16,9 +16,14 @@ function copyFolderSync(from, to) {
 const src = path.join(__dirname, 'admin_dashboard', 'out');
 const dstPublic = path.join(__dirname, 'public');
 const dstDist = path.join(__dirname, 'dist');
+const dstBackendPublic = path.join(__dirname, 'backend', 'public');
+const dstBackendDistPublic = path.join(__dirname, 'backend', 'dist', 'public');
 
 if (fs.existsSync(src)) {
   copyFolderSync(src, dstPublic);
   copyFolderSync(src, dstDist);
-  console.log('Copied admin build to /public and /dist successfully!');
+  copyFolderSync(src, dstBackendPublic);
+  copyFolderSync(src, dstBackendDistPublic);
+  console.log('Copied admin build to /public, /dist, and /backend/public successfully!');
 }
+

@@ -55,11 +55,6 @@ export const createApp = () => {
   // Static uploads directory for screenshot and proof access
   app.use('/uploads', express.static(config.uploads.directory));
 
-  // Static Next.js dashboard assets (_next, images, css, etc.)
-  if (fs.existsSync(publicDir)) {
-    app.use(express.static(publicDir));
-  }
-
   // Global rate limiter for API endpoints
   const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -98,7 +93,7 @@ export const createApp = () => {
 
   // Serve Next.js static pages for HTML routes (/login, /staff, /tournaments, etc.)
   app.get('*', (req, res, next) => {
-    // Skip API or upload endpoints
+    // Skip API, uploads, or health endpoints
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path === '/health') {
       return next();
     }
@@ -111,19 +106,19 @@ export const createApp = () => {
       if (fs.existsSync(indexFile)) {
         return res.sendFile(indexFile);
       }
-      return res.status(200).json({
-        service: 'FLA ESPORTS Tournament API',
-        status: 'online',
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-      });
+      return next();
     }
 
-    // 2. Specific static page (e.g. /login, /staff, /tournaments, /results, /deposits, /payouts, /wallet, /users, /audit-logs)
+    // Skip static assets with extensions (e.g. .js, .css, .png, .ico, .txt, .map)
+    if (/\.[a-zA-Z0-9]+$/.test(cleanPath)) {
+      return next();
+    }
+
+    // 2. Specific HTML page (e.g. /login, /staff, /tournaments, /results, /deposits, /payouts, /wallet, /users, /audit-logs)
     const candidates = [
       path.join(publicDir, `${cleanPath}.html`),
       path.join(publicDir, cleanPath, 'index.html'),
-      path.join(publicDir, cleanPath),
+      path.join(publicDir, `${cleanPath}/index.html`),
     ];
 
     for (const file of candidates) {
@@ -140,6 +135,11 @@ export const createApp = () => {
 
     next();
   });
+
+  // Static Next.js dashboard assets (_next, images, css, etc.)
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+  }
 
   // 404 Handler for undefined API routes
   app.use((req, res) => {

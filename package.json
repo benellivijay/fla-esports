@@ -5,8 +5,9 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "build": "cd admin_dashboard && npm install && npm run build && cd .. && node copy-build.js",
-    "start": "node index.js",
+    "build": "npm --prefix admin_dashboard run build && node copy-build.js && npm --prefix backend run build",
+    "start": "node backend/dist/server.js",
+    "bot": "node index.js",
     "deploy": "node src/deploy-commands.js",
     "test": "node tests/antinuke.test.js"
   },
