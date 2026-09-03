@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Lock, Mail, KeyRound, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, KeyRound, ArrowRight, AlertCircle, RefreshCw, Copy, Check, Info, QrCode } from 'lucide-react';
 import { AdminApi } from '@/lib/api';
 
 export default function LoginPage() {
@@ -10,12 +10,16 @@ export default function LoginPage() {
 
   // Step state: 1 = Email/Password, 2 = TOTP 2FA
   const [step, setStep] = useState<1 | 2>(1);
-  const [email, setEmail] = useState('flaadmin40@gmail.com');
+  const [email, setEmail] = useState('flaadmin01@gmail.com');
   const [password, setPassword] = useState('Fla@714367');
   const [tempToken, setTempToken] = useState('');
   const [totpCode, setTotpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+
+  const currentSecretKey = email.toLowerCase().includes('01') ? 'FLAADMINAUTHK234' : 'JBSWY3DPEHPK3PXP';
 
   // Step 1: Submit email & password
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -58,6 +62,12 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const copySecret = () => {
+    navigator.clipboard.writeText(currentSecretKey);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2000);
   };
 
   return (
@@ -113,7 +123,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@ffesports.com"
+                  placeholder="flaadmin01@gmail.com"
                   className="w-full pl-9 pr-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:border-primary transition-colors font-medium"
                 />
               </div>
@@ -155,9 +165,19 @@ export default function LoginPage() {
           /* Form Step 2: TOTP 2FA */
           <form onSubmit={handleTotpSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-textSecondary mb-1.5">
-                6-digit 2FA code
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-textSecondary">
+                  6-digit 2FA code
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowSetupGuide(!showSetupGuide)}
+                  className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1"
+                >
+                  <Info className="w-3 h-3" />
+                  <span>{showSetupGuide ? 'Hide setup key' : 'Authenticator setup key'}</span>
+                </button>
+              </div>
               <div className="relative">
                 <KeyRound className="w-4 h-4 text-textSecondary absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -172,6 +192,33 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+
+            {/* Authenticator Setup Helper Box */}
+            {showSetupGuide && (
+              <div className="p-3 bg-surfaceMuted/80 rounded-xl border border-hairline border-border text-left space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-textPrimary">2FA Secret Setup Key:</span>
+                  <button
+                    type="button"
+                    onClick={copySecret}
+                    className="text-[11px] text-primary hover:text-primary-hover font-semibold flex items-center gap-1"
+                  >
+                    {copiedKey ? <Check className="w-3 h-3 text-status-success" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedKey ? 'Copied!' : 'Copy Key'}</span>
+                  </button>
+                </div>
+                <div className="p-2 bg-background border border-hairline border-border rounded font-mono text-center font-bold text-xs text-primary select-all">
+                  {currentSecretKey}
+                </div>
+                <ol className="text-[10px] text-textSecondary list-decimal list-inside space-y-1">
+                  <li>Open <strong>Google Authenticator</strong> or <strong>Authy</strong>.</li>
+                  <li>Tap <strong>+</strong> and choose <strong>"Enter a setup key"</strong>.</li>
+                  <li>Account name: <span className="text-textPrimary font-semibold">FLA Admin ({email})</span></li>
+                  <li>Paste key: <span className="text-primary font-mono">{currentSecretKey}</span></li>
+                  <li>Type the generated 6-digit code above.</li>
+                </ol>
+              </div>
+            )}
 
             <button
               type="submit"

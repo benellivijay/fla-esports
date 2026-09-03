@@ -61,30 +61,49 @@ export class DatabaseManager {
       try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN target_resource TEXT;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN target_id TEXT;'); } catch (_) {}
 
-      // Seed default superadmin if not exists
+      // Seed default superadmins if not exists
       try {
-        const adminEmail = 'flaadmin40@gmail.com';
-        const existingAdmin = this.instance.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail) as any;
-        const passHash = CryptoUtil.hashPassword('Fla@714367');
-        const totpSecret = 'JBSWY3DPEHPK3PXP'; // Standard Base32 secret for Google Authenticator
+        const admins = [
+          {
+            email: 'flaadmin01@gmail.com',
+            username: 'flaadmin01',
+            phone: '+919342235511',
+            password: 'Fla@714367',
+            totpSecret: 'FLAADMINAUTHK234', // Dedicated Base32 Authenticator secret for flaadmin01
+            displayName: 'FLA Super Admin 01',
+          },
+          {
+            email: 'flaadmin40@gmail.com',
+            username: 'flaadmin40',
+            phone: '+919342235510',
+            password: 'Fla@714367',
+            totpSecret: 'JBSWY3DPEHPK3PXP', // Base32 Authenticator secret for flaadmin40
+            displayName: 'Super Admin',
+          },
+        ];
 
-        if (!existingAdmin) {
-          const adminId = uuidv4();
-          this.instance.prepare(`
-            INSERT INTO users (id, email, phone, password_hash, totp_secret, totp_enabled, role, status, is_phone_verified, is_email_verified, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, 1, 'admin', 'active', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          `).run(adminId, adminEmail, '+919342235510', passHash, totpSecret);
+        for (const adminData of admins) {
+          const existingAdmin = this.instance.prepare('SELECT id FROM users WHERE email = ?').get(adminData.email) as any;
+          const passHash = CryptoUtil.hashPassword(adminData.password);
 
-          this.instance.prepare(`
-            INSERT INTO profiles (id, user_id, display_name, ff_verification_status, created_at, updated_at)
-            VALUES (?, ?, 'Super Admin', 'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          `).run(uuidv4(), adminId);
-        } else {
-          this.instance.prepare(`
-            UPDATE users 
-            SET password_hash = ?, totp_secret = ?, totp_enabled = 1, role = 'admin', status = 'active', updated_at = CURRENT_TIMESTAMP 
-            WHERE id = ?
-          `).run(passHash, totpSecret, existingAdmin.id);
+          if (!existingAdmin) {
+            const adminId = uuidv4();
+            this.instance.prepare(`
+              INSERT INTO users (id, username, email, phone, password_hash, totp_secret, totp_enabled, role, status, is_phone_verified, is_email_verified, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, 1, 'admin', 'active', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `).run(adminId, adminData.username, adminData.email, adminData.phone, passHash, adminData.totpSecret);
+
+            this.instance.prepare(`
+              INSERT INTO profiles (id, user_id, display_name, ff_verification_status, created_at, updated_at)
+              VALUES (?, ?, ?, 'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `).run(uuidv4(), adminId, adminData.displayName);
+          } else {
+            this.instance.prepare(`
+              UPDATE users 
+              SET username = ?, password_hash = ?, totp_secret = ?, totp_enabled = 1, role = 'admin', status = 'active', updated_at = CURRENT_TIMESTAMP 
+              WHERE id = ?
+            `).run(adminData.username, passHash, adminData.totpSecret, existingAdmin.id);
+          }
         }
 
         const modEmail = 'moderator@ffesports.com';
