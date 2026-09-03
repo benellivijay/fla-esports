@@ -78,11 +78,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   String _extractErrorMessage(dynamic e, String defaultMsg) {
     if (e is DioException) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        return 'Server is waking up. Please wait 10 seconds and tap Send code again.';
+      }
+      if (e.type == DioExceptionType.connectionError) {
+        return 'Unable to connect to server. Please check internet connection.';
+      }
       final data = e.response?.data;
       if (data is Map && data['message'] != null) {
         return data['message'].toString();
       }
-      if (e.message != null && e.message!.isNotEmpty) {
+      if (e.message != null && e.message!.isNotEmpty && !e.message!.contains('0:00:')) {
         return e.message!;
       }
     } else if (e is PlatformException) {

@@ -96,8 +96,10 @@ export class GDriveAuthStore {
       Logger.warn(`[GDRIVE AUTH] Local DB pre-load skipped: ${err.message}`);
     }
 
-    // 2. Pull & Sync latest records from Google Drive
-    await this.restoreFromDrive();
+    // 2. Pull & Sync latest records from Google Drive in background
+    this.restoreFromDrive().catch((err: any) => {
+      Logger.warn(`[GDRIVE AUTH] Initial drive restore warning: ${err.message}`);
+    });
   }
 
   /**
@@ -461,6 +463,7 @@ export class GDriveAuthStore {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           redirect: 'follow',
+          signal: AbortSignal.timeout(5000),
           body: JSON.stringify({
             action: 'save_file',
             folderId: this.FOLDER_ID,
@@ -518,6 +521,7 @@ export class GDriveAuthStore {
         const res = await fetch(`${webhookUrl}?action=read_file&folderId=${this.FOLDER_ID}&fileName=${fileName}`, {
           method: 'GET',
           redirect: 'follow',
+          signal: AbortSignal.timeout(5000),
         });
         if (res.ok) {
           const text = await res.text();
