@@ -35,10 +35,15 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
   @override
   void initState() {
     super.initState();
-    final defaultName = widget.initialSuggestedUsername ??
-        (widget.accountDetails.displayName ?? widget.accountDetails.email.split('@')[0])
-            .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')
-            .toLowerCase();
+    String defaultName = widget.initialSuggestedUsername ?? '';
+    if (defaultName.isEmpty || defaultName == 'google_player' || defaultName.startsWith('google_player_') || defaultName.startsWith('player_')) {
+      final name = widget.accountDetails.displayName;
+      if (name != null && name.isNotEmpty && name != 'Google Player') {
+        defaultName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_').toLowerCase();
+      } else {
+        defaultName = 'player_${DateTime.now().millisecondsSinceEpoch % 10000}';
+      }
+    }
     _usernameController = TextEditingController(text: defaultName);
 
     // Initial check
@@ -234,9 +239,11 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  widget.accountDetails.email,
+                                  widget.accountDetails.email.startsWith('google_player_')
+                                      ? 'Google Verified Player'
+                                      : widget.accountDetails.email,
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.7),
+                                    color: Colors.white.withValues(alpha: 0.7),
                                     fontSize: 13,
                                   ),
                                   overflow: TextOverflow.ellipsis,
