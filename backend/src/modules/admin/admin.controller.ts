@@ -332,4 +332,17 @@ export class AdminController {
       next(err);
     }
   }
+
+  /**
+   * List Support Tickets & Complaints
+   */
+  public static async listSupportTickets(_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { SupportService } = await import('../support/support.service');
+      const tickets = await SupportService.getAllTickets();
+      res.status(200).json({ success: true, data: { tickets } });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

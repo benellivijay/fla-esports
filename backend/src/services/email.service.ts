@@ -155,4 +155,51 @@ export class EmailService {
       return false;
     }
   }
+
+  public static async sendSupportTicketEmail(ticket: {
+    ticketId: string;
+    userEmail: string;
+    username: string;
+    category: string;
+    subject: string;
+    description: string;
+    referenceId?: string;
+  }): Promise<boolean> {
+    const adminEmail = 'flaadmin40@gmail.com';
+    const emailSubject = `[FLA SUPPORT #${ticket.ticketId}] ${ticket.category}: ${ticket.subject}`;
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0B0E17; color: #E8EAF0; padding: 24px; border-radius: 12px; border: 1px solid #2A3150;">
+        <h2 style="color: #3DDCFF; margin-top: 0;">New Support Ticket / Complaint Raised</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px; color: #E8EAF0;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #2A3150; font-weight: bold; width: 140px;">Ticket ID:</td><td style="padding: 8px; border-bottom: 1px solid #2A3150; color: #F4B33C; font-weight: bold;">#${ticket.ticketId}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #2A3150; font-weight: bold;">Player Username:</td><td style="padding: 8px; border-bottom: 1px solid #2A3150;">${ticket.username}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #2A3150; font-weight: bold;">Player Email:</td><td style="padding: 8px; border-bottom: 1px solid #2A3150;"><a href="mailto:${ticket.userEmail}" style="color: #3DDCFF;">${ticket.userEmail}</a></td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #2A3150; font-weight: bold;">Category:</td><td style="padding: 8px; border-bottom: 1px solid #2A3150;">${ticket.category}</td></tr>
+          ${ticket.referenceId ? `<tr><td style="padding: 8px; border-bottom: 1px solid #2A3150; font-weight: bold;">Reference ID:</td><td style="padding: 8px; border-bottom: 1px solid #2A3150;">${ticket.referenceId}</td></tr>` : ''}
+          <tr><td style="padding: 8px; border-bottom: 1px solid #2A3150; font-weight: bold;">Subject:</td><td style="padding: 8px; border-bottom: 1px solid #2A3150;">${ticket.subject}</td></tr>
+        </table>
+        <div style="margin-top: 16px; padding: 14px; background: #1A2036; border-radius: 8px; border: 1px solid #2A3150;">
+          <h4 style="margin: 0 0 8px 0; color: #8A8FA3;">Complaint Description:</h4>
+          <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; color: #E8EAF0;">${ticket.description}</p>
+        </div>
+        <p style="margin-top: 20px; font-size: 12px; color: #8A8FA3;">This ticket was submitted from the FLA ESPORTS Mobile App.</p>
+      </div>
+    `;
+
+    try {
+      const transporter = this.getTransporter();
+      await transporter.sendMail({
+        from: `"FLA ESPORTS Support" <${adminEmail}>`,
+        to: adminEmail,
+        replyTo: ticket.userEmail,
+        subject: emailSubject,
+        html: htmlContent,
+      });
+      Logger.info(`[SUPPORT] Sent complaint notification for #${ticket.ticketId} to ${adminEmail}`);
+      return true;
+    } catch (err: any) {
+      Logger.error(`[SUPPORT] Email notification failed for ticket #${ticket.ticketId}: ${err.message}`);
+      return false;
+    }
+  }
 }

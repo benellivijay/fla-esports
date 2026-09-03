@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/auth_tab_screen.dart';
+import '../../support/screens/support_screen.dart';
 import '../providers/profile_provider.dart';
 import 'ff_uid_verification_screen.dart';
 
@@ -495,6 +496,42 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
 
+                    // Help & Support Card
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: AppTheme.cardDecoration(),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.support_agent_rounded, color: AppColors.primary, size: 20),
+                        ),
+                        title: const Text(
+                          'Help & Support Center',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Raise a complaint, Discord tickets & 24/7 help',
+                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SupportScreen()),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
                     // Log Out Action Card
                     Container(
                       padding: const EdgeInsets.all(4),
@@ -503,7 +540,7 @@ class ProfileScreen extends ConsumerWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppColors.danger.withOpacity(0.1),
+                            color: AppColors.danger.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(Icons.logout_rounded, color: AppColors.danger, size: 18),

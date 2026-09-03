@@ -7,6 +7,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../admin/screens/admin_create_tournament_screen.dart';
 import '../../wallet/providers/wallet_provider.dart';
 import '../../wallet/screens/wallet_screen.dart';
+import '../../support/screens/support_screen.dart';
 import 'game_modes_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/notification_inbox_screen.dart';
@@ -53,6 +54,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         actions: [
+          // Support Button
+          IconButton(
+            icon: const Icon(Icons.headset_mic_outlined, color: AppColors.textSecondary),
+            tooltip: 'Help & Support',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SupportScreen()),
+              );
+            },
+          ),
+
           // Notification Bell with Pill Unread Badge
           Stack(
             alignment: Alignment.center,

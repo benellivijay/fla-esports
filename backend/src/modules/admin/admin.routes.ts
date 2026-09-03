@@ -57,6 +57,9 @@ router.post('/verifications/ff-uid/:userId', AdminController.reviewFFVerificatio
 router.get('/verifications/kyc', AdminController.getPendingKYCSubmissions);
 router.post('/verifications/kyc/:kycId', AdminController.reviewKYC);
 
+// Support & Complaints Queue
+router.get('/support/tickets', AdminController.listSupportTickets);
+
 // ============================================
 // Super Admin Only Routes
 // ============================================

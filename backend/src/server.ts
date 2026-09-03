@@ -15,6 +15,7 @@ import { payoutRoutes } from './modules/payout/payout.routes';
 import { userWithdrawalRoutes, adminWithdrawalRoutes } from './modules/withdrawal/withdrawal.routes';
 import { notificationRoutes, adminNotificationRoutes } from './modules/notifications/notification.routes';
 import { walletRoutes } from './modules/wallet/wallet.routes';
+import { supportRoutes } from './modules/support/support.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
 import { RoomRevealWorker } from './modules/scheduler/room_reveal.worker';
 import { errorHandler } from './middleware/error.middleware';
@@ -70,6 +71,7 @@ export const createApp = () => {
   app.use('/api/v1/notifications', notificationRoutes);
   app.use('/api/v1/wallet/withdraw', userWithdrawalRoutes);
   app.use('/api/v1/wallet', walletRoutes);
+  app.use('/api/v1/support', supportRoutes);
   app.use('/api/v1/tournaments', payoutRoutes);
   app.use('/api/v1/tournaments', tournamentResultRoutes);
   app.use('/api/v1/tournaments', roomRoutes);
