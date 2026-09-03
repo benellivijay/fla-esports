@@ -15,7 +15,7 @@ class SupportScreen extends ConsumerStatefulWidget {
 }
 
 class _SupportScreenState extends ConsumerState<SupportScreen> {
-  static const String discordUrl = 'https://discord.gg/w4dMrQsB7';
+  static const String discordUrl = 'https://discord.gg/DRxf72naQv';
   static const String supportEmail = 'flaadmin40@gmail.com';
 
   List<dynamic> _myTickets = [];

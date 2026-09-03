@@ -203,7 +203,7 @@ class _RaiseComplaintScreenState extends ConsumerState<RaiseComplaintScreen> {
             icon: const Icon(Icons.forum_rounded, size: 16),
             label: const Text('Join Discord'),
             onPressed: () async {
-              final uri = Uri.parse('https://discord.gg/w4dMrQsB7');
+              final uri = Uri.parse('https://discord.gg/DRxf72naQv');
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               }

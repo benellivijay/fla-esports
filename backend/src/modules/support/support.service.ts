@@ -29,7 +29,7 @@ export interface SupportTicket {
 }
 
 export class SupportService {
-  public static readonly DISCORD_URL = 'https://discord.gg/w4dMrQsB7';
+  public static readonly DISCORD_URL = 'https://discord.gg/DRxf72naQv';
   public static readonly SUPPORT_EMAIL = 'flaadmin40@gmail.com';
 
   public static async createTicket(dto: CreateTicketDTO): Promise<SupportTicket> {
