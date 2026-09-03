@@ -120,4 +120,32 @@ export const AdminApi = {
   // Audit Logs
   getAuditLogs: (params?: { page?: number; limit?: number; action?: string; actorId?: string }) =>
     apiClient.get('/admin/audit-logs', { params }),
+
+  // Staff & Dedicated 2FA Authenticator Management
+  getStaff: () =>
+    apiClient.get('/admin/staff'),
+
+  createStaff: (data: {
+    email: string;
+    username?: string;
+    password: string;
+    role?: 'admin' | 'moderator';
+    displayName?: string;
+    totpSecret?: string;
+  }) =>
+    apiClient.post('/admin/staff', data),
+
+  updateStaff: (staffId: string, data: {
+    role?: 'admin' | 'moderator';
+    status?: 'active' | 'suspended';
+    password?: string;
+    displayName?: string;
+  }) =>
+    apiClient.patch(`/admin/staff/${staffId}`, data),
+
+  regenerateStaffTotp: (staffId: string) =>
+    apiClient.post(`/admin/staff/${staffId}/regenerate-2fa`),
+
+  deleteStaff: (staffId: string) =>
+    apiClient.delete(`/admin/staff/${staffId}`),
 };

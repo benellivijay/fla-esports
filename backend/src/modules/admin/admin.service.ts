@@ -884,4 +884,225 @@ export class AdminService {
 
     return db.prepare('SELECT * FROM kyc_records WHERE id = ?').get(kycId);
   }
+
+  /**
+   * ==========================================
+   * Staff & Dedicated Authenticator Management
+   * ==========================================
+   */
+
+  /**
+   * List all admin and moderator staff accounts
+   */
+  public static async listStaffUsers(): Promise<any[]> {
+    const db = getDb();
+    const rows = db.prepare(`
+      SELECT 
+        u.id, 
+        u.username, 
+        u.email, 
+        u.phone, 
+        u.role, 
+        u.status, 
+        u.totp_secret, 
+        u.totp_enabled, 
+        u.created_at, 
+        u.updated_at,
+        p.display_name
+      FROM users u
+      LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE u.role IN ('admin', 'moderator')
+      ORDER BY u.created_at DESC
+    `).all() as any[];
+
+    return rows.map((r) => {
+      const secret = r.totp_secret || 'FLAADMINAUTHK234';
+      const otpauthUri = `otpauth://totp/FLA%20Esports:${encodeURIComponent(r.email || r.username)}?secret=${secret}&issuer=FLA%20Esports&algorithm=SHA1&digits=6&period=30`;
+      return {
+        ...r,
+        totpSecret: secret,
+        otpauthUri,
+      };
+    });
+  }
+
+  /**
+   * Create a new Staff (Admin / Moderator) account with a dedicated Authenticator
+   */
+  public static async createStaffUser(adminId: string, data: {
+    email: string;
+    username?: string;
+    password: string;
+    role: 'admin' | 'moderator';
+    displayName?: string;
+    totpSecret?: string;
+  }): Promise<any> {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const cleanUsername = data.username ? data.username.trim() : cleanEmail.split('@')[0];
+    const role = data.role === 'admin' ? 'admin' : 'moderator';
+    const displayName = data.displayName?.trim() || cleanUsername;
+
+    const db = getDb();
+
+    // Check email uniqueness
+    const existing = db.prepare('SELECT id FROM users WHERE LOWER(email) = ? OR LOWER(username) = ?').get(cleanEmail, cleanUsername.toLowerCase()) as any;
+    if (existing) {
+      throw new AppError('An account with this email or username already exists.', 409, 'STAFF_EXISTS');
+    }
+
+    const userId = uuidv4();
+    const passHash = CryptoUtil.hashPassword(data.password);
+    // Use provided secret or generate a random 16-character Base32 secret key
+    const secret = data.totpSecret?.trim().toUpperCase() || CryptoUtil.generateTOTPSecret();
+
+    db.prepare(`
+      INSERT INTO users (
+        id, username, email, password_hash, totp_secret, totp_enabled, role, status, is_email_verified, is_phone_verified, created_at, updated_at
+      ) VALUES (
+        ?, ?, ?, ?, ?, 1, ?, 'active', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).run(userId, cleanUsername, cleanEmail, passHash, secret, role);
+
+    db.prepare(`
+      INSERT INTO profiles (
+        id, user_id, display_name, ff_verification_status, created_at, updated_at
+      ) VALUES (
+        ?, ?, ?, 'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).run(uuidv4(), userId, displayName);
+
+    const otpauthUri = `otpauth://totp/FLA%20Esports:${encodeURIComponent(cleanEmail)}?secret=${secret}&issuer=FLA%20Esports&algorithm=SHA1&digits=6&period=30`;
+
+    Logger.audit({
+      actorId: adminId,
+      action: 'STAFF_ACCOUNT_CREATED',
+      targetResource: 'users',
+      targetId: userId,
+      details: { email: cleanEmail, username: cleanUsername, role },
+    });
+
+    return {
+      id: userId,
+      username: cleanUsername,
+      email: cleanEmail,
+      role,
+      status: 'active',
+      displayName,
+      totpSecret: secret,
+      otpauthUri,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Update staff account (role, status, password, or display name)
+   */
+  public static async updateStaffUser(adminId: string, targetId: string, data: {
+    role?: 'admin' | 'moderator';
+    status?: 'active' | 'suspended';
+    password?: string;
+    displayName?: string;
+  }): Promise<any> {
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId) as any;
+    if (!user) {
+      throw new AppError('Staff member not found.', 404);
+    }
+
+    if (data.role) {
+      db.prepare('UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(data.role, targetId);
+    }
+
+    if (data.status) {
+      db.prepare('UPDATE users SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(data.status, targetId);
+    }
+
+    if (data.password && data.password.trim().length >= 6) {
+      const newHash = CryptoUtil.hashPassword(data.password.trim());
+      db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newHash, targetId);
+    }
+
+    if (data.displayName) {
+      db.prepare('UPDATE profiles SET display_name = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(data.displayName.trim(), targetId);
+    }
+
+    Logger.audit({
+      actorId: adminId,
+      action: 'STAFF_ACCOUNT_UPDATED',
+      targetResource: 'users',
+      targetId: targetId,
+      details: { role: data.role, status: data.status, passwordUpdated: Boolean(data.password) },
+    });
+
+    return db.prepare(`
+      SELECT u.id, u.username, u.email, u.role, u.status, u.totp_secret, p.display_name, u.updated_at
+      FROM users u
+      LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE u.id = ?
+    `).get(targetId);
+  }
+
+  /**
+   * Regenerate a new dedicated TOTP Authenticator key for a staff member
+   */
+  public static async regenerateStaffTotp(adminId: string, targetId: string): Promise<{
+    id: string;
+    email: string;
+    totpSecret: string;
+    otpauthUri: string;
+  }> {
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId) as any;
+    if (!user) {
+      throw new AppError('Staff member not found.', 404);
+    }
+
+    const newSecret = CryptoUtil.generateTOTPSecret();
+    db.prepare('UPDATE users SET totp_secret = ?, totp_enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newSecret, targetId);
+
+    const otpauthUri = `otpauth://totp/FLA%20Esports:${encodeURIComponent(user.email || user.username)}?secret=${newSecret}&issuer=FLA%20Esports&algorithm=SHA1&digits=6&period=30`;
+
+    Logger.audit({
+      actorId: adminId,
+      action: 'STAFF_2FA_REGENERATED',
+      targetResource: 'users',
+      targetId: targetId,
+      details: { email: user.email },
+    });
+
+    return {
+      id: targetId,
+      email: user.email,
+      totpSecret: newSecret,
+      otpauthUri,
+    };
+  }
+
+  /**
+   * Delete or revoke a staff account
+   */
+  public static async deleteStaffUser(adminId: string, targetId: string): Promise<boolean> {
+    if (adminId === targetId) {
+      throw new AppError('You cannot delete your own admin account.', 400);
+    }
+
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(targetId) as any;
+    if (!user) {
+      throw new AppError('Staff member not found.', 404);
+    }
+
+    db.prepare('DELETE FROM users WHERE id = ?').run(targetId);
+    db.prepare('DELETE FROM profiles WHERE user_id = ?').run(targetId);
+
+    Logger.audit({
+      actorId: adminId,
+      action: 'STAFF_ACCOUNT_DELETED',
+      targetResource: 'users',
+      targetId: targetId,
+      details: { email: user.email },
+    });
+
+    return true;
+  }
 }

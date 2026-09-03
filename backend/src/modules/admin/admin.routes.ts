@@ -66,4 +66,11 @@ router.get('/support/tickets', AdminController.listSupportTickets);
 router.patch('/users/:id/role', requireAdmin, AdminController.updateUserRole);
 router.get('/audit-logs', requireAdmin, AdminController.getAuditLogs);
 
+// Staff & Dedicated Authenticator Management
+router.get('/staff', requireAdmin, AdminController.listStaff);
+router.post('/staff', requireAdmin, AdminController.createStaff);
+router.patch('/staff/:id', requireAdmin, AdminController.updateStaff);
+router.post('/staff/:id/regenerate-2fa', requireAdmin, AdminController.regenerateStaffTotp);
+router.delete('/staff/:id', requireAdmin, AdminController.deleteStaff);
+
 export const adminRoutes = router;

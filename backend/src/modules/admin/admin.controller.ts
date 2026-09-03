@@ -345,4 +345,110 @@ export class AdminController {
       next(err);
     }
   }
+
+  /**
+   * ==========================================
+   * Staff & Dedicated Authenticator Endpoints
+   * ==========================================
+   */
+
+  /**
+   * GET /admin/staff
+   */
+  public static async listStaff(_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const staff = await AdminService.listStaffUsers();
+      res.status(200).json({ success: true, data: staff });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * POST /admin/staff
+   */
+  public static async createStaff(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const adminId = req.user!.userId;
+      const schema = z.object({
+        email: z.string().email('Invalid staff email address'),
+        username: z.string().min(3).max(30).optional(),
+        password: z.string().min(6, 'Password must be at least 6 characters'),
+        role: z.enum(['admin', 'moderator']).default('admin'),
+        displayName: z.string().max(60).optional(),
+        totpSecret: z.string().min(8).max(64).optional(),
+      });
+
+      const body = schema.parse(req.body);
+      const created = await AdminService.createStaffUser(adminId, body);
+      res.status(201).json({
+        success: true,
+        message: `Staff account ${created.email} created with dedicated 2FA authenticator!`,
+        data: created,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * PATCH /admin/staff/:id
+   */
+  public static async updateStaff(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const adminId = req.user!.userId;
+      const targetId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const schema = z.object({
+        role: z.enum(['admin', 'moderator']).optional(),
+        status: z.enum(['active', 'suspended']).optional(),
+        password: z.string().min(6).optional(),
+        displayName: z.string().max(60).optional(),
+      });
+
+      const body = schema.parse(req.body);
+      const updated = await AdminService.updateStaffUser(adminId, targetId, body);
+      res.status(200).json({
+        success: true,
+        message: 'Staff account updated successfully.',
+        data: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * POST /admin/staff/:id/regenerate-2fa
+   */
+  public static async regenerateStaffTotp(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const adminId = req.user!.userId;
+      const targetId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const result = await AdminService.regenerateStaffTotp(adminId, targetId);
+      res.status(200).json({
+        success: true,
+        message: 'New dedicated 2FA Authenticator secret generated successfully.',
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * DELETE /admin/staff/:id
+   */
+  public static async deleteStaff(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const adminId = req.user!.userId;
+      const targetId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      await AdminService.deleteStaffUser(adminId, targetId);
+      res.status(200).json({
+        success: true,
+        message: 'Staff account removed successfully.',
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

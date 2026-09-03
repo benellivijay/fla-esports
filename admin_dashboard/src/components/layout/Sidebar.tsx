@@ -66,6 +66,7 @@ export const Sidebar: React.FC = () => {
     { label: 'Payout runs', href: '/payouts', icon: BadgeDollarSign },
     { label: 'Wallet adjustments', href: '/wallet', icon: Wallet },
     { label: 'User management', href: '/users', icon: Users },
+    { label: 'Staff & 2FA', href: '/staff', icon: KeyRound },
     { label: 'Audit logs', href: '/audit-logs', icon: ScrollText },
   ];
 
