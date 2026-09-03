@@ -191,7 +191,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                           ? const SizedBox(
                               height: 16,
                               width: 16,
-                              child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
+                              child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF0B0E17)),
                             )
                           : const Text('Get Email OTP'),
                     ),

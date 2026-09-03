@@ -303,7 +303,7 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
                       ),
                       Text(
                         t.isPaid ? '₹${t.prizePool.toStringAsFixed(0)}' : '${t.prizePool.toStringAsFixed(0)} Coins',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.highlight),
                       ),
                     ],
                   ),
@@ -341,7 +341,7 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 child: Text(
                                   t.isPaid ? '₹${item.amount.toStringAsFixed(0)}' : '${item.amount.toStringAsFixed(0)} Coins',
-                                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13),
+                                  style: const TextStyle(color: AppColors.highlight, fontWeight: FontWeight.w600, fontSize: 13),
                                 ),
                               ),
                             ],

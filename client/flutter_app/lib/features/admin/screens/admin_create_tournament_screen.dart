@@ -390,7 +390,7 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
               ElevatedButton(
                 onPressed: _isSubmitting ? null : _handleCreate,
                 child: _isSubmitting
-                    ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5))
+                    ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Color(0xFF0B0E17), strokeWidth: 1.5))
                     : const Text('Publish tournament'),
               ),
               const SizedBox(height: 16),

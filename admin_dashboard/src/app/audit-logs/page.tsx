@@ -68,7 +68,7 @@ export default function AuditLogsPage() {
                 setActionFilter(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-1.5 text-xs bg-slate-50 border border-hairline border-slate-200 rounded-lg text-slate-700 focus:outline-none font-medium"
+              className="px-3 py-1.5 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary focus:outline-none focus:border-primary font-semibold"
             >
               <option value="all">All actions</option>
               <option value="RESULT_VERIFIED">RESULT_VERIFIED</option>
@@ -86,7 +86,7 @@ export default function AuditLogsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={fetchLogs}
-              className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 rounded-lg border border-hairline border-slate-200 flex items-center gap-1.5"
+              className="px-3 py-1.5 text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surfaceMuted rounded-lg border border-hairline border-border flex items-center gap-1.5 transition-colors"
             >
               <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
               <span>Refresh ({total} logs)</span>
@@ -98,7 +98,7 @@ export default function AuditLogsPage() {
         <Card padding="none" className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-hairline border-slate-200 text-slate-500 font-medium">
+              <thead className="bg-surfaceMuted border-b border-hairline border-border text-textSecondary font-semibold">
                 <tr>
                   <th className="px-5 py-3">Timestamp</th>
                   <th className="px-4 py-3">Staff Actor</th>
@@ -108,17 +108,17 @@ export default function AuditLogsPage() {
                   <th className="px-5 py-3 text-right">Details snapshot</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-hairline divide-slate-100">
+              <tbody className="divide-y divide-hairline divide-border">
                 {logs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-12 text-center text-slate-400">
+                    <td colSpan={6} className="px-5 py-12 text-center text-textSecondary font-medium">
                       No audit logs found matching the filter.
                     </td>
                   </tr>
                 ) : (
                   logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-5 py-3 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                    <tr key={log.id} className="hover:bg-surfaceMuted/50 transition-colors">
+                      <td className="px-5 py-3 font-mono text-[11px] text-textSecondary whitespace-nowrap">
                         {new Date(log.created_at).toLocaleString([], {
                           month: 'short',
                           day: 'numeric',
@@ -129,28 +129,28 @@ export default function AuditLogsPage() {
                         })}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900 truncate max-w-[160px]">
+                        <div className="font-bold text-textPrimary truncate max-w-[160px]">
                           {log.actor_email || log.actor_name || 'System / Service'}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
+                        <div className="text-[10px] text-textSecondary/60 font-mono">
                           {log.actor_id ? log.actor_id.slice(0, 8) + '...' : 'system'}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 font-mono text-[11px] font-bold rounded bg-slate-100 text-slate-800 border border-hairline border-slate-200">
+                        <span className="px-2 py-0.5 font-mono text-[11px] font-bold rounded bg-surfaceMuted text-primary border border-hairline border-border">
                           {log.action}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 font-medium">
+                      <td className="px-4 py-3 text-textSecondary font-medium">
                         {log.target_resource}
                       </td>
-                      <td className="px-4 py-3 font-mono text-slate-400 text-[11px]">
+                      <td className="px-4 py-3 font-mono text-textSecondary/60 text-[11px]">
                         {log.target_id || '—'}
                       </td>
                       <td className="px-5 py-3 text-right">
                         <button
                           onClick={() => setSelectedLog(log)}
-                          className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-full border border-hairline border-slate-200 transition-colors inline-flex items-center gap-1"
+                          className="px-3 py-1 bg-surfaceMuted hover:bg-surface text-textSecondary hover:text-textPrimary text-xs font-semibold rounded-full border border-hairline border-border transition-colors inline-flex items-center gap-1 shadow-xs"
                         >
                           <Eye className="w-3 h-3" />
                           <span>View snapshot</span>
@@ -165,7 +165,7 @@ export default function AuditLogsPage() {
 
           {/* Pagination Controls */}
           {total > 25 && (
-            <div className="px-5 py-3 border-t border-hairline border-slate-200 flex items-center justify-between text-xs text-slate-500">
+            <div className="px-5 py-3 border-t border-hairline border-border flex items-center justify-between text-xs text-textSecondary font-medium">
               <span>
                 Showing page {page} (Total {total} entries)
               </span>
@@ -173,14 +173,14 @@ export default function AuditLogsPage() {
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1 rounded border border-hairline border-slate-200 hover:bg-slate-50 disabled:opacity-40"
+                  className="px-3 py-1 rounded border border-hairline border-border hover:bg-surfaceMuted text-textPrimary disabled:opacity-40 transition-colors"
                 >
                   Previous
                 </button>
                 <button
                   disabled={page * 25 >= total}
                   onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1 rounded border border-hairline border-slate-200 hover:bg-slate-50 disabled:opacity-40"
+                  className="px-3 py-1 rounded border border-hairline border-border hover:bg-surfaceMuted text-textPrimary disabled:opacity-40 transition-colors"
                 >
                   Next
                 </button>
@@ -198,10 +198,10 @@ export default function AuditLogsPage() {
         maxWidth="lg"
       >
         <div className="space-y-3">
-          <div className="p-3 bg-slate-900 rounded-lg text-slate-100 font-mono text-xs overflow-x-auto max-h-[50vh]">
+          <div className="p-3.5 bg-slate-950 rounded-xl text-primary font-mono text-xs overflow-x-auto max-h-[50vh] border border-border">
             <pre>{JSON.stringify(selectedLog?.details || {}, null, 2)}</pre>
           </div>
-          <div className="flex justify-between items-center text-xs text-slate-500">
+          <div className="flex justify-between items-center text-xs text-textSecondary font-medium">
             <span>Log ID: {selectedLog?.id}</span>
             <span>Recorded at: {selectedLog?.created_at}</span>
           </div>

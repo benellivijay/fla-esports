@@ -351,12 +351,12 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                             }
                             if (isSelected) {
                               bg = AppColors.primary;
-                              textColor = Colors.white;
+                              textColor = const Color(0xFF0B0E17);
                               border = Border.all(color: AppColors.primary, width: 1.0);
                             }
                             if (isUserSlot) {
                               bg = AppColors.success;
-                              textColor = Colors.white;
+                              textColor = const Color(0xFF0B0E17);
                               border = Border.all(color: AppColors.success, width: 1.0);
                             }
 
@@ -484,7 +484,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                               ? const SizedBox(
                                   height: 16,
                                   width: 16,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5),
+                                  child: CircularProgressIndicator(color: Color(0xFF0B0E17), strokeWidth: 1.5),
                                 )
                               : Text(
                                   widget.tournament.isPaid 

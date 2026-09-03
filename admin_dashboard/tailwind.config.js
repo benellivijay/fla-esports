@@ -8,29 +8,35 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: '#F8FAFC',
-        surface: '#FFFFFF',
-        surfaceMuted: '#F1F5F9',
-        border: '#E2E8F0',
+        background: '#0B0E17',
+        surface: '#1A2036',
+        surfaceMuted: '#222944',
+        border: '#2A3150',
+        textPrimary: '#E8EAF0',
+        textSecondary: '#8A8FA3',
+        textMuted: '#8A8FA3',
         primary: {
-          DEFAULT: '#0F172A',
-          hover: '#1E293B',
-          light: '#334155',
+          DEFAULT: '#3DDCFF', // Electric blue
+          hover: '#33C7E8',
+          dark: '#0B0E17',
+          light: '#65E3FF',
         },
         secondary: {
-          DEFAULT: '#64748B',
-          light: '#94A3B8',
+          DEFAULT: '#7B5CFF', // Violet
+          hover: '#6B4BE8',
+          light: '#9E86FF',
         },
+        highlight: '#F4B33C', // Gold
         status: {
-          success: '#16A34A',
-          successBg: '#F0FDF4',
-          successBorder: '#BBF7D0',
-          warning: '#D97706',
-          warningBg: '#FFFBEB',
-          warningBorder: '#FDE68A',
-          danger: '#DC2626',
-          dangerBg: '#FEF2F2',
-          dangerBorder: '#FECACA',
+          success: '#2ED47A',
+          successBg: 'rgba(46, 212, 122, 0.12)',
+          successBorder: 'rgba(46, 212, 122, 0.25)',
+          warning: '#F4B33C',
+          warningBg: 'rgba(244, 179, 60, 0.12)',
+          warningBorder: 'rgba(244, 179, 60, 0.25)',
+          danger: '#FF5C6C',
+          dangerBg: 'rgba(255, 92, 108, 0.12)',
+          dangerBorder: 'rgba(255, 92, 108, 0.25)',
         }
       },
       borderRadius: {

@@ -326,7 +326,7 @@ class _OtpCodeScreenState extends ConsumerState<OtpCodeScreen> {
                     onPressed: isLoading ? null : _handleVerify,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF0B0E17),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                       elevation: 0,
@@ -335,11 +335,11 @@ class _OtpCodeScreenState extends ConsumerState<OtpCodeScreen> {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0B0E17)),
                           )
                         : const Text(
                             'Verify and create account',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                           ),
                   ),
                   const SizedBox(height: 20),

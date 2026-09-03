@@ -65,14 +65,14 @@ export default function DashboardHomePage() {
             <button
               onClick={loadData}
               disabled={isLoading}
-              className="p-1.5 text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors border border-hairline border-slate-200"
+              className="p-1.5 text-textSecondary hover:text-textPrimary rounded-lg hover:bg-surfaceMuted transition-colors border border-hairline border-border"
               title="Refresh data"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
             <Link
               href="/tournaments/create"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-full transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-slate-950 text-xs font-bold rounded-full transition-colors shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create tournament</span>
@@ -117,14 +117,14 @@ export default function DashboardHomePage() {
           {/* Active Tournaments Table (2 cols) */}
           <div className="lg:col-span-2">
             <Card padding="none" className="overflow-hidden">
-              <div className="px-5 py-4 border-b border-hairline border-slate-200 flex items-center justify-between">
+              <div className="px-5 py-4 border-b border-hairline border-border flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Upcoming & live tournaments</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Manage room credentials and lobby status</p>
+                  <h3 className="text-sm font-bold text-textPrimary">Upcoming & live tournaments</h3>
+                  <p className="text-xs text-textSecondary mt-0.5">Manage room credentials and lobby status</p>
                 </div>
                 <Link
                   href="/tournaments"
-                  className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1"
+                  className="text-xs font-semibold text-textSecondary hover:text-primary flex items-center gap-1 transition-colors"
                 >
                   <span>View all</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -133,7 +133,7 @@ export default function DashboardHomePage() {
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-hairline border-slate-200 text-slate-500 font-medium">
+                  <thead className="bg-surfaceMuted border-b border-hairline border-border text-textSecondary font-semibold">
                     <tr>
                       <th className="px-5 py-2.5">Tournament</th>
                       <th className="px-4 py-2.5">Mode / Map</th>
@@ -143,37 +143,37 @@ export default function DashboardHomePage() {
                       <th className="px-5 py-2.5 text-right">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-hairline divide-slate-100">
+                  <tbody className="divide-y divide-hairline divide-border">
                     {tournaments.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-5 py-8 text-center text-slate-400">
+                        <td colSpan={6} className="px-5 py-8 text-center text-textSecondary">
                           No active tournaments found. Create one to begin.
                         </td>
                       </tr>
                     ) : (
                       tournaments.map((t) => (
-                        <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="px-5 py-3 font-medium text-slate-900 max-w-[180px] truncate">
-                            <Link href={`/tournaments`} className="hover:underline">
+                        <tr key={t.id} className="hover:bg-surfaceMuted/50 transition-colors">
+                          <td className="px-5 py-3 font-semibold text-textPrimary max-w-[180px] truncate">
+                            <Link href={`/tournaments`} className="hover:text-primary hover:underline transition-colors">
                               {t.title}
                             </Link>
                           </td>
-                          <td className="px-4 py-3 text-slate-600 capitalize">
+                          <td className="px-4 py-3 text-textSecondary capitalize font-medium">
                             {t.mode} • {t.map}
                           </td>
-                          <td className="px-4 py-3 font-semibold text-slate-900">
+                          <td className="px-4 py-3 font-bold text-highlight">
                             ₹{t.prize_pool}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-textSecondary font-medium">
                             {t.filled_slots} / {t.max_slots}
                           </td>
                           <td className="px-4 py-3 font-mono text-xs">
                             {t.room_id ? (
-                              <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-800 border border-hairline border-slate-200">
+                              <span className="px-2 py-0.5 bg-surfaceMuted rounded text-primary border border-hairline border-border">
                                 {t.room_id}
                               </span>
                             ) : (
-                              <span className="text-slate-400 italic">Not set</span>
+                              <span className="text-textSecondary/60 italic">Not set</span>
                             )}
                           </td>
                           <td className="px-5 py-3 text-right">
@@ -203,14 +203,14 @@ export default function DashboardHomePage() {
           {/* Recent Audit Log Stream (1 col) */}
           <div>
             <Card padding="none" className="overflow-hidden">
-              <div className="px-5 py-4 border-b border-hairline border-slate-200 flex items-center justify-between">
+              <div className="px-5 py-4 border-b border-hairline border-border flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Recent staff audit log</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Immutable staff actions</p>
+                  <h3 className="text-sm font-bold text-textPrimary">Recent staff audit log</h3>
+                  <p className="text-xs text-textSecondary mt-0.5">Immutable staff actions</p>
                 </div>
                 <Link
                   href="/audit-logs"
-                  className="text-xs font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1"
+                  className="text-xs font-semibold text-textSecondary hover:text-primary flex items-center gap-1 transition-colors"
                 >
                   <span>Logs</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -222,10 +222,10 @@ export default function DashboardHomePage() {
                   stats.recentAuditLogs.slice(0, 5).map((log) => (
                     <div
                       key={log.id}
-                      className="p-3 bg-slate-50 rounded-lg border border-hairline border-slate-200 text-xs"
+                      className="p-3 bg-surfaceMuted rounded-lg border border-hairline border-border text-xs"
                     >
-                      <div className="flex items-center justify-between text-slate-400 text-[11px] mb-1">
-                        <span className="font-mono font-medium text-slate-700">
+                      <div className="flex items-center justify-between text-textSecondary text-[11px] mb-1">
+                        <span className="font-mono font-semibold text-primary">
                           {log.action}
                         </span>
                         <span>
@@ -235,13 +235,13 @@ export default function DashboardHomePage() {
                           })}
                         </span>
                       </div>
-                      <p className="text-slate-600 text-[11px] truncate">
-                        By: <span className="text-slate-900 font-medium">{log.actor_email || 'System'}</span>
+                      <p className="text-textSecondary text-[11px] truncate">
+                        By: <span className="text-textPrimary font-semibold">{log.actor_email || 'System'}</span>
                       </p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-center text-xs text-slate-400 py-6">
+                  <p className="text-center text-xs text-textSecondary py-6">
                     No recent audit activity recorded.
                   </p>
                 )}

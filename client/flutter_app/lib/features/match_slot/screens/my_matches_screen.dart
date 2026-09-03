@@ -153,7 +153,7 @@ class _MyMatchesScreenState extends ConsumerState<MyMatchesScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: match.roomRevealed ? AppColors.primary : AppColors.surfaceMuted,
-                    foregroundColor: match.roomRevealed ? Colors.white : AppColors.textPrimary,
+                    foregroundColor: match.roomRevealed ? const Color(0xFF0B0E17) : AppColors.textPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   icon: Icon(
@@ -162,7 +162,7 @@ class _MyMatchesScreenState extends ConsumerState<MyMatchesScreen> {
                   ),
                   label: Text(
                     match.roomRevealed ? 'Enter room (live)' : 'View room details',
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),

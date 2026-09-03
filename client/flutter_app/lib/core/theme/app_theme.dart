@@ -1,50 +1,71 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Background & Surfaces
-  static const Color background = Color(0xFFF8FAFC);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceMuted = Color(0xFFF1F5F9);
+  // Base Background (screens) & Surfaces
+  static const Color background = Color(0xFF0B0E17);
+  static const Color surface = Color(0xFF1A2036);
+  static const Color surfaceMuted = Color(0xFF222944);
   
-  // 0.5px Hairline Border
-  static const Color border = Color(0xFFE2E8F0);
+  // Hairline Border (roughly 10% opacity white over base)
+  static const Color border = Color(0xFF2A3150);
   
-  // Primary & Secondary Actions
-  static const Color primary = Color(0xFF0F172A); // Dark slate primary accent
-  static const Color primaryHover = Color(0xFF1E293B);
-  static const Color accent = Color(0xFF2563EB); // Electric blue primary accent option
-  static const Color secondary = Color(0xFF64748B); // Muted gray
-  static const Color secondaryLight = Color(0xFFE2E8F0);
+  // Primary Accent (Electric blue - buttons, active tabs, links, selected states)
+  static const Color primary = Color(0xFF3DDCFF);
+  static const Color primaryHover = Color(0xFF33C7E8);
+  static const Color accent = Color(0xFF3DDCFF);
   
+  // Secondary Accent (Violet - secondary CTAs, gradients)
+  static const Color secondary = Color(0xFF7B5CFF);
+  static const Color secondaryLight = Color(0xFF9E86FF);
+  
+  // Highlight (Gold - coins, prize pool numbers, MAX/featured badges)
+  static const Color highlight = Color(0xFFF4B33C);
+  static const Color gold = Color(0xFFF4B33C);
+
   // Typography
-  static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF475569);
-  static const Color textMuted = Color(0xFF94A3B8);
+  static const Color textPrimary = Color(0xFFE8EAF0);
+  static const Color textSecondary = Color(0xFF8A8FA3);
+  static const Color textMuted = Color(0xFF8A8FA3);
 
-  // Status Colors (Strictly reserved for status states)
-  static const Color success = Color(0xFF16A34A); // Green (success / verified / released)
-  static const Color successBg = Color(0xFFF0FDF4);
-  static const Color successBorder = Color(0xFFBBF7D0);
+  // Status Colors (Semantic meaning only)
+  // Success (slots remaining, verified status, live indicators)
+  static const Color success = Color(0xFF2ED47A);
+  static const Color successBg = Color(0x242ED47A);
+  static const Color successBorder = Color(0x4D2ED47A);
 
-  static const Color warning = Color(0xFFD97706); // Amber (pending / unreleased / review)
-  static const Color warningBg = Color(0xFFFFFBEB);
-  static const Color warningBorder = Color(0xFFFDE68A);
+  // Warning / Review (pending status, prize highlight)
+  static const Color warning = Color(0xFFF4B33C);
+  static const Color warningBg = Color(0x24F4B33C);
+  static const Color warningBorder = Color(0x4DF4B33C);
 
-  static const Color danger = Color(0xFFDC2626); // Red (danger / rejected / not set / full)
-  static const Color dangerBg = Color(0xFFFEF2F2);
-  static const Color dangerBorder = Color(0xFFFECACA);
+  // Danger (disputed status, errors, destructive actions)
+  static const Color danger = Color(0xFFFF5C6C);
+  static const Color dangerBg = Color(0x24FF5C6C);
+  static const Color dangerBorder = Color(0x4DFF5C6C);
   static const Color error = danger;
   static const Color errorBg = dangerBg;
 }
 
 class AppTheme {
+  static ThemeData get darkTheme => lightTheme; // Primary dark neon theme
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
       fontFamily: 'Roboto',
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.primary,
+        secondary: AppColors.secondary,
+        surface: AppColors.surface,
+        error: AppColors.danger,
+        onPrimary: Color(0xFF0B0E17),
+        onSecondary: Colors.white,
+        onSurface: AppColors.textPrimary,
+        onError: Colors.white,
+      ),
       textTheme: const TextTheme(
         displayLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 32),
         displayMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 28),
@@ -61,7 +82,7 @@ class AppTheme {
         labelLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
       ),
       
-      // Flat App Bar with Hairline Border
+      // Dark Neon App Bar with Hairline Border
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
@@ -75,10 +96,10 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,
         ),
-        iconTheme: IconThemeData(color: AppColors.textPrimary, size: 20),
+        iconTheme: IconThemeData(color: AppColors.textSecondary, size: 20),
       ),
 
-      // Flat Card Theme with 12px corners & 0.5px border
+      // Dark Elevated Card Theme with 12px corners & 0.5px border
       cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
@@ -89,7 +110,7 @@ class AppTheme {
         ),
       ),
 
-      // Input Decoration (Flat, 0.5px border)
+      // Input Decoration (Dark Elevated Surface, 0.5px border)
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surface,
@@ -106,7 +127,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.0),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -114,28 +135,28 @@ class AppTheme {
         ),
       ),
 
-      // Pill Buttons Theme
+      // Electric Blue Primary Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: const Color(0xFF0B0E17),
           disabledBackgroundColor: AppColors.surfaceMuted,
           disabledForegroundColor: AppColors.textMuted,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: const StadiumBorder(),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           elevation: 0,
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           side: const BorderSide(color: AppColors.border, width: 0.5),
           shape: const StadiumBorder(),
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
 
@@ -154,15 +175,47 @@ class AppTheme {
         secondarySelectedColor: AppColors.primary,
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         labelStyle: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-        secondaryLabelStyle: TextStyle(fontSize: 12, color: Colors.white),
+        secondaryLabelStyle: TextStyle(fontSize: 12, color: Color(0xFF0B0E17)),
         shape: StadiumBorder(),
         side: BorderSide(color: AppColors.border, width: 0.5),
         elevation: 0,
       ),
+
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: AppColors.surface,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+      ),
+
+      dialogTheme: const DialogTheme(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: AppColors.border, width: 0.5),
+        ),
+      ),
+
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          side: BorderSide(color: AppColors.border, width: 0.5),
+        ),
+      ),
+
+      dividerTheme: const DividerThemeData(
+        color: AppColors.border,
+        thickness: 0.5,
+        space: 1,
+      ),
     );
   }
 
-  // Consistent card box decoration helper (Flat, 0.5px border, 12px corners)
+  // Consistent card box decoration helper (Dark Elevated Surface, 0.5px border, 12px corners)
   static BoxDecoration cardDecoration({Color? color, double borderRadius = 12}) {
     return BoxDecoration(
       color: color ?? AppColors.surface,

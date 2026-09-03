@@ -47,8 +47,8 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -57,7 +57,7 @@ export const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <LayoutContext.Provider value={{ isMobileSidebarOpen, toggleMobileSidebar, closeMobileSidebar }}>
-      <div className="min-h-screen bg-[#F8FAFC]">
+      <div className="min-h-screen bg-background text-textPrimary">
         {/* Backdrop overlay for mobile drawer */}
         {isMobileSidebarOpen && (
           <div

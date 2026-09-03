@@ -144,7 +144,7 @@ export default function DepositQueuePage() {
         actions={
           <button
             onClick={fetchDeposits}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-hairline border-slate-200 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-none"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-hairline border-border text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surface hover:bg-surfaceMuted transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -152,17 +152,17 @@ export default function DepositQueuePage() {
         }
       />
 
-      <div className="p-8 max-w-7xl space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-7xl space-y-6">
         {/* Banner Alerts */}
         {actionSuccess && (
-          <div className="flex items-center gap-2 p-3.5 rounded-xl bg-emerald-50 border border-hairline border-emerald-200 text-emerald-800 text-sm">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <div className="flex items-center gap-2 p-3.5 rounded-xl bg-status-successBg border border-hairline border-status-successBorder text-status-success text-sm font-medium">
+            <CheckCircle2 className="w-4 h-4 text-status-success flex-shrink-0" />
             <span>{actionSuccess}</span>
           </div>
         )}
         {actionError && (
-          <div className="flex items-center gap-2 p-3.5 rounded-xl bg-rose-50 border border-hairline border-rose-200 text-rose-800 text-sm">
-            <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+          <div className="flex items-center gap-2 p-3.5 rounded-xl bg-status-dangerBg border border-hairline border-status-dangerBorder text-status-danger text-sm font-medium">
+            <AlertCircle className="w-4 h-4 text-status-danger flex-shrink-0" />
             <span>{actionError}</span>
           </div>
         )}
@@ -170,7 +170,7 @@ export default function DepositQueuePage() {
         {/* Filters and Search Bar */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
           {/* Status Tabs */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-hairline border-slate-200">
+          <div className="flex items-center gap-1 bg-surfaceMuted p-1 rounded-xl border border-hairline border-border">
             {[
               { key: 'pending' as const, label: 'Pending', count: pendingCount },
               { key: 'completed' as const, label: 'Approved', count: undefined },
@@ -180,15 +180,15 @@ export default function DepositQueuePage() {
               <button
                 key={tab.key}
                 onClick={() => setStatusFilter(tab.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
                   statusFilter === tab.key
-                    ? 'bg-white text-slate-900 shadow-none border border-hairline border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-primary text-slate-950 shadow-xs'
+                    : 'text-textSecondary hover:text-textPrimary'
                 }`}
               >
                 {tab.label}
                 {tab.count !== undefined && tab.count > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+                  <span className="w-4 h-4 rounded-full bg-status-warning text-slate-950 text-[10px] flex items-center justify-center font-bold">
                     {tab.count}
                   </span>
                 )}
@@ -198,13 +198,13 @@ export default function DepositQueuePage() {
 
           {/* Search Box */}
           <div className="relative min-w-[280px]">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-textSecondary" />
             <input
               type="text"
               placeholder="Search UTR, phone, name or FF UID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-hairline border-slate-200 bg-white focus:outline-none focus:border-slate-400 text-slate-900 placeholder:text-slate-400"
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-hairline border-border bg-surfaceMuted focus:outline-none focus:border-primary text-textPrimary placeholder:text-textSecondary/60 font-medium"
             />
           </div>
         </div>
@@ -212,15 +212,15 @@ export default function DepositQueuePage() {
         {/* Deposit List */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+            <RefreshCw className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : filteredDeposits.length === 0 ? (
           <Card className="py-16 text-center">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
-              <QrCode className="w-6 h-6 text-slate-400" />
+            <div className="w-12 h-12 rounded-full bg-surfaceMuted flex items-center justify-center mx-auto mb-3 border border-border">
+              <QrCode className="w-6 h-6 text-textSecondary" />
             </div>
-            <h3 className="text-sm font-semibold text-slate-800">No deposit requests found</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            <h3 className="text-sm font-bold text-textPrimary">No deposit requests found</h3>
+            <p className="text-xs text-textSecondary mt-1 max-w-sm mx-auto font-medium">
               {statusFilter === 'pending'
                 ? 'Great job! There are no pending deposits waiting for verification.'
                 : 'No deposit records match your current filter criteria.'}
@@ -239,77 +239,71 @@ export default function DepositQueuePage() {
                 : null;
 
               return (
-                <Card key={item.id} className="p-4 hover:border-slate-300 transition-colors">
+                <Card key={item.id} className="p-4 hover:border-primary/40 transition-colors">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     {/* Left: Amount & UTR & Player Info */}
                     <div className="flex items-start gap-4">
                       {/* Amount Chip */}
-                      <div className="flex flex-col items-center justify-center w-20 h-16 rounded-xl bg-slate-50 border border-hairline border-slate-200 flex-shrink-0">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">Amount</span>
-                        <span className="text-lg font-bold text-slate-900">₹{Number(item.amount).toFixed(0)}</span>
+                      <div className="flex flex-col items-center justify-center w-20 h-16 rounded-xl bg-surfaceMuted border border-hairline border-border flex-shrink-0">
+                        <span className="text-[10px] uppercase font-bold text-textSecondary">Amount</span>
+                        <span className="text-lg font-bold text-highlight">₹{Number(item.amount).toFixed(0)}</span>
                       </div>
 
                       {/* Details */}
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold text-slate-900">
+                          <span className="text-xs font-bold text-textPrimary">
                             {item.user_name || item.user_phone || 'Player'}
                           </span>
                           {item.user_phone && (
-                            <span className="text-xs text-slate-500 font-mono">({item.user_phone})</span>
+                            <span className="text-xs text-textSecondary font-mono">({item.user_phone})</span>
                           )}
                           {item.player_ff_uid && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium">
+                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-surfaceMuted text-primary font-mono font-medium border border-hairline border-border">
                               FF UID: {item.player_ff_uid}
                             </span>
                           )}
 
                           {/* Status Badge */}
                           {isPending && (
-                            <PillBadge variant="warning" icon={<Clock className="w-3 h-3" />}>
-                              Pending Verification
-                            </PillBadge>
+                            <PillBadge label="Pending Verification" variant="warning" size="sm" />
                           )}
                           {isApproved && (
-                            <PillBadge variant="success" icon={<CheckCircle2 className="w-3 h-3" />}>
-                              Approved & Credited
-                            </PillBadge>
+                            <PillBadge label="Approved & Credited" variant="success" size="sm" />
                           )}
                           {isRejected && (
-                            <PillBadge variant="danger" icon={<XCircle className="w-3 h-3" />}>
-                              Rejected
-                            </PillBadge>
+                            <PillBadge label="Rejected" variant="danger" size="sm" />
                           )}
                         </div>
 
                         {/* UTR Copy Row */}
                         <div className="flex items-center gap-2 text-xs pt-0.5">
-                          <span className="text-slate-500 font-medium">12-Digit UTR:</span>
-                          <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-hairline border-slate-200">
+                          <span className="text-textSecondary font-medium">12-Digit UTR:</span>
+                          <span className="font-mono font-bold text-primary bg-surfaceMuted px-2 py-0.5 rounded border border-hairline border-border">
                             {item.utr_number || 'N/A'}
                           </span>
                           {item.utr_number && (
                             <button
                               onClick={() => handleCopyUtr(item.utr_number)}
-                              className="p-1 rounded text-slate-500 hover:text-slate-900 transition-colors"
+                              className="p-1 rounded text-textSecondary hover:text-textPrimary transition-colors"
                               title="Copy UTR Number"
                             >
                               {copiedUtr === item.utr_number ? (
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <Check className="w-3.5 h-3.5 text-status-success" />
                               ) : (
                                 <Copy className="w-3.5 h-3.5" />
                               )}
                             </button>
                           )}
-                          <span className="text-slate-400">•</span>
-                          <span className="text-slate-500 text-[11px]">
+                          <span className="text-textSecondary/50">•</span>
+                          <span className="text-textSecondary text-[11px]">
                             {new Date(item.created_at).toLocaleString()}
                           </span>
                         </div>
 
                         {/* Rejection Note if any */}
                         {isRejected && item.rejection_reason && (
-                          <p className="text-xs text-rose-600 pt-1">
+                          <p className="text-xs text-status-danger pt-1 font-medium">
                             <strong>Reason:</strong> {item.rejection_reason}
                           </p>
                         )}
@@ -322,13 +316,13 @@ export default function DepositQueuePage() {
                       {fullScreenshotUrl ? (
                         <button
                           onClick={() => setPreviewImage(fullScreenshotUrl)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-hairline border-slate-200 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-hairline border-border text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surfaceMuted hover:bg-surface transition-colors"
                         >
-                          <FileImage className="w-3.5 h-3.5 text-indigo-600" />
+                          <FileImage className="w-3.5 h-3.5 text-primary" />
                           View Screenshot
                         </button>
                       ) : (
-                        <span className="text-[11px] text-slate-400 italic">No screenshot attached</span>
+                        <span className="text-[11px] text-textSecondary/60 italic font-medium">No screenshot attached</span>
                       )}
 
                       {/* Action Buttons (Only for Pending) */}
@@ -336,13 +330,13 @@ export default function DepositQueuePage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setSelectedForReject(item)}
-                            className="px-3 py-1.5 rounded-full border border-hairline border-rose-200 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
+                            className="px-3 py-1.5 rounded-full border border-hairline border-status-dangerBorder text-xs font-semibold text-status-danger bg-status-dangerBg hover:bg-status-danger/20 transition-colors"
                           >
                             Reject
                           </button>
                           <button
                             onClick={() => setSelectedForApprove(item)}
-                            className="px-4 py-1.5 rounded-full text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                            className="px-4 py-1.5 rounded-full text-xs font-bold text-slate-950 bg-status-success hover:bg-status-success/90 transition-colors shadow-xs"
                           >
                             Approve & Credit ₹{Number(item.amount).toFixed(0)}
                           </button>
@@ -365,7 +359,7 @@ export default function DepositQueuePage() {
           title="Payment Screenshot Proof"
         >
           <div className="space-y-4">
-            <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline border-slate-200 bg-slate-900 flex items-center justify-center p-2">
+            <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline border-border bg-slate-950 flex items-center justify-center p-2">
               <img
                 src={previewImage}
                 alt="Payment Screenshot"
@@ -377,13 +371,13 @@ export default function DepositQueuePage() {
                 href={previewImage}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                className="flex items-center gap-1 text-xs text-primary hover:underline font-bold"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Open full image in new tab
               </a>
               <button
                 onClick={() => setPreviewImage(null)}
-                className="px-4 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-surfaceMuted text-textSecondary hover:text-textPrimary hover:bg-surface border border-border transition-colors"
               >
                 Close
               </button>
@@ -400,32 +394,32 @@ export default function DepositQueuePage() {
           title="Confirm Deposit Approval"
         >
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-textSecondary font-medium">
               Are you sure you want to approve this deposit and credit{' '}
-              <strong className="text-slate-900">₹{Number(selectedForApprove.amount).toFixed(2)}</strong> to{' '}
-              <strong className="text-slate-900">
+              <strong className="text-highlight font-bold">₹{Number(selectedForApprove.amount).toFixed(2)}</strong> to{' '}
+              <strong className="text-textPrimary font-bold">
                 {selectedForApprove.user_name || selectedForApprove.user_phone || 'the player'}
               </strong>
               ?
             </p>
 
-            <div className="bg-slate-50 p-3 rounded-xl border border-hairline border-slate-200 text-xs space-y-1">
+            <div className="bg-surfaceMuted p-3 rounded-xl border border-hairline border-border text-xs space-y-1.5">
               <div>
-                <span className="text-slate-500">12-Digit UTR:</span>{' '}
-                <strong className="font-mono text-slate-900">{selectedForApprove.utr_number}</strong>
+                <span className="text-textSecondary font-medium">12-Digit UTR:</span>{' '}
+                <strong className="font-mono text-primary font-bold">{selectedForApprove.utr_number}</strong>
               </div>
               <div>
-                <span className="text-slate-500">Player Phone:</span>{' '}
-                <span className="text-slate-800">{selectedForApprove.user_phone || 'N/A'}</span>
+                <span className="text-textSecondary font-medium">Player Phone:</span>{' '}
+                <span className="text-textPrimary font-semibold">{selectedForApprove.user_phone || 'N/A'}</span>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => setSelectedForApprove(null)}
                 disabled={isApproving}
-                className="px-4 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                className="px-4 py-1.5 rounded-full text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surface border border-border hover:bg-surfaceMuted transition-colors"
               >
                 Cancel
               </button>
@@ -433,7 +427,7 @@ export default function DepositQueuePage() {
                 type="button"
                 onClick={handleApprove}
                 disabled={isApproving}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-full text-xs font-bold text-slate-950 bg-status-success hover:bg-status-success/90 flex items-center gap-1.5 shadow-xs"
               >
                 {isApproving && <RefreshCw className="w-3 h-3 animate-spin" />}
                 Confirm & Credit Balance
@@ -451,13 +445,13 @@ export default function DepositQueuePage() {
           title="Reject Deposit Request"
         >
           <form onSubmit={handleReject} className="space-y-4">
-            <p className="text-sm text-slate-600">
-              Reject deposit for UTR <strong className="font-mono text-slate-900">{selectedForReject.utr_number}</strong>.
+            <p className="text-sm text-textSecondary font-medium">
+              Reject deposit for UTR <strong className="font-mono text-primary font-bold">{selectedForReject.utr_number}</strong>.
               The player will be notified with your rejection reason.
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-textSecondary mb-1">
                 Rejection reason note *
               </label>
               <input
@@ -466,23 +460,23 @@ export default function DepositQueuePage() {
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 required
-                className="w-full px-3 py-2 text-xs rounded-lg border border-hairline border-slate-200 focus:outline-none focus:border-slate-400 text-slate-900"
+                className="w-full px-3 py-2 text-xs rounded-lg border border-hairline border-border bg-surfaceMuted focus:outline-none focus:border-primary text-textPrimary font-medium"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => setSelectedForReject(null)}
                 disabled={isRejecting}
-                className="px-4 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200"
+                className="px-4 py-1.5 rounded-full text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surface border border-border hover:bg-surfaceMuted transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isRejecting}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-full text-xs font-bold text-white bg-status-danger hover:bg-status-danger/90 flex items-center gap-1.5 shadow-xs"
               >
                 {isRejecting && <RefreshCw className="w-3 h-3 animate-spin" />}
                 Confirm Rejection

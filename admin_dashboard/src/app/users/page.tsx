@@ -113,21 +113,21 @@ export default function UserManagementPage() {
         <Card padding="sm" className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-textSecondary absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
                 placeholder="Search phone, email, Free Fire UID/IGN..."
-                className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 w-64"
+                className="pl-8 pr-3 py-1.5 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:border-primary w-64 font-medium"
               />
             </div>
 
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-slate-50 border border-hairline border-slate-200 rounded-lg text-slate-700 focus:outline-none"
+              className="px-2.5 py-1.5 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary focus:outline-none focus:border-primary font-medium"
             >
               <option value="all">All roles</option>
               <option value="user">Players only</option>
@@ -138,7 +138,7 @@ export default function UserManagementPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-slate-50 border border-hairline border-slate-200 rounded-lg text-slate-700 focus:outline-none"
+              className="px-2.5 py-1.5 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary focus:outline-none focus:border-primary font-medium"
             >
               <option value="all">All statuses</option>
               <option value="active">Active</option>
@@ -148,7 +148,7 @@ export default function UserManagementPage() {
 
           <button
             onClick={fetchUsers}
-            className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 rounded-lg border border-hairline border-slate-200 flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surfaceMuted rounded-lg border border-hairline border-border flex items-center gap-1.5 transition-colors"
           >
             <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Refresh ({totalUsers})</span>
@@ -159,7 +159,7 @@ export default function UserManagementPage() {
         <Card padding="none" className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-hairline border-slate-200 text-slate-500 font-medium">
+              <thead className="bg-surfaceMuted border-b border-hairline border-border text-textSecondary font-semibold">
                 <tr>
                   <th className="px-5 py-3">Player / Phone</th>
                   <th className="px-4 py-3">Free Fire Identity</th>
@@ -170,49 +170,49 @@ export default function UserManagementPage() {
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-hairline divide-slate-100">
+              <tbody className="divide-y divide-hairline divide-border">
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-12 text-center text-slate-400">
+                    <td colSpan={7} className="px-5 py-12 text-center text-textSecondary">
                       No users found matching the query.
                     </td>
                   </tr>
                 ) : (
                   users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr key={u.id} className="hover:bg-surfaceMuted/50 transition-colors">
                       <td className="px-5 py-3.5">
-                        <div className="font-semibold text-slate-900">
+                        <div className="font-bold text-textPrimary">
                           {u.display_name || 'Player'}
                         </div>
-                        <div className="text-[11px] text-slate-500">{u.phone || u.email}</div>
+                        <div className="text-[11px] text-textSecondary font-medium">{u.phone || u.email}</div>
                       </td>
                       <td className="px-4 py-3.5">
                         {u.ff_uid ? (
-                          <span className="font-mono text-slate-800">
+                          <span className="font-mono text-primary font-medium">
                             {u.ff_uid} ({u.ff_ign})
                           </span>
                         ) : (
-                          <span className="text-slate-400 italic">Unlinked</span>
+                          <span className="text-textSecondary/60 italic font-medium">Unlinked</span>
                         )}
                       </td>
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5">
                           {u.is_phone_verified === 1 && (
-                            <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] rounded border border-emerald-200">
+                            <span className="px-2 py-0.5 bg-status-successBg text-status-success text-[10px] rounded-full border border-status-successBorder font-semibold">
                               Phone
                             </span>
                           )}
                           {u.is_email_verified === 1 && (
-                            <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] rounded border border-emerald-200">
+                            <span className="px-2 py-0.5 bg-status-successBg text-status-success text-[10px] rounded-full border border-status-successBorder font-semibold">
                               Email
                             </span>
                           )}
                           {u.is_phone_verified === 0 && u.is_email_verified === 0 && (
-                            <span className="text-slate-400 italic">Unverified</span>
+                            <span className="text-textSecondary/60 italic font-medium">Unverified</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 font-bold text-slate-900">
+                      <td className="px-4 py-3.5 font-bold text-highlight">
                         ₹{u.walletBalance.toFixed(2)}
                       </td>
                       <td className="px-4 py-3.5">
@@ -241,7 +241,7 @@ export default function UserManagementPage() {
                           <button
                             onClick={() => handleOpenRoleModal(u)}
                             title="Assign staff role"
-                            className="p-1.5 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-lg border border-hairline border-slate-200 transition-colors"
+                            className="p-1.5 text-textSecondary hover:text-textPrimary bg-surfaceMuted hover:bg-surface rounded-lg border border-hairline border-border transition-colors"
                           >
                             <Shield className="w-3.5 h-3.5" />
                           </button>
@@ -252,8 +252,8 @@ export default function UserManagementPage() {
                             title={u.status === 'active' ? 'Suspend user' : 'Reinstate user'}
                             className={`p-1.5 rounded-lg border border-hairline transition-colors ${
                               u.status === 'active'
-                                ? 'text-rose-600 hover:bg-rose-50 border-slate-200'
-                                : 'text-emerald-600 hover:bg-emerald-50 border-slate-200'
+                                ? 'text-status-danger hover:bg-status-dangerBg border-status-dangerBorder'
+                                : 'text-status-success hover:bg-status-successBg border-status-successBorder'
                             }`}
                           >
                             {u.status === 'active' ? (
@@ -281,25 +281,25 @@ export default function UserManagementPage() {
         maxWidth="md"
       >
         <form onSubmit={handleSaveRole} className="space-y-4">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-textSecondary font-medium">
             Grant internal administration or moderation privileges. Role changes take effect on the user&apos;s next request.
           </p>
 
           {roleError && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-hairline border-rose-200 flex items-start gap-2 text-xs text-rose-700">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+            <div className="p-3 rounded-lg bg-status-dangerBg border border-hairline border-status-dangerBorder flex items-start gap-2 text-xs text-status-danger font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 text-status-danger mt-0.5" />
               <span>{roleError}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-textSecondary mb-1">
               Select Role Privilege Level
             </label>
             <select
               value={selectedRole}
               onChange={(e: any) => setSelectedRole(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 font-medium"
+              className="w-full px-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary focus:outline-none focus:border-primary font-semibold"
             >
               <option value="user">Player (Standard participant access)</option>
               <option value="moderator">Moderator (Review match results & room management)</option>
@@ -307,18 +307,18 @@ export default function UserManagementPage() {
             </select>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
             <button
               type="button"
               onClick={() => setIsRoleModalOpen(false)}
-              className="px-4 py-2 text-xs text-slate-600 hover:text-slate-900 rounded-full border border-hairline border-slate-200 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-textSecondary hover:text-textPrimary rounded-full border border-hairline border-border hover:bg-surfaceMuted transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmittingRole}
-              className="px-5 py-2 text-xs font-medium bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-full transition-colors flex items-center gap-1.5"
+              className="px-5 py-2 text-xs font-bold bg-primary hover:bg-primary-hover disabled:opacity-50 text-slate-950 rounded-full transition-colors flex items-center gap-1.5 shadow-xs"
             >
               {isSubmittingRole ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
               <span>Save role assignment</span>

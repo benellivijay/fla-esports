@@ -356,7 +356,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
             onPressed: isLoading ? null : _handleSignIn,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: const Color(0xFF0B0E17),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               elevation: 0,
@@ -365,9 +365,9 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0B0E17)),
                   )
-                : const Text('Sign In', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                : const Text('Sign In', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 20),
 
@@ -445,7 +445,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
             onPressed: isLoading ? null : _handleRegister,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: const Color(0xFF0B0E17),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               elevation: 0,
@@ -454,9 +454,9 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0B0E17)),
                   )
-                : const Text('Send verification code', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                : const Text('Send verification code', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 20),
 

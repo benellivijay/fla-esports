@@ -74,11 +74,11 @@ class _ModeTournamentsScreenState extends ConsumerState<ModeTournamentsScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.account_balance_wallet_outlined, color: AppColors.textPrimary, size: 15),
+                  const Icon(Icons.account_balance_wallet_outlined, color: AppColors.highlight, size: 15),
                   const SizedBox(width: 6),
                   Text(
-                    '?${balance.toStringAsFixed(0)}',
-                    style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13),
+                    '₹${balance.toStringAsFixed(0)}',
+                    style: const TextStyle(color: AppColors.highlight, fontWeight: FontWeight.w700, fontSize: 13),
                   ),
                 ],
               ),

@@ -12,11 +12,11 @@ export const PillBadge: React.FC<PillBadgeProps> = ({
   size = 'md',
 }) => {
   const variantStyles = {
-    neutral: 'bg-[#F1F5F9] text-[#475569] border-[#E2E8F0]',
-    primary: 'bg-[#0F172A] text-white border-[#0F172A]',
-    success: 'bg-[#F0FDF4] text-[#16A34A] border-[#BBF7D0]',
-    warning: 'bg-[#FFFBEB] text-[#D97706] border-[#FDE68A]',
-    danger: 'bg-[#FEF2F2] text-[#DC2626] border-[#FECACA]',
+    neutral: 'bg-surfaceMuted text-textSecondary border-border',
+    primary: 'bg-primary text-slate-950 border-primary font-bold shadow-xs',
+    success: 'bg-status-successBg text-status-success border-status-successBorder',
+    warning: 'bg-status-warningBg text-status-warning border-status-warningBorder',
+    danger: 'bg-status-dangerBg text-status-danger border-status-dangerBorder',
   };
 
   const sizeStyles = {

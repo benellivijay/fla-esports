@@ -3,35 +3,39 @@
 @tailwind utilities;
 
 :root {
-  --background: #F8FAFC;
-  --surface: #FFFFFF;
-  --border: #E2E8F0;
+  --background: #0B0E17;
+  --surface: #1A2036;
+  --surfaceMuted: #222944;
+  --border: #2A3150;
+  --primary: #3DDCFF;
+  --textPrimary: #E8EAF0;
+  --textSecondary: #8A8FA3;
 }
 
 body {
   background-color: var(--background);
-  color: #0F172A;
+  color: #E8EAF0;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbars for dense administrative tables */
+/* Custom dark scrollbars for dense administrative tables */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: #131726;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #2A3150;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #3DDCFF;
 }
 
 /* 0.5px hairline utilities */

@@ -107,11 +107,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.account_balance_wallet_outlined, color: AppColors.textPrimary, size: 15),
+                  const Icon(Icons.account_balance_wallet_outlined, color: AppColors.highlight, size: 15),
                   const SizedBox(width: 6),
                   Text(
                     '₹${balance.toStringAsFixed(0)}',
-                    style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(color: AppColors.highlight, fontWeight: FontWeight.w700, fontSize: 13),
                   ),
                 ],
               ),
@@ -178,18 +178,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       const SizedBox(width: 8),
                       _buildFilterChip('All matches', 'all', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
                       const SizedBox(width: 8),
-                      _buildFilterChip('Paid entries', 'paid', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
+                      _buildFilterChip('Free matches', 'free', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
                       const SizedBox(width: 8),
-                      _buildFilterChip('Free entries', 'free', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
+                      _buildFilterChip('Paid matches', 'paid', listState.filters.entryType, (val) => notifier.setFilters(entryType: val)),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                // Game Mode Filters
+                const SizedBox(height: 10),
+
+                // Map and Mode secondary filters
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
+                      _buildFilterChip('All maps', 'all', listState.filters.map, (val) => notifier.setFilters(map: val)),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Bermuda', 'bermuda', listState.filters.map, (val) => notifier.setFilters(map: val)),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Purgatory', 'purgatory', listState.filters.map, (val) => notifier.setFilters(map: val)),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Kalahari', 'kalahari', listState.filters.map, (val) => notifier.setFilters(map: val)),
+                      const SizedBox(width: 14),
+                      Container(width: 1, height: 16, color: AppColors.border),
+                      const SizedBox(width: 14),
                       _buildFilterChip('All modes', 'all', listState.filters.mode, (val) => notifier.setFilters(mode: val)),
                       const SizedBox(width: 8),
                       _buildFilterChip('Solo', 'solo', listState.filters.mode, (val) => notifier.setFilters(mode: val)),
@@ -204,7 +215,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Tournament List
+          // Tournament List or Empty State
           Expanded(
             child: listState.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
@@ -213,28 +224,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.sports_esports_outlined, size: 40, color: AppColors.textMuted),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'No tournaments match current filters.',
-                              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(color: AppColors.border, width: 0.5),
+                              ),
+                              child: const Icon(Icons.sports_esports_outlined, size: 36, color: AppColors.textMuted),
                             ),
-                            const SizedBox(height: 12),
-                            TextButton(
-                              onPressed: () => notifier.setFilters(entryType: 'all', mode: 'all', map: 'all'),
-                              child: const Text('Reset filters', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'No tournaments found',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Try changing your filters or check back soon',
+                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                             ),
                           ],
                         ),
                       )
                     : RefreshIndicator(
-                        onRefresh: () => notifier.fetchTournaments(),
                         color: AppColors.primary,
+                        backgroundColor: AppColors.surface,
+                        onRefresh: () async {
+                          await notifier.fetchTournaments();
+                          await ref.read(walletProvider.notifier).fetchSummary();
+                        },
                         child: ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: listState.tournaments.length,
                           itemBuilder: (context, index) {
-                            return TournamentCard(tournament: listState.tournaments[index]);
+                            final tournament = listState.tournaments[index];
+                            return TournamentCard(tournament: tournament);
                           },
                         ),
                       ),
@@ -255,8 +283,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               hoverElevation: 0,
               highlightElevation: 0,
               shape: const StadiumBorder(),
-              icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
-              label: const Text('New tournament', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+              icon: const Icon(Icons.add_rounded, color: Color(0xFF0B0E17), size: 18),
+              label: const Text('New tournament', style: TextStyle(color: Color(0xFF0B0E17), fontWeight: FontWeight.w700, fontSize: 13)),
             )
           : null,
     );
@@ -280,8 +308,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? const Color(0xFF0B0E17) : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
             fontSize: 12,
           ),
         ),

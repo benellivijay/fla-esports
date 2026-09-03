@@ -23,14 +23,14 @@ export const StatCard: React.FC<StatCardProps> = ({
   return (
     <Card padding="md" className="flex flex-col justify-between">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-500">{title}</span>
-        <div className="p-2 bg-slate-100 rounded-lg border border-hairline border-slate-200">
-          <Icon className="w-4 h-4 text-slate-700" />
+        <span className="text-xs font-semibold text-textSecondary">{title}</span>
+        <div className="p-2 bg-surfaceMuted rounded-lg border border-hairline border-border">
+          <Icon className="w-4 h-4 text-primary" />
         </div>
       </div>
       <div className="mt-4">
-        <div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
-        {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+        <div className="text-2xl font-bold text-textPrimary tracking-tight">{value}</div>
+        {subtitle && <p className="text-xs text-textSecondary mt-1 font-medium">{subtitle}</p>}
       </div>
     </Card>
   );

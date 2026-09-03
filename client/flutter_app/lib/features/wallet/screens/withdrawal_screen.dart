@@ -288,8 +288,8 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                               child: Text(
                                 'Instant UPI',
                                 style: TextStyle(
-                                  color: _payoutMethod == 'upi' ? Colors.white : AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500,
+                                  color: _payoutMethod == 'upi' ? const Color(0xFF0B0E17) : AppColors.textSecondary,
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
                               ),
@@ -313,8 +313,8 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
                               child: Text(
                                 'Bank transfer',
                                 style: TextStyle(
-                                  color: _payoutMethod == 'bank_transfer' ? Colors.white : AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500,
+                                  color: _payoutMethod == 'bank_transfer' ? const Color(0xFF0B0E17) : AppColors.textSecondary,
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                 ),
                               ),
@@ -370,7 +370,7 @@ class _WithdrawalScreenState extends ConsumerState<WithdrawalScreen> {
             ElevatedButton(
               onPressed: withdrawalState.isSubmitting ? null : _handleSubmit,
               child: withdrawalState.isSubmitting
-                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5))
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Color(0xFF0B0E17), strokeWidth: 1.5))
                   : const Text('Confirm and withdraw'),
             ),
           ],

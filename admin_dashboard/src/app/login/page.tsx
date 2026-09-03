@@ -61,16 +61,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center items-center p-4">
+    <div className="min-h-screen bg-background text-textPrimary flex flex-col justify-center items-center p-4">
       {/* Container */}
-      <div className="w-full max-w-md bg-white rounded-2xl border border-hairline border-slate-200 p-8">
+      <div className="w-full max-w-md bg-surface rounded-2xl border border-hairline border-border p-8 shadow-xl">
         {/* Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 mb-3 shadow-md flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border border-border bg-surfaceMuted mb-3 shadow-md flex items-center justify-center">
             <img src="/app_logo.png?v=3" alt="FLA Esports" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-lg font-bold text-slate-900">FLA ESPORTS Staff Portal</h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <h1 className="text-lg font-bold text-textPrimary">FLA ESPORTS Staff Portal</h1>
+          <p className="text-xs text-textSecondary mt-1 font-medium">
             {step === 1
               ? 'Enter your internal staff credentials to proceed'
               : 'Enter 6-digit 2FA verification code'}
@@ -81,20 +81,20 @@ export default function LoginPage() {
         <div className="flex items-center justify-center gap-2 mb-6">
           <div
             className={`h-1.5 w-12 rounded-full transition-all ${
-              step === 1 ? 'bg-slate-900' : 'bg-emerald-500'
+              step === 1 ? 'bg-primary' : 'bg-status-success'
             }`}
           />
           <div
             className={`h-1.5 w-12 rounded-full transition-all ${
-              step === 2 ? 'bg-slate-900' : 'bg-slate-200'
+              step === 2 ? 'bg-primary' : 'bg-border'
             }`}
           />
         </div>
 
         {/* Error Banner */}
         {error && (
-          <div className="mb-5 p-3 rounded-lg bg-rose-50 border border-hairline border-rose-200 flex items-start gap-2.5 text-xs text-rose-700">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+          <div className="mb-5 p-3 rounded-lg bg-status-dangerBg border border-hairline border-status-dangerBorder flex items-start gap-2.5 text-xs text-status-danger font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 text-status-danger mt-0.5" />
             <span>{error}</span>
           </div>
         )}
@@ -103,35 +103,35 @@ export default function LoginPage() {
         {step === 1 ? (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold text-textSecondary mb-1.5">
                 Staff email
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-textSecondary absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@ffesports.com"
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:border-primary transition-colors font-medium"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold text-textSecondary mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-textSecondary absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:border-primary transition-colors font-medium"
                 />
               </div>
             </div>
@@ -139,7 +139,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-medium text-xs rounded-full transition-colors flex items-center justify-center gap-2 mt-2"
+              className="w-full py-2.5 px-4 bg-primary hover:bg-primary-hover disabled:opacity-50 text-slate-950 font-bold text-xs rounded-full transition-colors flex items-center justify-center gap-2 mt-2 shadow-xs"
             >
               {isLoading ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -155,11 +155,11 @@ export default function LoginPage() {
           /* Form Step 2: TOTP 2FA */
           <form onSubmit={handleTotpSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold text-textSecondary mb-1.5">
                 6-digit 2FA code
               </label>
               <div className="relative">
-                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <KeyRound className="w-4 h-4 text-textSecondary absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   maxLength={6}
@@ -168,7 +168,7 @@ export default function LoginPage() {
                   value={totpCode}
                   onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                   placeholder="123456"
-                  className="w-full pl-9 pr-3 py-2.5 text-center tracking-[0.5em] text-sm font-mono font-bold bg-white border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 transition-colors"
+                  className="w-full pl-9 pr-3 py-2.5 text-center tracking-[0.5em] text-sm font-mono font-bold bg-surfaceMuted border border-hairline border-border rounded-lg text-primary focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
             </div>
@@ -176,7 +176,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading || totpCode.length !== 6}
-              className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-medium text-xs rounded-full transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 bg-primary hover:bg-primary-hover disabled:opacity-50 text-slate-950 font-bold text-xs rounded-full transition-colors flex items-center justify-center gap-2 shadow-xs"
             >
               {isLoading ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -192,7 +192,7 @@ export default function LoginPage() {
                 setTotpCode('');
                 setError(null);
               }}
-              className="w-full text-center text-xs text-slate-500 hover:text-slate-800 transition-colors"
+              className="w-full text-center text-xs text-textSecondary hover:text-textPrimary font-semibold transition-colors"
             >
               ← Back to password login
             </button>
@@ -201,7 +201,7 @@ export default function LoginPage() {
       </div>
 
       {/* Footer Info */}
-      <p className="text-center text-[11px] text-slate-400 mt-6">
+      <p className="text-center text-[11px] text-textSecondary/60 mt-6 font-medium">
         Internal Administration Dashboard • Role-based access controlled server-side
       </p>
     </div>

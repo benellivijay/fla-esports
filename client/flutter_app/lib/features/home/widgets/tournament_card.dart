@@ -77,8 +77,8 @@ class TournamentCard extends StatelessWidget {
                             children: [
                               _buildPillTag(
                                 _formatGameMode(tournament.gameMode),
-                                AppColors.accent,
-                                const Color(0xFFEFF6FF),
+                                AppColors.primary,
+                                AppColors.surfaceMuted,
                               ),
                               const SizedBox(width: 6),
                               _buildPillTag(
@@ -126,7 +126,7 @@ class TournamentCard extends StatelessWidget {
                           Text(
                             tournament.isPaid ? '₹${tournament.prizePool.toStringAsFixed(0)}' : '${tournament.prizePool.toStringAsFixed(0)} Coins',
                             style: const TextStyle(
-                              color: AppColors.textPrimary,
+                              color: AppColors.highlight,
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                             ),

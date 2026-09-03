@@ -113,15 +113,15 @@ export default function PayoutRunsPage() {
         {/* Tournament Selector Card */}
         <Card padding="md" className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-[280px]">
-            <Trophy className="w-5 h-5 text-slate-500 shrink-0" />
+            <Trophy className="w-5 h-5 text-primary shrink-0" />
             <div className="flex-1">
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-textSecondary mb-1">
                 Select Tournament Match
               </label>
               <select
                 value={selectedTournamentId}
                 onChange={(e) => setSelectedTournamentId(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-slate-50 border border-hairline border-slate-200 rounded-lg focus:outline-none focus:border-slate-900 font-medium"
+                className="w-full px-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary focus:outline-none focus:border-primary font-medium"
               >
                 {tournaments.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -135,7 +135,7 @@ export default function PayoutRunsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => fetchPayoutPreview(selectedTournamentId)}
-              className="px-3 py-2 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg border border-hairline border-slate-200 flex items-center gap-1.5"
+              className="px-3 py-2 text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surfaceMuted hover:bg-surface rounded-lg border border-hairline border-border flex items-center gap-1.5 transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isPreviewLoading ? 'animate-spin' : ''}`} />
               <span>Refresh preview</span>
@@ -148,20 +148,20 @@ export default function PayoutRunsPage() {
           <div
             className={`p-4 rounded-xl border border-hairline flex items-start gap-3 text-xs ${
               executionResult.success
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-rose-50 border-rose-200 text-rose-800'
+                ? 'bg-status-successBg border-status-successBorder text-status-success'
+                : 'bg-status-dangerBg border-status-dangerBorder text-status-danger'
             }`}
           >
             {executionResult.success ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 text-status-success shrink-0 mt-0.5" />
             ) : (
-              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-4 h-4 text-status-danger shrink-0 mt-0.5" />
             )}
             <div>
-              <p className="font-semibold">
+              <p className="font-bold">
                 {executionResult.success ? 'Payout Processed' : 'Payout Execution Error'}
               </p>
-              <p className="mt-0.5">{executionResult.message}</p>
+              <p className="mt-0.5 font-medium">{executionResult.message}</p>
             </div>
           </div>
         )}
@@ -170,28 +170,28 @@ export default function PayoutRunsPage() {
         {previewData && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card padding="md">
-              <span className="text-xs font-medium text-slate-500">Total tournament prize pool</span>
-              <div className="text-xl font-bold text-slate-900 mt-2">
+              <span className="text-xs font-semibold text-textSecondary">Total tournament prize pool</span>
+              <div className="text-xl font-bold text-highlight mt-2">
                 ₹{previewData.totalPrizePool.toLocaleString('en-IN')}
               </div>
             </Card>
 
             <Card padding="md">
-              <span className="text-xs font-medium text-slate-500">Computed payout sum</span>
-              <div className="text-xl font-bold text-slate-900 mt-2">
+              <span className="text-xs font-semibold text-textSecondary">Computed payout sum</span>
+              <div className="text-xl font-bold text-highlight mt-2">
                 ₹{previewData.totalComputedPayout.toLocaleString('en-IN')}
               </div>
             </Card>
 
             <Card padding="md">
-              <span className="text-xs font-medium text-slate-500">Payout status</span>
+              <span className="text-xs font-semibold text-textSecondary">Payout status</span>
               <div className="mt-2 flex items-center gap-2">
                 <PillBadge
                   label={previewData.payoutStatus === 'paid' ? 'Payout Dispatched' : 'Unpaid Preview'}
                   variant={previewData.payoutStatus === 'paid' ? 'success' : 'warning'}
                 />
                 {!previewData.allResultsVerified && previewData.payoutStatus !== 'paid' && (
-                  <span className="text-[11px] text-amber-600 font-medium">
+                  <span className="text-[11px] text-status-warning font-semibold">
                     ({previewData.unverifiedCount} unverified claims)
                   </span>
                 )}
@@ -202,12 +202,12 @@ export default function PayoutRunsPage() {
 
         {/* Computed Payout Breakdown Table */}
         <Card padding="none" className="overflow-hidden">
-          <div className="px-5 py-4 border-b border-hairline border-slate-200 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-hairline border-border flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">
+              <h3 className="text-sm font-bold text-textPrimary">
                 Computed per-player payout breakdown
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-textSecondary mt-0.5 font-medium">
                 Formula: Placement Prize (Rank Tier) + (Kill Count × Per-Kill Rate)
               </p>
             </div>
@@ -217,7 +217,7 @@ export default function PayoutRunsPage() {
               <button
                 onClick={() => setIsConfirmModalOpen(true)}
                 disabled={previewData.payoutBreakdown.length === 0}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white text-xs font-medium rounded-full transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-primary hover:bg-primary-hover disabled:opacity-50 text-slate-950 text-xs font-bold rounded-full transition-colors flex items-center gap-2 shadow-xs"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Confirm & send payouts</span>
@@ -225,7 +225,7 @@ export default function PayoutRunsPage() {
             )}
 
             {previewData && previewData.payoutStatus === 'paid' && (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-hairline border-emerald-200 text-xs font-medium">
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-status-successBg text-status-success rounded-full border border-hairline border-status-successBorder text-xs font-bold">
                 <Check className="w-3.5 h-3.5" />
                 <span>Payout completed & ledger credited</span>
               </div>
@@ -234,45 +234,45 @@ export default function PayoutRunsPage() {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-hairline border-slate-200 text-slate-500 font-medium">
+              <thead className="bg-surfaceMuted border-b border-hairline border-border text-textSecondary font-semibold">
                 <tr>
                   <th className="px-5 py-3">Player / Slot</th>
                   <th className="px-4 py-3">Free Fire ID</th>
                   <th className="px-4 py-3">Rank / Kills</th>
                   <th className="px-4 py-3">Placement prize</th>
                   <th className="px-4 py-3">Kill bounty</th>
-                  <th className="px-4 py-3 font-semibold text-slate-900">Total payout</th>
+                  <th className="px-4 py-3 font-bold text-textPrimary">Total payout</th>
                   <th className="px-5 py-3 text-right">Verification status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-hairline divide-slate-100">
+              <tbody className="divide-y divide-hairline divide-border">
                 {isPreviewLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-12 text-center text-slate-400">
+                    <td colSpan={7} className="px-5 py-12 text-center text-textSecondary">
                       Computing prize matrix...
                     </td>
                   </tr>
                 ) : !previewData || previewData.payoutBreakdown.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-12 text-center text-slate-400">
+                    <td colSpan={7} className="px-5 py-12 text-center text-textSecondary">
                       No match result submissions recorded for this tournament.
                     </td>
                   </tr>
                 ) : (
                   previewData.payoutBreakdown.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-5 py-3.5 font-medium text-slate-900">
+                    <tr key={idx} className="hover:bg-surfaceMuted/50 transition-colors">
+                      <td className="px-5 py-3.5 font-bold text-textPrimary">
                         Slot #{p.slotNumber} • {p.displayName || p.ffIgn}
                       </td>
-                      <td className="px-4 py-3.5 font-mono text-slate-700">
+                      <td className="px-4 py-3.5 font-mono text-primary font-medium">
                         {p.ffUid} ({p.ffIgn})
                       </td>
-                      <td className="px-4 py-3.5 text-slate-800">
+                      <td className="px-4 py-3.5 text-textPrimary font-semibold">
                         Rank #{p.rank} • {p.kills} kills
                       </td>
-                      <td className="px-4 py-3.5 text-slate-700">₹{p.placementPrize}</td>
-                      <td className="px-4 py-3.5 text-slate-700">₹{p.killPrize}</td>
-                      <td className="px-4 py-3.5 font-bold text-slate-900 text-sm">
+                      <td className="px-4 py-3.5 text-textSecondary font-medium">₹{p.placementPrize}</td>
+                      <td className="px-4 py-3.5 text-textSecondary font-medium">₹{p.killPrize}</td>
+                      <td className="px-4 py-3.5 font-bold text-highlight text-sm">
                         ₹{p.totalPayout}
                       </td>
                       <td className="px-5 py-3.5 text-right">
@@ -299,40 +299,40 @@ export default function PayoutRunsPage() {
         maxWidth="md"
       >
         <div className="space-y-4">
-          <div className="p-3 bg-amber-50 rounded-lg border border-hairline border-amber-200 flex items-start gap-2.5 text-xs text-amber-900">
-            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="p-3 bg-status-warningBg rounded-lg border border-hairline border-status-warningBorder flex items-start gap-2.5 text-xs text-status-warning">
+            <ShieldAlert className="w-4 h-4 text-status-warning shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold">Sensitive Financial Transaction</p>
-              <p className="mt-0.5">
-                Confirming will immediately credit <strong>₹{previewData?.totalComputedPayout}</strong> across verified players' wallet ledgers and mark the tournament as completed. This action is irreversible and recorded in the audit log.
+              <p className="font-bold">Sensitive Financial Transaction</p>
+              <p className="mt-0.5 font-medium text-textPrimary">
+                Confirming will immediately credit <strong className="text-highlight">₹{previewData?.totalComputedPayout}</strong> across verified players' wallet ledgers and mark the tournament as completed. This action is irreversible and recorded in the audit log.
               </p>
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-lg border border-hairline border-slate-200 space-y-1 text-xs">
-            <div className="flex justify-between text-slate-600">
+          <div className="p-3 bg-surfaceMuted rounded-lg border border-hairline border-border space-y-1.5 text-xs">
+            <div className="flex justify-between text-textSecondary">
               <span>Tournament:</span>
-              <span className="font-semibold text-slate-900">{previewData?.tournament.title}</span>
+              <span className="font-bold text-textPrimary">{previewData?.tournament.title}</span>
             </div>
-            <div className="flex justify-between text-slate-600">
+            <div className="flex justify-between text-textSecondary">
               <span>Verified Players to Credit:</span>
-              <span className="font-semibold text-slate-900">
+              <span className="font-bold text-textPrimary">
                 {previewData?.payoutBreakdown.filter((p) => p.status === 'verified').length}
               </span>
             </div>
-            <div className="flex justify-between text-slate-600">
+            <div className="flex justify-between text-textSecondary">
               <span>Total Payout Amount:</span>
-              <span className="font-bold text-slate-900 text-sm">
+              <span className="font-bold text-highlight text-sm">
                 ₹{previewData?.totalComputedPayout}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
             <button
               type="button"
               onClick={() => setIsConfirmModalOpen(false)}
-              className="px-4 py-2 text-xs text-slate-600 hover:text-slate-900 rounded-full border border-hairline border-slate-200 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-textSecondary hover:text-textPrimary rounded-full border border-hairline border-border hover:bg-surfaceMuted transition-colors"
             >
               Cancel
             </button>
@@ -340,7 +340,7 @@ export default function PayoutRunsPage() {
               type="button"
               disabled={isExecutingPayout}
               onClick={handleExecutePayout}
-              className="px-5 py-2 text-xs font-medium bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-full transition-colors flex items-center gap-1.5"
+              className="px-5 py-2 text-xs font-bold bg-primary hover:bg-primary-hover disabled:opacity-50 text-slate-950 rounded-full transition-colors flex items-center gap-1.5 shadow-xs"
             >
               {isExecutingPayout ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               <span>Authorize & credit wallets</span>

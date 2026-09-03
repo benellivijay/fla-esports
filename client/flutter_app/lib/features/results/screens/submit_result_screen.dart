@@ -224,7 +224,7 @@ class _SubmitResultScreenState extends ConsumerState<SubmitResultScreen> {
               ElevatedButton(
                 onPressed: state.isSubmitting ? null : _handleSubmit,
                 child: state.isSubmitting
-                    ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5))
+                    ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Color(0xFF0B0E17), strokeWidth: 1.5))
                     : const Text('Submit proof for review'),
               ),
             ],

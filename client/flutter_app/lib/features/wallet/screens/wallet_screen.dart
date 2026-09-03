@@ -152,9 +152,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                           child: Text(
                             '+ ₹$amt',
                             style: TextStyle(
-                              color: isSelected ? Colors.white : AppColors.textPrimary,
+                              color: isSelected ? const Color(0xFF0B0E17) : AppColors.textPrimary,
                               fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -381,7 +381,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                         ? const SizedBox(
                             height: 18,
                             width: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(color: Color(0xFF0B0E17), strokeWidth: 2),
                           )
                         : Text('Submit and add ₹${amount > 0 ? amount.toStringAsFixed(0) : "0"} to wallet'),
                   ),
@@ -442,7 +442,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     const SizedBox(height: 8),
                     Text(
                       '₹${summary?.balance.toStringAsFixed(2) ?? '0.00'}',
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 32, fontWeight: FontWeight.w700),
+                      style: const TextStyle(color: AppColors.highlight, fontSize: 32, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 14),
 
@@ -598,9 +598,9 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+              color: isSelected ? const Color(0xFF0B0E17) : AppColors.textSecondary,
               fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
             ),
           ),
         ),
