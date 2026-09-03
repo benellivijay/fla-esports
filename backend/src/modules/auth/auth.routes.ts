@@ -12,6 +12,8 @@ router.post('/resend-otp', AuthController.resendRegistrationOtp);
 router.post('/google', AuthController.googleSignIn);
 router.get('/check-username', AuthController.checkUsername);
 router.post('/check-username', AuthController.checkUsername);
+router.get('/ai-usernames', AuthController.suggestAiUsernames);
+router.post('/ai-usernames', AuthController.suggestAiUsernames);
 router.post('/refresh', AuthController.refreshToken);
 router.post('/logout', AuthController.logout);
 

@@ -294,9 +294,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /**
-   * Completes Google sign in / sign up with a chosen username or checks if new user.
+   * Fetches AI-generated gaming tag recommendations.
+   */
+  Future<List<String>> fetchAiUsernames({String? name, String? email}) async {
+    try {
+      final res = await _apiClient.dio.get(
+        ApiEndpoints.aiUsernames,
+        queryParameters: {
+          if (name != null && name.isNotEmpty) 'name': name,
+          if (email != null && email.isNotEmpty) 'email': email,
+        },
+      );
+      if (res.statusCode == 200 && res.data['success'] == true) {
+        final List<dynamic>? list = res.data['data']?['suggestions'];
+        if (list != null && list.isNotEmpty) {
+          return list.map((e) => e.toString()).toList();
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /**
+   * Completes Google sign in / sign up with your chosen name & username.
    */
   Future<GoogleAuthResult> handleGoogleSignIn({
+    String? chosenName,
     String? chosenUsername,
     GoogleAccountDetails? accountDetails,
   }) async {
@@ -376,7 +399,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           final isNewUser = data['isNewUser'] == true;
 
           if (isNewUser) {
-            // Player is new -> Prompt for username selection once
+            // Player is new -> Prompt for name and username selection
             state = state.copyWith(status: AuthStatus.unauthenticated);
             return GoogleAuthResult(
               success: true,
@@ -409,13 +432,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
         }
       }
 
-      // Complete registration with the chosen username
+      // Complete registration with the chosen name and username
+      final finalDisplayName = chosenName?.trim().isNotEmpty == true
+          ? chosenName!.trim()
+          : details.displayName?.trim();
+
       final res = await _apiClient.dio.post(
         ApiEndpoints.googleAuth,
         data: {
           if (details.idToken != null) 'idToken': details.idToken,
           'email': details.email.trim().toLowerCase(),
-          if (details.displayName != null && details.displayName!.trim().isNotEmpty) 'name': details.displayName!.trim(),
+          if (finalDisplayName != null && finalDisplayName.isNotEmpty) 'name': finalDisplayName,
           if (details.photoUrl != null && details.photoUrl!.isNotEmpty) 'avatarUrl': details.photoUrl,
           if (details.googleId != null && details.googleId!.isNotEmpty) 'googleId': details.googleId,
           if (chosenUsername != null) 'username': chosenUsername.trim().toLowerCase(),

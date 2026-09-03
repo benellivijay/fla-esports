@@ -25,6 +25,7 @@ class ApiEndpoints {
   static const String googleSignIn = '/auth/google';
   static const String googleAuth = '/auth/google';
   static const String checkUsername = '/auth/check-username';
+  static const String aiUsernames = '/auth/ai-usernames';
   static const String refreshToken = '/auth/refresh';
   static const String logout = '/auth/logout';
   static const String sendOtp = '/auth/otp/send';

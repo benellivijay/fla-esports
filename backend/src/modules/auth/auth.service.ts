@@ -424,6 +424,7 @@ export class AuthService {
       }
 
       const now = new Date().toISOString();
+      const finalDisplayName = payload.name?.trim() || verifiedName || username;
       player = {
         id: userId,
         username,
@@ -437,7 +438,7 @@ export class AuthService {
         created_at: now,
         updated_at: now,
         profile: {
-          display_name: verifiedName || username,
+          display_name: finalDisplayName,
           matches_played: 0,
           wins: 0,
           total_kills: 0,
@@ -452,16 +453,32 @@ export class AuthService {
         action: 'USER_REGISTERED_GOOGLE_GDRIVE',
         targetResource: 'users',
         targetId: userId,
-        details: { email: verifiedEmail, googleId: verifiedGoogleId, username },
+        details: { email: verifiedEmail, googleId: verifiedGoogleId, username, name: finalDisplayName },
       });
-    } else if (finalUsername && finalUsername !== player.username) {
-      // Existing player updating username
-      player.username = finalUsername;
-      if (player.profile) {
-        player.profile.display_name = verifiedName || finalUsername;
+    } else {
+      let shouldSave = false;
+      if (finalUsername && finalUsername !== player.username) {
+        player.username = finalUsername;
+        shouldSave = true;
       }
-      player.updated_at = new Date().toISOString();
-      await GDriveAuthStore.savePlayer(player);
+      if (payload.name?.trim()) {
+        if (!player.profile) {
+          player.profile = {
+            display_name: payload.name.trim(),
+            matches_played: 0,
+            wins: 0,
+            total_kills: 0,
+            total_earnings: 0,
+          };
+        } else {
+          player.profile.display_name = payload.name.trim();
+        }
+        shouldSave = true;
+      }
+      if (shouldSave) {
+        player.updated_at = new Date().toISOString();
+        await GDriveAuthStore.savePlayer(player);
+      }
     }
 
     const user: User = {
@@ -519,6 +536,55 @@ export class AuthService {
       return { available: false, message: 'Username is already taken.' };
     }
     return { available: true, message: 'Username is available!' };
+  }
+
+  /**
+   * GET /auth/ai-usernames
+   * Generates intelligent, creative esports gamer tags based on the player's name/email.
+   */
+  public static async generateAiUsernames(name?: string, email?: string): Promise<string[]> {
+    let base = (name || email?.split('@')[0] || 'player')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toLowerCase();
+
+    if (base.length < 2) base = 'gamer';
+    if (base.length > 10) base = base.slice(0, 10);
+
+    const prefixes = ['shadow', 'titan', 'cyber', 'alpha', 'vortex', 'ghost', 'nova', 'viper', 'apex', 'blaze', 'falcon'];
+    const suffixes = ['_pro', '_x', '_99', '_yt', '_ff', '_sniper', '_77', '_esports'];
+
+    const candidates: string[] = [];
+
+    // Strategy 1: Prefix + Base
+    for (const prefix of prefixes) {
+      candidates.push(`${prefix}_${base}`);
+      candidates.push(`${prefix}${base}`);
+    }
+
+    // Strategy 2: Base + Suffix
+    for (const suffix of suffixes) {
+      candidates.push(`${base}${suffix}`);
+    }
+
+    // Strategy 3: Cool stylized combo
+    candidates.push(`team_${base}`);
+    candidates.push(`king_${base}`);
+    candidates.push(`itss_${base}`);
+    candidates.push(`${base}_god`);
+
+    const available: string[] = [];
+    for (const candidate of candidates) {
+      const clean = candidate.toLowerCase().slice(0, 24);
+      if (/^[a-zA-Z0-9_]{3,30}$/.test(clean)) {
+        const existing = await GDriveAuthStore.getPlayer(clean);
+        if (!existing && !available.includes(clean)) {
+          available.push(clean);
+          if (available.length >= 8) break;
+        }
+      }
+    }
+
+    return available;
   }
 
   /**

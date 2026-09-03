@@ -152,6 +152,25 @@ export class AuthController {
   }
 
   /**
+   * GET /auth/ai-usernames?name=Vijay&email=xyz@gmail.com
+   */
+  public static async suggestAiUsernames(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const name = (req.query.name as string) || (req.body.name as string) || '';
+      const email = (req.query.email as string) || (req.body.email as string) || '';
+      const suggestions = await AuthService.generateAiUsernames(name, email);
+      res.status(200).json({
+        success: true,
+        data: {
+          suggestions,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
    * POST /auth/refresh
    */
   public static async refreshToken(req: Request, res: Response, next: NextFunction): Promise<void> {

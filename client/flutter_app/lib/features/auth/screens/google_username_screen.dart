@@ -22,36 +22,56 @@ class GoogleUsernameScreen extends ConsumerStatefulWidget {
 
 class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
   late final TextEditingController _usernameController;
-  final FocusNode _focusNode = FocusNode();
+  final FocusNode _nameFocusNode = FocusNode();
+  final FocusNode _usernameFocusNode = FocusNode();
 
   Timer? _debounceTimer;
   bool _isCheckingAvailability = false;
   bool? _isAvailable;
   String? _availabilityMessage;
   bool _isSubmitting = false;
+  bool _isLoadingAiTags = false;
   String? _errorMessage;
+
+  List<String> _aiSuggestions = [];
 
   @override
   void initState() {
     super.initState();
-    String defaultName = widget.initialSuggestedUsername ?? '';
-    if (defaultName.isEmpty || defaultName == 'google_player' || defaultName.startsWith('google_player_') || defaultName.startsWith('player_')) {
-      final name = widget.accountDetails.displayName;
-      if (name != null && name.isNotEmpty && name != 'Google Player') {
-        defaultName = name.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_').toLowerCase();
+    // 1. Initialize Name
+    final initialName = widget.accountDetails.displayName ?? '';
+    _nameController = TextEditingController(text: initialName != 'Google Player' ? initialName : '');
+
+    // 2. Initialize Username
+    String defaultHandle = widget.initialSuggestedUsername ?? '';
+    if (defaultHandle.isEmpty || defaultHandle == 'google_player' || defaultHandle.startsWith('google_player_') || defaultHandle.startsWith('player_')) {
+      if (initialName.isNotEmpty && initialName != 'Google Player') {
+        defaultHandle = initialName.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_').toLowerCase();
       } else {
-        defaultName = 'player_${DateTime.now().millisecondsSinceEpoch % 10000}';
+        defaultHandle = 'player_${DateTime.now().millisecondsSinceEpoch % 10000}';
       }
     }
-    _usernameController = TextEditingController(text: defaultName);
+    _usernameController = TextEditingController(text: defaultHandle);
 
     // Initial check
-    if (defaultName.length >= 3) {
-      _checkAvailability(defaultName);
+    if (defaultHandle.length >= 3) {
+      _checkAvailability(defaultHandle);
     }
 
     _usernameController.addListener(_onUsernameChanged);
+    _nameController.addListener(_onNameChanged);
+
+    // Generate initial AI tags
+    _generateAiSuggestions();
+  }
+
+  void _onNameChanged() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 600), () {
+      _generateAiSuggestions();
+    });
   }
 
   void _onUsernameChanged() {
@@ -81,7 +101,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
       _availabilityMessage = 'Checking availability...';
     });
 
-    _debounceTimer = Timer(const Duration(milliseconds: 450), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
       _checkAvailability(text);
     });
   }
@@ -100,18 +120,70 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
     }
   }
 
+  Future<void> _generateAiSuggestions() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingAiTags = true;
+    });
+
+    final name = _nameController.text.trim().isNotEmpty
+        ? _nameController.text.trim()
+        : (widget.accountDetails.displayName ?? 'Player');
+
+    // 1. Try remote AI suggestion API
+    final notifier = ref.read(authProvider.notifier);
+    List<String> suggestions = await notifier.fetchAiUsernames(
+      name: name,
+      email: widget.accountDetails.email,
+    );
+
+    // 2. On-device smart esports generator fallback
+    if (suggestions.isEmpty) {
+      final clean = name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+      final base = clean.isNotEmpty ? (clean.length > 8 ? clean.substring(0, 8) : clean) : 'pro';
+      suggestions = [
+        'shadow_$base',
+        'titan_$base',
+        '${base}_sniper',
+        'cyber_$base',
+        'alpha_$base',
+        'vortex_$base',
+        '${base}_pro',
+        'ghost_$base',
+        '${base}_99',
+        'viper_$base',
+      ];
+    }
+
+    if (mounted) {
+      setState(() {
+        _aiSuggestions = suggestions;
+        _isLoadingAiTags = false;
+      });
+    }
+  }
+
+  void _selectAiTag(String tag) {
+    _usernameController.text = tag;
+    _checkAvailability(tag);
+  }
+
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _nameController.dispose();
     _usernameController.dispose();
-    _focusNode.dispose();
+    _nameFocusNode.dispose();
+    _usernameFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _submitUsername() async {
+  Future<void> _submitProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final name = _nameController.text.trim();
     final username = _usernameController.text.trim().toLowerCase();
+
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
@@ -119,6 +191,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
 
     final notifier = ref.read(authProvider.notifier);
     final result = await notifier.handleGoogleSignIn(
+      chosenName: name.isNotEmpty ? name : null,
       chosenUsername: username,
       accountDetails: widget.accountDetails,
     );
@@ -132,7 +205,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
     if (result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Welcome, @$username! Account setup complete.'),
+          content: Text('Welcome, ${name.isNotEmpty ? name : '@$username'}! Account setup complete.'),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
@@ -161,7 +234,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          'Choose Username',
+          'Complete Profile',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -175,13 +248,13 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: const BoxConstraints(maxWidth: 440),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Google Account Profile Card
+                    // Google Account Card
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -190,8 +263,8 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                         border: Border.all(color: AppColors.border, width: 1),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 10,
+                            color: Colors.black.withOpacity(0.35),
+                            blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ],
@@ -199,8 +272,8 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                       child: Row(
                         children: [
                           Container(
-                            width: 54,
-                            height: 54,
+                            width: 52,
+                            height: 52,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(color: AppColors.primary, width: 2),
@@ -212,7 +285,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                   : null,
                             ),
                             child: widget.accountDetails.photoUrl == null
-                                ? const Icon(Icons.person, color: Colors.white, size: 30)
+                                ? const Icon(Icons.person, color: Colors.white, size: 28)
                                 : null,
                           ),
                           const SizedBox(width: 14),
@@ -224,27 +297,47 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                   children: [
                                     Flexible(
                                       child: Text(
-                                        widget.accountDetails.displayName ?? 'Google Player',
+                                        widget.accountDetails.displayName ?? 'Google User',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 16,
+                                          fontSize: 15,
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     const SizedBox(width: 6),
-                                    const Icon(Icons.verified, color: Colors.blueAccent, size: 16),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blueAccent.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.blueAccent.withOpacity(0.4)),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.verified, color: Colors.blueAccent, size: 12),
+                                          SizedBox(width: 3),
+                                          Text(
+                                            'Google',
+                                            style: TextStyle(
+                                              color: Colors.blueAccent,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  widget.accountDetails.email.startsWith('google_player_')
-                                      ? 'Google Verified Player'
-                                      : widget.accountDetails.email,
+                                  widget.accountDetails.email,
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.7),
-                                    fontSize: 13,
+                                    color: Colors.white.withOpacity(0.65),
+                                    fontSize: 12,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -255,37 +348,118 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
                     // Section Heading
                     const Text(
-                      'Player Handle',
+                      'Personalize Your Account',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
-                      'Choose your unique tournament username. This handle is displayed on leaderboards, brackets, and match rooms.',
+                      'Enter your real name and customize your tournament handle below.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.65),
-                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 13,
                         height: 1.4,
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
-                    // Username Input Field
+                    // 1. YOUR NAME FIELD
+                    const Text(
+                      'Your Name',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     TextFormField(
-                      controller: _usernameController,
-                      focusNode: _focusNode,
+                      controller: _nameController,
+                      focusNode: _nameFocusNode,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Vijay Kumar',
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                        prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary, size: 20),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        if (val.trim().length < 2) {
+                          return 'Name must be at least 2 characters';
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // 2. USERNAME (GAMING TAG) FIELD
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Gaming Username',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (_isAvailable == true)
+                          const Row(
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'Available',
+                                style: TextStyle(
+                                  color: Colors.greenAccent,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _usernameController,
+                      focusNode: _usernameFocusNode,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.5,
                       ),
@@ -294,17 +468,15 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                         LengthLimitingTextInputFormatter(30),
                       ],
                       decoration: InputDecoration(
-                        labelText: 'Username',
-                        labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
                         hintText: 'e.g. shadow_player',
                         hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                        prefixIcon: const Icon(Icons.alternate_email, color: AppColors.primary),
+                        prefixIcon: const Icon(Icons.alternate_email, color: AppColors.primary, size: 20),
                         suffixIcon: _isCheckingAvailability
                             ? const Padding(
                                 padding: EdgeInsets.all(12.0),
                                 child: SizedBox(
-                                  width: 20,
-                                  height: 20,
+                                  width: 18,
+                                  height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: AppColors.primary,
@@ -315,10 +487,12 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                 ? Icon(
                                     _isAvailable! ? Icons.check_circle : Icons.cancel,
                                     color: _isAvailable! ? Colors.greenAccent : Colors.redAccent,
+                                    size: 20,
                                   )
                                 : null),
                         filled: true,
                         fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide(color: AppColors.border),
@@ -358,10 +532,8 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                       },
                     ),
 
-                    const SizedBox(height: 8),
-
-                    // Availability Subtitle Status
-                    if (_availabilityMessage != null)
+                    if (_availabilityMessage != null) ...[
+                      const SizedBox(height: 6),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4.0),
                         child: Row(
@@ -372,7 +544,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                   : (_isAvailable == false
                                       ? Icons.error_outline
                                       : Icons.info_outline),
-                              size: 14,
+                              size: 13,
                               color: _isAvailable == true
                                   ? Colors.greenAccent
                                   : (_isAvailable == false
@@ -397,32 +569,144 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                           ],
                         ),
                       ),
+                    ],
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Guidelines Container
+                    // 3. AI GAMER TAG SUGGESTIONS SECTION
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.03),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.surface,
+                            AppColors.surface.withBlue(35),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.35),
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.auto_awesome,
+                                      color: AppColors.primary,
+                                      size: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'AI Gamer Tag Suggestions',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              InkWell(
+                                onTap: _isLoadingAiTags ? null : _generateAiSuggestions,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                  child: Row(
+                                    children: [
+                                      _isLoadingAiTags
+                                          ? const SizedBox(
+                                              width: 12,
+                                              height: 12,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                color: AppColors.primary,
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.refresh,
+                                              color: AppColors.primary,
+                                              size: 14,
+                                            ),
+                                      const SizedBox(width: 4),
+                                      const Text(
+                                        'Refresh',
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
                           Text(
-                            'Username Rules:',
+                            'Tap any AI suggestion to automatically use it as your gaming handle:',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.8),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              color: Colors.white.withOpacity(0.55),
+                              fontSize: 11,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          _buildRuleItem('3 - 30 characters in length'),
-                          _buildRuleItem('Letters, numbers, and underscores (_) only'),
-                          _buildRuleItem('Unique identifier across all tournament matches'),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _aiSuggestions.map((tag) {
+                              final isSelected = _usernameController.text.trim().toLowerCase() == tag.toLowerCase();
+                              return InkWell(
+                                onTap: () => _selectAiTag(tag),
+                                borderRadius: BorderRadius.circular(10),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.background.withOpacity(0.8),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.border,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '✨ $tag',
+                                        style: TextStyle(
+                                          color: isSelected ? Colors.black : Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ],
                       ),
                     ),
@@ -453,11 +737,11 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
 
                     const SizedBox(height: 28),
 
-                    // Submit Button
+                    // Submit CTA Button
                     SizedBox(
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: (_isSubmitting || _isAvailable == false) ? null : _submitUsername,
+                        onPressed: (_isSubmitting || _isAvailable == false) ? null : _submitProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           disabledBackgroundColor: AppColors.primary.withOpacity(0.4),
@@ -480,7 +764,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Text(
-                                    'Complete & Continue',
+                                    'Complete Registration',
                                     style: TextStyle(
                                       color: Colors.black,
                                       fontWeight: FontWeight.bold,
@@ -499,35 +783,6 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildRuleItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 4,
-            height: 4,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.5),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.6),
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
