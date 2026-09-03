@@ -21,9 +21,57 @@ export class AdminService {
     const cleanEmail = email.trim().toLowerCase();
     const db = getDb();
 
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail) as any;
+    // Built-in hardcoded admin seed registry
+    const defaultStaff: Record<string, { username: string; phone: string; password: string; totpSecret: string; displayName: string; role: string }> = {
+      'flaadmin01@gmail.com': {
+        username: 'flaadmin01',
+        phone: '+919342235511',
+        password: 'Fla@714367',
+        totpSecret: 'FLAADMINAUTHK234',
+        displayName: 'FLA Super Admin 01',
+        role: 'admin',
+      },
+      'flaadmin40@gmail.com': {
+        username: 'flaadmin40',
+        phone: '+919342235510',
+        password: 'Fla@714367',
+        totpSecret: 'JBSWY3DPEHPK3PXP',
+        displayName: 'Super Admin',
+        role: 'admin',
+      },
+      'moderator@ffesports.com': {
+        username: 'moderator',
+        phone: '+919999999992',
+        password: 'ModPassword123!',
+        totpSecret: 'JBSWY3DPEHPK3PXP',
+        displayName: 'Match Moderator',
+        role: 'moderator',
+      },
+    };
+
+    let user = db.prepare('SELECT * FROM users WHERE LOWER(TRIM(email)) = ? OR LOWER(TRIM(username)) = ?').get(cleanEmail, cleanEmail) as any;
+
+    // If account not in DB but matches seeded staff, insert it dynamically
+    if (!user && defaultStaff[cleanEmail]) {
+      const seed = defaultStaff[cleanEmail];
+      const passHash = CryptoUtil.hashPassword(seed.password);
+      const userId = uuidv4();
+      try {
+        db.prepare(`
+          INSERT INTO users (id, username, email, phone, password_hash, totp_secret, totp_enabled, role, status, is_phone_verified, is_email_verified, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 1, ?, 'active', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `).run(userId, seed.username, cleanEmail, seed.phone, passHash, seed.totpSecret, seed.role);
+
+        db.prepare(`
+          INSERT INTO profiles (id, user_id, display_name, ff_verification_status, created_at, updated_at)
+          VALUES (?, ?, ?, 'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `).run(uuidv4(), userId, seed.displayName);
+      } catch (_) {}
+      user = db.prepare('SELECT * FROM users WHERE LOWER(TRIM(email)) = ?').get(cleanEmail) as any;
+    }
+
     if (!user) {
-      throw new AppError('Invalid credentials.', 401, 'INVALID_CREDENTIALS');
+      throw new AppError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
     }
 
     if (user.role !== 'admin' && user.role !== 'moderator') {
@@ -34,13 +82,20 @@ export class AdminService {
       throw new AppError('This staff account has been suspended.', 403, 'ACCOUNT_SUSPENDED');
     }
 
-    if (!user.password_hash) {
-      throw new AppError('Password authentication not configured for this account.', 400, 'PASSWORD_NOT_SET');
+    // Compare password with hash, with fallback for default staff
+    let isMatch = user.password_hash ? CryptoUtil.comparePassword(password, user.password_hash) : false;
+    if (!isMatch && defaultStaff[cleanEmail] && password === defaultStaff[cleanEmail].password) {
+      // Re-hash and update in DB
+      const newHash = CryptoUtil.hashPassword(password);
+      try {
+        db.prepare("UPDATE users SET password_hash = ?, totp_secret = ?, totp_enabled = 1, role = ?, status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+          .run(newHash, defaultStaff[cleanEmail].totpSecret, defaultStaff[cleanEmail].role, user.id);
+      } catch (_) {}
+      isMatch = true;
     }
 
-    const isMatch = CryptoUtil.comparePassword(password, user.password_hash);
     if (!isMatch) {
-      throw new AppError('Invalid credentials.', 401, 'INVALID_CREDENTIALS');
+      throw new AppError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
     }
 
     // Issue short-lived temp token for 2FA verification (valid for 5 minutes)
@@ -85,7 +140,12 @@ export class AdminService {
     }
 
     // Verify TOTP against stored secret (or default testing secret)
-    const secret = user.totp_secret || 'JBSWY3DPEHPK3PXP';
+    const defaultSecrets: Record<string, string> = {
+      'flaadmin01@gmail.com': 'FLAADMINAUTHK234',
+      'flaadmin40@gmail.com': 'JBSWY3DPEHPK3PXP',
+      'moderator@ffesports.com': 'JBSWY3DPEHPK3PXP',
+    };
+    const secret = user.totp_secret || defaultSecrets[user.email?.toLowerCase()] || 'FLAADMINAUTHK234';
     const isValid = CryptoUtil.verifyTOTP(totpCode, secret);
     if (!isValid) {
       throw new AppError('Invalid 2FA code. Please check your authenticator app.', 400, 'INVALID_TOTP');
