@@ -288,29 +288,31 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
                   // App Branding Header
                   Center(
                     child: Container(
-                      width: 68,
-                      height: 68,
+                      width: 76,
+                      height: 76,
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceMuted,
-                        borderRadius: BorderRadius.circular(18),
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: AppColors.border, width: 1),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            blurRadius: 10,
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(17),
+                        borderRadius: BorderRadius.circular(19),
                         child: Image.asset(
-                          'assets/images/fla_logo.png',
+                          'assets/images/app_logo.png',
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.sports_esports,
-                            size: 36,
-                            color: AppColors.primary,
+                          errorBuilder: (_, __, ___) => const Center(
+                            child: Icon(
+                              Icons.sports_esports,
+                              size: 38,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                       ),
