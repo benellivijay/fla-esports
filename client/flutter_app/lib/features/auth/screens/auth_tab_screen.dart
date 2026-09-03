@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../main.dart';
@@ -32,6 +34,12 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
   final _registerPasswordController = TextEditingController();
   bool _obscureRegisterPassword = true;
 
+  // Username validation & live availability check
+  Timer? _usernameDebounceTimer;
+  bool _isCheckingUsername = false;
+  bool? _isUsernameAvailable;
+  String? _usernameStatusMessage;
+
   @override
   void initState() {
     super.initState();
@@ -40,10 +48,67 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
+    _registerUsernameController.addListener(_onRegisterUsernameChanged);
+  }
+
+  void _onRegisterUsernameChanged() {
+    final text = _registerUsernameController.text.trim();
+    _usernameDebounceTimer?.cancel();
+
+    if (text.isEmpty) {
+      setState(() {
+        _isCheckingUsername = false;
+        _isUsernameAvailable = null;
+        _usernameStatusMessage = null;
+      });
+      return;
+    }
+
+    if (text.length < 3) {
+      setState(() {
+        _isCheckingUsername = false;
+        _isUsernameAvailable = false;
+        _usernameStatusMessage = 'Username must be at least 3 characters.';
+      });
+      return;
+    }
+
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(text)) {
+      setState(() {
+        _isCheckingUsername = false;
+        _isUsernameAvailable = false;
+        _usernameStatusMessage = 'Only letters, numbers, and underscores allowed.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingUsername = true;
+      _usernameStatusMessage = 'Checking availability...';
+    });
+
+    _usernameDebounceTimer = Timer(const Duration(milliseconds: 450), () {
+      _checkRegisterUsername(text);
+    });
+  }
+
+  Future<void> _checkRegisterUsername(String username) async {
+    if (!mounted) return;
+    final notifier = ref.read(authProvider.notifier);
+    final available = await notifier.checkUsernameAvailable(username);
+
+    if (mounted && _registerUsernameController.text.trim().toLowerCase() == username.toLowerCase()) {
+      setState(() {
+        _isCheckingUsername = false;
+        _isUsernameAvailable = available;
+        _usernameStatusMessage = available ? 'Username is available!' : 'Username is already taken.';
+      });
+    }
   }
 
   @override
   void dispose() {
+    _usernameDebounceTimer?.cancel();
     _tabController.dispose();
     _signInIdentifierController.dispose();
     _signInPasswordController.dispose();
@@ -84,8 +149,30 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
   Future<void> _handleRegister() async {
     if (!_registerFormKey.currentState!.validate()) return;
 
+    if (_isCheckingUsername) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Checking username availability... Please wait a moment.'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_isUsernameAvailable == false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Username is already taken. Please choose another username.'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final email = _registerEmailController.text.trim().toLowerCase();
-    final username = _registerUsernameController.text.trim();
+    final username = _registerUsernameController.text.trim().toLowerCase();
     final password = _registerPasswordController.text;
 
     final notifier = ref.read(authProvider.notifier);
@@ -160,11 +247,8 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.status == AuthStatus.authenticated && mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-          (route) => false,
-        );
+      if (next.status == AuthStatus.error && next.errorMessage != null) {
+        // Shown via UI container
       }
     });
 
@@ -176,53 +260,56 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App Branding Logo
+                  // App Branding Header
                   Center(
                     child: Container(
-                      width: 72,
-                      height: 72,
+                      width: 68,
+                      height: 68,
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(20),
+                        color: AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(18),
                         border: Border.all(color: AppColors.border, width: 1),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 16,
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(12),
-                      child: Image.asset(
-                        'assets/images/app_logo.png',
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.sports_esports,
-                          size: 36,
-                          color: AppColors.primary,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(17),
+                        child: Image.asset(
+                          'assets/images/fla_logo.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.sports_esports,
+                            size: 36,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
                   const Text(
                     'FLA ESPORTS',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
                       letterSpacing: 0.5,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   const Text(
                     'Free Fire Tournaments & Rewards',
                     textAlign: TextAlign.center,
@@ -233,18 +320,18 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
                   ),
                   const SizedBox(height: 28),
 
-                  // Error Message Banner
-                  if (authState.status == AuthStatus.error && authState.errorMessage != null) ...[
+                  // Error Banner
+                  if (authState.errorMessage != null && authState.status == AuthStatus.error) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: AppColors.dangerBg,
+                        color: AppColors.danger.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.dangerBorder, width: 1),
+                        border: Border.all(color: AppColors.danger.withValues(alpha: 0.4), width: 1),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger),
+                          const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -280,7 +367,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -353,7 +440,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
               return null;
             },
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
 
           // Forgot Password Link
           Align(
@@ -370,11 +457,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
               ),
               child: const Text(
                 'Forgot password?',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.accent,
-                ),
+                style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -420,18 +503,77 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Username Input with live debounce validation & formatters
           _buildTextField(
             controller: _registerUsernameController,
             label: 'Username',
             hint: 'e.g. shadow_ninja',
             prefixIcon: Icons.alternate_email_rounded,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_]')),
+              LengthLimitingTextInputFormatter(30),
+            ],
+            suffixIcon: _isCheckingUsername
+                ? const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  )
+                : _isUsernameAvailable == true
+                    ? const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20)
+                    : _isUsernameAvailable == false
+                        ? const Icon(Icons.cancel_rounded, color: AppColors.danger, size: 20)
+                        : null,
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Username is required';
+              if (v.trim().length < 3) return 'Username must be at least 3 characters';
               if (!RegExp(r'^[a-zA-Z0-9_]{3,30}$').hasMatch(v.trim())) {
                 return '3-30 letters, numbers or underscores only';
               }
+              if (_isUsernameAvailable == false) return 'Username is already taken';
               return null;
             },
+            bottomHelper: _usernameStatusMessage != null
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _isUsernameAvailable == true
+                              ? Icons.check_circle_outline_rounded
+                              : _isUsernameAvailable == false
+                                  ? Icons.error_outline_rounded
+                                  : Icons.info_outline_rounded,
+                          size: 13,
+                          color: _isUsernameAvailable == true
+                              ? AppColors.success
+                              : _isUsernameAvailable == false
+                                  ? AppColors.danger
+                                  : AppColors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _usernameStatusMessage!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: _isUsernameAvailable == true
+                                ? AppColors.success
+                                : _isUsernameAvailable == false
+                                    ? AppColors.danger
+                                    : AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: 16),
           _buildTextField(
@@ -511,6 +653,8 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    Widget? bottomHelper,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -529,6 +673,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: hint,
@@ -557,6 +702,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
           ),
           validator: validator,
         ),
+        if (bottomHelper != null) bottomHelper,
       ],
     );
   }
