@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Lock, Mail, KeyRound, ArrowRight, AlertCircle, RefreshCw, Copy, Check, Info, QrCode } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, KeyRound, ArrowRight, AlertCircle, RefreshCw, Copy, Check, Info, QrCode, Eye, EyeOff } from 'lucide-react';
 import { AdminApi } from '@/lib/api';
 
 export default function LoginPage() {
@@ -10,8 +10,9 @@ export default function LoginPage() {
 
   // Step state: 1 = Email/Password, 2 = TOTP 2FA
   const [step, setStep] = useState<1 | 2>(1);
-  const [email, setEmail] = useState('flaadmin01@gmail.com');
-  const [password, setPassword] = useState('Fla@714367');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [totpCode, setTotpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +29,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await AdminApi.login(email, password);
+      const res = await AdminApi.login(email.trim(), password);
       if (res.data?.success && res.data?.data?.tempToken) {
         setTempToken(res.data.data.tempToken);
         setStep(2);
@@ -49,7 +50,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await AdminApi.verifyTotp(tempToken, totpCode);
+      const res = await AdminApi.verifyTotp(tempToken, totpCode.trim());
       if (res.data?.success && res.data?.data?.accessToken) {
         localStorage.setItem('admin_access_token', res.data.data.accessToken);
         localStorage.setItem('admin_user', JSON.stringify(res.data.data.user));
@@ -123,7 +124,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="flaadmin01@gmail.com"
+                  placeholder="Enter staff email"
                   className="w-full pl-9 pr-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:border-primary transition-colors font-medium"
                 />
               </div>
@@ -136,13 +137,20 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="w-4 h-4 text-textSecondary absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full pl-9 pr-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:border-primary transition-colors font-medium"
+                  placeholder="Enter password"
+                  className="w-full pl-9 pr-10 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:border-primary transition-colors font-medium"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-textSecondary hover:text-textPrimary"
+                >
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
               </div>
             </div>
 
