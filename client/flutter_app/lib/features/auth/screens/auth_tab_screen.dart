@@ -29,6 +29,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
 
   // Register Controllers
   final _registerFormKey = GlobalKey<FormState>();
+  final _registerNameController = TextEditingController();
   final _registerUsernameController = TextEditingController();
   final _registerEmailController = TextEditingController();
   final _registerPasswordController = TextEditingController();
@@ -116,6 +117,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
     _tabController.dispose();
     _signInIdentifierController.dispose();
     _signInPasswordController.dispose();
+    _registerNameController.dispose();
     _registerUsernameController.dispose();
     _registerEmailController.dispose();
     _registerPasswordController.dispose();
@@ -190,11 +192,13 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       return;
     }
 
+    final name = _registerNameController.text.trim();
     final email = _registerEmailController.text.trim().toLowerCase();
     final username = _registerUsernameController.text.trim().toLowerCase();
 
     final notifier = ref.read(authProvider.notifier);
     final success = await notifier.register(
+      name: name.isNotEmpty ? name : null,
       username: username,
       email: email,
       password: password,
@@ -523,6 +527,20 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Your Name / Display Name Input
+          _buildTextField(
+            controller: _registerNameController,
+            label: 'Your Name',
+            hint: 'e.g. Rahul Sharma',
+            prefixIcon: Icons.person_outline_rounded,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Please enter your name';
+              if (v.trim().length < 2) return 'Name must be at least 2 characters';
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
           // Username Input with live debounce validation & formatters
           _buildTextField(
             controller: _registerUsernameController,

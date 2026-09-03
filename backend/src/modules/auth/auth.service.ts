@@ -94,12 +94,13 @@ export class AuthService {
    * Validates registration details, checks uniqueness in Google Drive store, rate-limits to 3 sends per 15 min,
    * stores pending registration in Google Drive (never creates a user row yet), and sends 6-digit OTP.
    */
-  public static async register(username: string, email: string, password: string): Promise<{
+  public static async register(username: string, email: string, password: string, name?: string): Promise<{
     success: boolean;
     message: string;
   }> {
     const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name && name.trim().length > 0 ? name.trim() : cleanUsername;
 
     // Validate username format (3-30 chars, alphanumeric or underscores)
     if (!/^[a-zA-Z0-9_]{3,30}$/.test(cleanUsername)) {
@@ -147,6 +148,7 @@ export class AuthService {
     await GDriveAuthStore.savePendingRegistration({
       email: cleanEmail,
       username: cleanUsername,
+      name: cleanName,
       password_hash: passwordHash,
       otp_hash: otpHash,
       expires_at: expiresAt,
@@ -218,7 +220,7 @@ export class AuthService {
       created_at: now,
       updated_at: now,
       profile: {
-        display_name: pending.username,
+        display_name: pending.name || pending.username,
         matches_played: 0,
         wins: 0,
         total_kills: 0,

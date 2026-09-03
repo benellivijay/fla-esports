@@ -186,6 +186,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<bool> register({
+    String? name,
     required String username,
     required String email,
     required String password,
@@ -195,6 +196,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final res = await _apiClient.dio.post(
         ApiEndpoints.register,
         data: {
+          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
           'username': username.trim(),
           'email': email.trim().toLowerCase(),
           'password': password,

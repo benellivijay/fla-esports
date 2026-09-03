@@ -33,6 +33,7 @@ export interface StoredPlayerRecord {
 export interface StoredPendingRegistration {
   email: string;
   username: string;
+  name?: string;
   password_hash: string;
   otp_hash: string;
   expires_at: string;

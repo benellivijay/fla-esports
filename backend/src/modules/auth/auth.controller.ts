@@ -10,6 +10,7 @@ const signInSchema = z.object({
 });
 
 const registerSchema = z.object({
+  name: z.string().max(60).optional(),
   username: z.string().min(3, 'Username must be at least 3 characters').max(30),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -79,8 +80,8 @@ export class AuthController {
    */
   public static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { username, email, password } = registerSchema.parse(req.body);
-      const result = await AuthService.register(username, email, password);
+      const { name, username, email, password } = registerSchema.parse(req.body);
+      const result = await AuthService.register(username, email, password, name);
       res.status(200).json(result);
     } catch (err) {
       next(err);
