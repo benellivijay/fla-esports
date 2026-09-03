@@ -29,24 +29,24 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = file("release.keystore")
+            val keystoreFile = file("fla_release.keystore")
             if (keystoreFile.exists()) {
                 storeFile = keystoreFile
                 storePassword = "flaesports2026"
-                keyAlias = "fla-esports"
+                keyAlias = "flakey"
                 keyPassword = "flaesports2026"
+            } else {
+                storeFile = signingConfigs.getByName("debug").storeFile
+                storePassword = signingConfigs.getByName("debug").storePassword
+                keyAlias = signingConfigs.getByName("debug").keyAlias
+                keyPassword = signingConfigs.getByName("debug").keyPassword
             }
         }
     }
 
     buildTypes {
         release {
-            val keystoreFile = file("release.keystore")
-            if (keystoreFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
-            } else {
-                signingConfig = signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

@@ -26,29 +26,36 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: 🔑 Configure Release Signing Key & Output SHA-1
-        working-directory: client/flutter_app/android/app
-        run: |
-          keytool -genkey -v -keystore release.keystore -alias fla-esports -keyalg RSA -keysize 2048 -validity 10000 -storepass flaesports2026 -keypass flaesports2026 -dname "CN=FLA Esports, OU=Gaming, O=FLA, L=Mumbai, ST=Maharashtra, C=IN"
-          
-          SHA1_FINGERPRINT=$(keytool -list -v -keystore release.keystore -alias fla-esports -storepass flaesports2026 | grep "SHA1:" | head -n 1 | awk '{print $2}')
-          SHA256_FINGERPRINT=$(keytool -list -v -keystore release.keystore -alias fla-esports -storepass flaesports2026 | grep "SHA256:" | head -n 1 | awk '{print $2}')
-          
-          echo "### 🔑 Google Sign-In Credentials" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package Name**: \`com.flaesports.tournament\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **SHA-1 Fingerprint**: \`$SHA1_FINGERPRINT\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **SHA-256 Fingerprint**: \`$SHA256_FINGERPRINT\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "👉 Add this **SHA-1 Fingerprint** in **Firebase Console** (Project Settings ➔ Your Apps ➔ Add Fingerprint) or **Google Cloud Console** (OAuth 2.0 Client IDs for Android)." >> $GITHUB_STEP_SUMMARY
-          
-          echo "=========================================================="
-          echo "PACKAGE NAME: com.flaesports.tournament"
-          echo "SHA-1 FINGERPRINT: $SHA1_FINGERPRINT"
-          echo "=========================================================="
-
       - name: 📦 Install Flutter Dependencies
         working-directory: client/flutter_app
         run: flutter pub get
+
+      - name: 🔑 Setup Release Keystore & Print SHA-1 Fingerprint
+        run: |
+          KEYSTORE_PATH="client/flutter_app/android/app/fla_release.keystore"
+          if [ ! -f "$KEYSTORE_PATH" ]; then
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_PATH" \
+              -alias flakey \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass flaesports2026 \
+              -keypass flaesports2026 \
+              -dname "CN=FLA ESPORTS, OU=Mobile, O=FLA, L=Mumbai, ST=Maharashtra, C=IN"
+          fi
+          
+          echo "=========================================================="
+          echo "GOOGLE OAUTH 2.0 SHA-1 CERTIFICATE FINGERPRINTS:"
+          keytool -list -v -keystore "$KEYSTORE_PATH" -alias flakey -storepass flaesports2026 | grep -E "(SHA1|SHA256)"
+          echo "Package Name: com.flaesports.tournament"
+          echo "=========================================================="
+          
+          echo "### 🔑 Google OAuth 2.0 SHA-1 Fingerprint (Copy for Google Cloud / Firebase)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package Name**: \`com.flaesports.tournament\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          keytool -list -v -keystore "$KEYSTORE_PATH" -alias flakey -storepass flaesports2026 | grep -E "(SHA1|SHA256)" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: 🔨 Build Release APK
         working-directory: client/flutter_app

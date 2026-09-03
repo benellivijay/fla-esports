@@ -86,13 +86,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return e.message!;
       }
     } else if (e is PlatformException) {
-      final msg = e.message ?? '';
-      final code = e.code;
-      if (msg.contains('10:') || msg.contains('DEVELOPER_ERROR') || code == 'sign_in_failed') {
-        return 'Google Sign-In setup required: Add your SHA-1 fingerprint for package "com.flaesports.tournament" in Google Cloud Console / Firebase.';
-      }
-      if (msg.isNotEmpty) {
-        return msg;
+      if (e.message != null && e.message!.isNotEmpty) {
+        return e.message!;
       }
     }
     return defaultMsg;
