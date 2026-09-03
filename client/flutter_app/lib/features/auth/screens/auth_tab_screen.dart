@@ -32,7 +32,9 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
   final _registerUsernameController = TextEditingController();
   final _registerEmailController = TextEditingController();
   final _registerPasswordController = TextEditingController();
+  final _registerConfirmPasswordController = TextEditingController();
   bool _obscureRegisterPassword = true;
+  bool _obscureRegisterConfirmPassword = true;
 
   // Username validation & live availability check
   Timer? _usernameDebounceTimer;
@@ -49,6 +51,8 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       initialIndex: widget.initialTabIndex,
     );
     _registerUsernameController.addListener(_onRegisterUsernameChanged);
+    _registerPasswordController.addListener(() => setState(() {}));
+    _registerConfirmPasswordController.addListener(() => setState(() {}));
   }
 
   void _onRegisterUsernameChanged() {
@@ -115,6 +119,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
     _registerUsernameController.dispose();
     _registerEmailController.dispose();
     _registerPasswordController.dispose();
+    _registerConfirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -171,9 +176,22 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       return;
     }
 
+    final password = _registerPasswordController.text;
+    final confirmPassword = _registerConfirmPasswordController.text;
+
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Passwords do not match. Please verify your confirm password.'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final email = _registerEmailController.text.trim().toLowerCase();
     final username = _registerUsernameController.text.trim().toLowerCase();
-    final password = _registerPasswordController.text;
 
     final notifier = ref.read(authProvider.notifier);
     final success = await notifier.register(
@@ -609,7 +627,74 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
               return null;
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // Confirm Password Field
+          _buildTextField(
+            controller: _registerConfirmPasswordController,
+            label: 'Confirm Password',
+            hint: 'Re-enter your password',
+            prefixIcon: Icons.lock_reset_rounded,
+            obscureText: _obscureRegisterConfirmPassword,
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_registerConfirmPasswordController.text.isNotEmpty)
+                  Icon(
+                    _registerConfirmPasswordController.text == _registerPasswordController.text
+                        ? Icons.check_circle_rounded
+                        : Icons.cancel_rounded,
+                    size: 18,
+                    color: _registerConfirmPasswordController.text == _registerPasswordController.text
+                        ? AppColors.success
+                        : AppColors.danger,
+                  ),
+                IconButton(
+                  icon: Icon(
+                    _obscureRegisterConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    size: 20,
+                    color: AppColors.textMuted,
+                  ),
+                  onPressed: () => setState(() => _obscureRegisterConfirmPassword = !_obscureRegisterConfirmPassword),
+                ),
+              ],
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Please confirm your password';
+              if (v != _registerPasswordController.text) return 'Passwords do not match';
+              return null;
+            },
+          ),
+          const SizedBox(height: 10),
+
+          // Real-time Password Rules Checklist
+          if (_registerPasswordController.text.isNotEmpty || _registerConfirmPasswordController.text.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border, width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPasswordRuleItem(
+                    text: 'At least 6 characters',
+                    isMet: _registerPasswordController.text.length >= 6,
+                  ),
+                  const SizedBox(height: 4),
+                  _buildPasswordRuleItem(
+                    text: 'Passwords match',
+                    isMet: _registerConfirmPasswordController.text.isNotEmpty &&
+                        _registerConfirmPasswordController.text == _registerPasswordController.text,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          const SizedBox(height: 14),
 
           // Send verification code Button
           ElevatedButton(
@@ -641,6 +726,27 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPasswordRuleItem({required String text, required bool isMet}) {
+    return Row(
+      children: [
+        Icon(
+          isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+          size: 14,
+          color: isMet ? AppColors.success : AppColors.textMuted,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: isMet ? AppColors.success : AppColors.textMuted,
+          ),
+        ),
+      ],
     );
   }
 
