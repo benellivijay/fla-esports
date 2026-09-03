@@ -215,6 +215,27 @@ class _SubmitResultScreenState extends ConsumerState<SubmitResultScreen> {
                         _selectedImage != null ? 'Change screenshot' : 'Choose screenshot from gallery',
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border, width: 0.5),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.shield_outlined, size: 14, color: AppColors.primary),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Auto-Purge: Screenshot proof is permanently deleted from server storage once verified by moderators.',
+                              style: TextStyle(fontSize: 10, color: AppColors.textSecondary, height: 1.3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),

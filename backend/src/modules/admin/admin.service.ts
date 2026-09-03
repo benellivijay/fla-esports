@@ -6,6 +6,7 @@ import { Logger } from '../../utils/logger';
 import { AppError } from '../../middleware/error.middleware';
 import { config } from '../../config/env';
 import { User, Profile, Tournament } from '../../types';
+import { FileCleanupUtil } from '../../utils/file_cleanup.util';
 
 export class AdminService {
   /**
@@ -285,9 +286,14 @@ export class AdminService {
     const rank = confirmedRank !== undefined ? confirmedRank : result.claimed_rank;
     const kills = confirmedKills !== undefined ? confirmedKills : result.claimed_kills;
 
+    // Automatically delete position & kill screenshot proof from server storage upon verification
+    if (result.screenshot_url) {
+      FileCleanupUtil.deleteUploadedFile(result.screenshot_url);
+    }
+
     db.prepare(`
       UPDATE match_results 
-      SET status = 'approved', admin_confirmed_rank = ?, admin_confirmed_kills = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      SET status = 'approved', admin_confirmed_rank = ?, admin_confirmed_kills = ?, screenshot_url = '[DELETED_AFTER_APPROVAL]', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(rank, kills, adminId, resultId);
 

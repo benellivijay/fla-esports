@@ -240,13 +240,20 @@ export default function ResultsQueuePage() {
                         )}
                       </td>
                       <td className="px-4 py-3.5">
-                        <button
-                          onClick={() => setPreviewImage(r.screenshot_url)}
-                          className="flex items-center gap-1 text-textSecondary hover:text-textPrimary px-2.5 py-1 bg-surfaceMuted hover:bg-surface rounded border border-hairline border-border transition-colors text-[11px] font-semibold"
-                        >
-                          <ImageIcon className="w-3 h-3 text-primary" />
-                          <span>View proof</span>
-                        </button>
+                        {r.screenshot_url === '[DELETED_AFTER_APPROVAL]' || !r.screenshot_url ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-status-success bg-status-successBg px-2 py-0.5 rounded border border-status-successBorder">
+                            <CheckCircle2 className="w-3 h-3 text-status-success" />
+                            <span>Purged on approval</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setPreviewImage(r.screenshot_url)}
+                            className="flex items-center gap-1 text-textSecondary hover:text-textPrimary px-2.5 py-1 bg-surfaceMuted hover:bg-surface rounded border border-hairline border-border transition-colors text-[11px] font-semibold"
+                          >
+                            <ImageIcon className="w-3 h-3 text-primary" />
+                            <span>View proof</span>
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <PillBadge

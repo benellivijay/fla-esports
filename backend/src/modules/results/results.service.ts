@@ -4,6 +4,7 @@ import { Logger } from '../../utils/logger';
 import { AppError } from '../../middleware/error.middleware';
 import { MatchResult, AdminResultQueueItem, ResultStatus } from '../../types';
 import { NotificationService } from '../scheduler/notification.service';
+import { FileCleanupUtil } from '../../utils/file_cleanup.util';
 
 export interface SubmitResultInput {
   tournamentId: string;
@@ -189,11 +190,17 @@ export class ResultsService {
     db.exec('BEGIN TRANSACTION;');
     try {
       if (decision === 'approved') {
+        // Automatically delete the position and kill screenshot proof from server storage
+        if (result.screenshot_url) {
+          FileCleanupUtil.deleteUploadedFile(result.screenshot_url);
+        }
+
         db.prepare(`
           UPDATE match_results 
           SET status = 'approved',
               admin_confirmed_rank = ?,
               admin_confirmed_kills = ?,
+              screenshot_url = '[DELETED_AFTER_APPROVAL]',
               rejection_reason = NULL,
               reviewed_by = ?,
               reviewed_at = CURRENT_TIMESTAMP,
