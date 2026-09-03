@@ -122,14 +122,14 @@ export class AuthService {
       throw new AppError('Email is already registered. Please sign in.', 400, 'EMAIL_EXISTS');
     }
 
-    // Rate limiting: check pending registrations (max 3 sends per 15 minutes)
+    // Rate limiting: check pending registrations (max 10 sends per 15 minutes)
     const existingPending = await GDriveAuthStore.getPendingRegistration(cleanEmail);
     let sendCount = 1;
     let lastSentAt = new Date().toISOString();
 
     if (existingPending) {
       const isWithin15Min = new Date(existingPending.last_sent_at).getTime() > Date.now() - 15 * 60 * 1000;
-      if (isWithin15Min && existingPending.send_count >= 3) {
+      if (isWithin15Min && existingPending.send_count >= 10) {
         throw new AppError('Too many registration attempts. Please wait 15 minutes before trying again.', 429, 'RATE_LIMITED');
       }
 
@@ -289,7 +289,7 @@ export class AuthService {
     }
 
     const isWithin15Min = new Date(pending.last_sent_at).getTime() > Date.now() - 15 * 60 * 1000;
-    if (isWithin15Min && pending.send_count >= 3) {
+    if (isWithin15Min && pending.send_count >= 10) {
       throw new AppError('Too many code requests. Please wait 15 minutes before requesting again.', 429, 'RATE_LIMITED');
     }
 

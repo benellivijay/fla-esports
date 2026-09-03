@@ -62,10 +62,21 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       password: _signInPasswordController.text,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
         (route) => false,
+      );
+    } else {
+      final error = ref.read(authProvider).errorMessage ?? 'Incorrect username/email or password.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -73,7 +84,7 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
   Future<void> _handleRegister() async {
     if (!_registerFormKey.currentState!.validate()) return;
 
-    final email = _registerEmailController.text.trim();
+    final email = _registerEmailController.text.trim().toLowerCase();
     final username = _registerUsernameController.text.trim();
     final password = _registerPasswordController.text;
 
@@ -84,10 +95,28 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
       password: password,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Verification code sent to $email'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => OtpCodeScreen(email: email, username: username),
+        ),
+      );
+    } else {
+      final error = ref.read(authProvider).errorMessage ?? 'Failed to send verification code. Please check your details.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -256,6 +285,8 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
                                   displayName: name.isNotEmpty ? name : null,
                                 );
 
+                                final navigator = Navigator.of(context);
+                                final messenger = ScaffoldMessenger.of(context);
                                 final notifier = ref.read(authProvider.notifier);
                                 final res = await notifier.handleGoogleSignIn(
                                   accountDetails: details,
@@ -265,9 +296,8 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
 
                                 if (res.success) {
                                   Navigator.of(ctx).pop();
-                                  if (!mounted) return;
                                   if (res.isNewUser && res.account != null) {
-                                    Navigator.of(context).push(
+                                    navigator.push(
                                       MaterialPageRoute(
                                         builder: (_) => GoogleUsernameScreen(
                                           accountDetails: res.account!,
@@ -276,15 +306,14 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
                                       ),
                                     );
                                   } else {
-                                    Navigator.of(context).pushAndRemoveUntil(
+                                    navigator.pushAndRemoveUntil(
                                       MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
                                       (route) => false,
                                     );
                                   }
                                 } else {
                                   setSheetState(() => isSubmitting = false);
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     SnackBar(
                                       content: Text(res.errorMessage ?? 'Google authentication failed.'),
                                       backgroundColor: AppColors.danger,
