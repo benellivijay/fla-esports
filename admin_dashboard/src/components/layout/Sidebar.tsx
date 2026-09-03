@@ -14,6 +14,7 @@ import {
   LogOut,
   ShieldCheck,
   QrCode,
+  KeyRound,
   X,
 } from 'lucide-react';
 import { PillBadge } from '../ui/PillBadge';

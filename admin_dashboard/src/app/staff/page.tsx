@@ -222,7 +222,7 @@ export default function StaffManagementPage() {
     <AdminLayout>
       <Header
         title="Staff & 2FA Management"
-        description="Add new admin credentials, set passwords, and manage dedicated 2FA Authenticator keys"
+        subtitle="Add new admin credentials, set passwords, and manage dedicated 2FA Authenticator keys"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -250,7 +250,7 @@ export default function StaffManagementPage() {
         </div>
 
         {/* Staff Table Card */}
-        <Card orientation="vertical">
+        <Card>
           <div className="p-4 border-b border-hairline border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-primary" />
@@ -313,7 +313,7 @@ export default function StaffManagementPage() {
                         <td className="py-3 px-4">
                           <PillBadge
                             label={staff.role === 'admin' ? 'SUPER ADMIN' : 'MODERATOR'}
-                            variant={staff.role === 'admin' ? 'primary' : 'outline'}
+                            variant={staff.role === 'admin' ? 'primary' : 'neutral'}
                           />
                         </td>
 
