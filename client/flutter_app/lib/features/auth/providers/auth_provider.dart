@@ -54,25 +54,68 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> checkInitialAuth() async {
+    final isLoggedIn = await _apiClient.isLoggedIn();
     final hasToken = await _apiClient.hasValidToken();
-    if (!hasToken) {
+
+    if (!isLoggedIn && !hasToken) {
       state = state.copyWith(status: AuthStatus.unauthenticated);
       return;
     }
 
+    // 1. Immediately restore locally cached user & profile for instant startup
+    final cachedUserJson = await _apiClient.getCachedUser();
+    final cachedProfileJson = await _apiClient.getCachedProfile();
+
+    UserModel? user;
+    ProfileModel? profile;
+    if (cachedUserJson != null) {
+      try {
+        user = UserModel.fromJson(cachedUserJson);
+      } catch (_) {}
+    }
+    if (cachedProfileJson != null) {
+      try {
+        profile = ProfileModel.fromJson(cachedProfileJson);
+      } catch (_) {}
+    }
+
+    // Mark as authenticated immediately so the player is NEVER kicked out to login
+    state = state.copyWith(
+      status: AuthStatus.authenticated,
+      user: user,
+      profile: profile,
+    );
+
+    // 2. Silently sync latest profile from backend in the background
     try {
       final res = await _apiClient.dio.get(ApiEndpoints.profileMe);
       if (res.statusCode == 200 && res.data['success'] == true) {
-        final profile = ProfileModel.fromJson(res.data['data']['profile']);
-        state = state.copyWith(
-          status: AuthStatus.authenticated,
-          profile: profile,
-        );
-      } else {
-        state = state.copyWith(status: AuthStatus.unauthenticated);
+        final profileData = res.data['data']?['profile'];
+        if (profileData != null) {
+          final updatedProfile = ProfileModel.fromJson(profileData);
+          await _apiClient.saveCachedProfile(updatedProfile.toJson());
+          state = state.copyWith(profile: updatedProfile);
+        }
       }
-    } catch (_) {
-      state = state.copyWith(status: AuthStatus.unauthenticated);
+    } catch (e) {
+      // If token expired, attempt refresh
+      if (e is DioException && e.response?.statusCode == 401) {
+        final refreshed = await _apiClient.attemptTokenRefresh();
+        if (refreshed) {
+          try {
+            final res = await _apiClient.dio.get(ApiEndpoints.profileMe);
+            if (res.statusCode == 200 && res.data['success'] == true) {
+              final profileData = res.data['data']?['profile'];
+              if (profileData != null) {
+                final updatedProfile = ProfileModel.fromJson(profileData);
+                await _apiClient.saveCachedProfile(updatedProfile.toJson());
+                state = state.copyWith(profile: updatedProfile);
+              }
+            }
+          } catch (_) {}
+        }
+      }
+      // Offline, server waking up, or network latency: KEEP PLAYER LOGGED IN!
     }
   }
 
@@ -120,9 +163,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final user = UserModel.fromJson(data['user']);
         final profile = ProfileModel.fromJson(data['profile']);
 
-        await _apiClient.saveTokens(
+        await _apiClient.saveUserSession(
           accessToken: data['accessToken'],
           refreshToken: data['refreshToken'],
+          user: user.toJson(),
+          profile: profile.toJson(),
         );
 
         state = state.copyWith(
@@ -190,9 +235,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final user = UserModel.fromJson(data['user']);
         final profile = ProfileModel.fromJson(data['profile']);
 
-        await _apiClient.saveTokens(
+        await _apiClient.saveUserSession(
           accessToken: data['accessToken'],
           refreshToken: data['refreshToken'],
+          user: user.toJson(),
+          profile: profile.toJson(),
         );
 
         state = state.copyWith(
@@ -344,9 +391,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
             final user = UserModel.fromJson(data['user']);
             final profile = ProfileModel.fromJson(data['profile']);
 
-            await _apiClient.saveTokens(
+            await _apiClient.saveUserSession(
               accessToken: data['accessToken'],
               refreshToken: data['refreshToken'],
+              user: user.toJson(),
+              profile: profile.toJson(),
             );
             await _apiClient.savePersistentGoogleAccount(
               email: details.email,
@@ -382,9 +431,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final user = UserModel.fromJson(data['user']);
         final profile = ProfileModel.fromJson(data['profile']);
 
-        await _apiClient.saveTokens(
+        await _apiClient.saveUserSession(
           accessToken: data['accessToken'],
           refreshToken: data['refreshToken'],
+          user: user.toJson(),
+          profile: profile.toJson(),
         );
         await _apiClient.savePersistentGoogleAccount(
           email: details.email,
@@ -460,9 +511,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final user = UserModel.fromJson(data['user']);
         final profile = ProfileModel.fromJson(data['profile']);
 
-        await _apiClient.saveTokens(
+        await _apiClient.saveUserSession(
           accessToken: data['accessToken'],
           refreshToken: data['refreshToken'],
+          user: user.toJson(),
+          profile: profile.toJson(),
         );
 
         state = state.copyWith(
@@ -487,7 +540,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await _apiClient.dio.post(ApiEndpoints.logout, data: {'refreshToken': refresh});
       }
     } catch (_) {}
-    await _apiClient.clearTokens();
+    await _apiClient.clearUserSession();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 }

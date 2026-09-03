@@ -50,4 +50,22 @@ class ProfileModel {
   bool get isFfVerified => ffVerificationStatus == 'verified';
   bool get isFfPending => ffVerificationStatus == 'pending_review';
   bool get isFfChallengeIssued => ffVerificationStatus == 'challenge_issued';
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'display_name': displayName,
+      'avatar_url': avatarUrl,
+      'ff_uid': ffUid,
+      'ff_ign': ffIgn,
+      'ff_verification_status': ffVerificationStatus,
+      'ff_temp_challenge': ffTempChallenge,
+      'ff_proof_image_url': ffProofImageUrl,
+      'matches_played': matchesPlayed,
+      'wins': wins,
+      'total_kills': totalKills,
+      'total_earnings': totalEarnings,
+    };
+  }
 }

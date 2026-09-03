@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/models/auth_state.dart';
@@ -28,18 +29,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   void _startNavigationTimer() async {
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Smooth splash branding duration
+    await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
     try {
+      final isSessionActive = await ApiClient().isLoggedIn() || await ApiClient().hasValidToken();
       final authState = ref.read(authProvider);
-      final Widget targetScreen = (authState.status == AuthStatus.authenticated)
-          ? const MainNavigationScreen()
-          : const AuthTabScreen();
+
+      final bool shouldGoToHome = isSessionActive || (authState.status == AuthStatus.authenticated);
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => targetScreen),
+          MaterialPageRoute(
+            builder: (_) => shouldGoToHome ? const MainNavigationScreen() : const AuthTabScreen(),
+          ),
         );
       }
     } catch (_) {

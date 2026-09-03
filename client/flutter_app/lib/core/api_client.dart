@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'constants/api_endpoints.dart';
@@ -10,12 +11,15 @@ class ApiClient {
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
-      resetOnError: true,
+      resetOnError: false,
     ),
   );
 
   static const String keyAccessToken = 'ff_access_token';
   static const String keyRefreshToken = 'ff_refresh_token';
+  static const String keyUserData = 'ff_user_data';
+  static const String keyProfileData = 'ff_profile_data';
+  static const String keyIsLoggedIn = 'ff_is_logged_in';
 
   ApiClient._internal() {
     dio = Dio(
@@ -36,7 +40,7 @@ class ApiClient {
         onRequest: (options, handler) async {
           try {
             final token = await _storage.read(key: keyAccessToken);
-            if (token != null) {
+            if (token != null && token.isNotEmpty) {
               options.headers['Authorization'] = 'Bearer $token';
             }
           } catch (_) {}
@@ -45,7 +49,7 @@ class ApiClient {
         onError: (DioException error, handler) async {
           if (error.response?.statusCode == 401 &&
               error.response?.data?['code'] == 'TOKEN_EXPIRED') {
-            final refreshed = await _attemptTokenRefresh();
+            final refreshed = await attemptTokenRefresh();
             if (refreshed) {
               final token = await _storage.read(key: keyAccessToken);
               final opts = error.requestOptions;
@@ -64,10 +68,10 @@ class ApiClient {
     );
   }
 
-  Future<bool> _attemptTokenRefresh() async {
+  Future<bool> attemptTokenRefresh() async {
     try {
       final refreshToken = await _storage.read(key: keyRefreshToken);
-      if (refreshToken == null) return false;
+      if (refreshToken == null || refreshToken.isEmpty) return false;
 
       final res = await Dio().post(
         '${ApiEndpoints.baseUrl}${ApiEndpoints.refreshToken}',
@@ -81,7 +85,6 @@ class ApiClient {
         return true;
       }
     } catch (_) {}
-    await clearTokens();
     return false;
   }
 
@@ -89,14 +92,84 @@ class ApiClient {
     try {
       await _storage.write(key: keyAccessToken, value: accessToken);
       await _storage.write(key: keyRefreshToken, value: refreshToken);
+      await _storage.write(key: keyIsLoggedIn, value: 'true');
     } catch (_) {}
+  }
+
+  Future<void> saveUserSession({
+    required String accessToken,
+    required String refreshToken,
+    Map<String, dynamic>? user,
+    Map<String, dynamic>? profile,
+  }) async {
+    try {
+      await _storage.write(key: keyAccessToken, value: accessToken);
+      await _storage.write(key: keyRefreshToken, value: refreshToken);
+      await _storage.write(key: keyIsLoggedIn, value: 'true');
+      if (user != null) {
+        await _storage.write(key: keyUserData, value: jsonEncode(user));
+      }
+      if (profile != null) {
+        await _storage.write(key: keyProfileData, value: jsonEncode(profile));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> saveCachedUser(Map<String, dynamic> user) async {
+    try {
+      await _storage.write(key: keyUserData, value: jsonEncode(user));
+    } catch (_) {}
+  }
+
+  Future<void> saveCachedProfile(Map<String, dynamic> profile) async {
+    try {
+      await _storage.write(key: keyProfileData, value: jsonEncode(profile));
+    } catch (_) {}
+  }
+
+  Future<Map<String, dynamic>?> getCachedUser() async {
+    try {
+      final str = await _storage.read(key: keyUserData);
+      if (str != null && str.isNotEmpty) {
+        return jsonDecode(str) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> getCachedProfile() async {
+    try {
+      final str = await _storage.read(key: keyProfileData);
+      if (str != null && str.isNotEmpty) {
+        return jsonDecode(str) as Map<String, dynamic>;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<bool> isLoggedIn() async {
+    try {
+      final loggedInFlag = await _storage.read(key: keyIsLoggedIn);
+      if (loggedInFlag == 'true') return true;
+      final token = await _storage.read(key: keyAccessToken);
+      return token != null && token.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> clearTokens() async {
     try {
       await _storage.delete(key: keyAccessToken);
       await _storage.delete(key: keyRefreshToken);
+      await _storage.delete(key: keyIsLoggedIn);
+      await _storage.delete(key: keyUserData);
+      await _storage.delete(key: keyProfileData);
     } catch (_) {}
+  }
+
+  Future<void> clearUserSession() async {
+    await clearTokens();
   }
 
   Future<String?> getAccessToken() async {
