@@ -73,6 +73,17 @@ export const createApp = () => {
     });
   });
 
+  // Public Privacy Policy & Terms of Service for Google OAuth & app compliance
+  app.get('/privacy', (_req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html><html><head><title>Privacy Policy - FLA Esports</title><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#333;"><h1>Privacy Policy</h1><p>Last updated: September 2026</p><p>FLA Esports ("we", "our") respects your privacy. We collect your email and gaming handle solely to facilitate tournament matchmaking, room allocation, and prize distribution. We never sell your personal data to third parties.</p><p>Contact: flaadmin40@gmail.com</p></body></html>`);
+  });
+
+  app.get('/terms', (_req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html><html><head><title>Terms of Service - FLA Esports</title><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#333;"><h1>Terms of Service</h1><p>Last updated: September 2026</p><p>By participating in tournaments on FLA Esports, players agree to follow fair play guidelines, refrain from emulators/hacks, and adhere to tournament rules.</p><p>Contact: flaadmin40@gmail.com</p></body></html>`);
+  });
+
   // API Routes
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/profile', profileRoutes);
