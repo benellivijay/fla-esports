@@ -263,7 +263,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                         border: Border.all(color: AppColors.border, width: 1),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.35),
+                            color: Colors.black.withValues(alpha: 0.35),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -310,9 +310,9 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: Colors.blueAccent.withOpacity(0.15),
+                                        color: Colors.blueAccent.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: Colors.blueAccent.withOpacity(0.4)),
+                                        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.4)),
                                       ),
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -336,7 +336,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                 Text(
                                   widget.accountDetails.email,
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.65),
+                                    color: Colors.white.withValues(alpha: 0.65),
                                     fontSize: 12,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -364,7 +364,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                     Text(
                       'Enter your real name and customize your tournament handle below.',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -393,18 +393,18 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                       textCapitalization: TextCapitalization.words,
                       decoration: InputDecoration(
                         hintText: 'e.g. Vijay Kumar',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                         prefixIcon: const Icon(Icons.person_outline, color: AppColors.primary, size: 20),
                         filled: true,
                         fillColor: AppColors.surface,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -469,7 +469,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                       ],
                       decoration: InputDecoration(
                         hintText: 'e.g. shadow_player',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                         prefixIcon: const Icon(Icons.alternate_email, color: AppColors.primary, size: 20),
                         suffixIcon: _isCheckingAvailability
                             ? const Padding(
@@ -495,15 +495,15 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(color: AppColors.border),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide(
                             color: _isAvailable == true
-                                ? Colors.greenAccent.withOpacity(0.6)
+                                ? Colors.greenAccent.withValues(alpha: 0.6)
                                 : (_isAvailable == false
-                                    ? Colors.redAccent.withOpacity(0.6)
+                                    ? Colors.redAccent.withValues(alpha: 0.6)
                                     : AppColors.border),
                           ),
                         ),
@@ -549,7 +549,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                   ? Colors.greenAccent
                                   : (_isAvailable == false
                                       ? Colors.redAccent
-                                      : Colors.white.withOpacity(0.6)),
+                                      : Colors.white.withValues(alpha: 0.6)),
                             ),
                             const SizedBox(width: 6),
                             Expanded(
@@ -560,7 +560,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                       ? Colors.greenAccent
                                       : (_isAvailable == false
                                           ? Colors.redAccent
-                                          : Colors.white.withOpacity(0.6)),
+                                          : Colors.white.withValues(alpha: 0.6)),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -587,7 +587,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                         ),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AppColors.primary.withOpacity(0.35),
+                          color: AppColors.primary.withValues(alpha: 0.35),
                           width: 1,
                         ),
                       ),
@@ -602,7 +602,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(5),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.15),
+                                      color: AppColors.primary.withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Icon(
@@ -662,7 +662,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                           Text(
                             'Tap any AI suggestion to automatically use it as your gaming handle:',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.55),
+                              color: Colors.white.withValues(alpha: 0.55),
                               fontSize: 11,
                             ),
                           ),
@@ -681,7 +681,7 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? AppColors.primary
-                                        : AppColors.background.withOpacity(0.8),
+                                        : AppColors.background.withValues(alpha: 0.8),
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
                                       color: isSelected
@@ -716,9 +716,9 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent.withOpacity(0.12),
+                          color: Colors.redAccent.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           children: [
@@ -744,12 +744,12 @@ class _GoogleUsernameScreenState extends ConsumerState<GoogleUsernameScreen> {
                         onPressed: (_isSubmitting || _isAvailable == false) ? null : _submitProfile,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          disabledBackgroundColor: AppColors.primary.withOpacity(0.4),
+                          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.4),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                           elevation: 4,
-                          shadowColor: AppColors.primary.withOpacity(0.4),
+                          shadowColor: AppColors.primary.withValues(alpha: 0.4),
                         ),
                         child: _isSubmitting
                             ? const SizedBox(

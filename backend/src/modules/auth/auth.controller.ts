@@ -136,6 +136,14 @@ export class AuthController {
   }
 
   /**
+   * GET /auth/google/callback
+   */
+  public static async googleCallback(_req: Request, res: Response): Promise<void> {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html><html><head><title>Google Authentication</title><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="background:#0b0e14;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><h2>Connecting your Google Account...</h2><p style="color:#aaa;">Please wait while we complete your login...</p></div></body></html>`);
+  }
+
+  /**
    * GET /auth/check-username?username=xyz
    */
   public static async checkUsername(req: Request, res: Response, next: NextFunction): Promise<void> {

@@ -6,6 +6,7 @@ import '../../../core/api_client.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../models/auth_state.dart';
 import '../models/user_model.dart';
+import '../screens/google_web_auth_screen.dart';
 import '../../profile/models/profile_model.dart';
 
 class GoogleAccountDetails {
@@ -28,6 +29,7 @@ class GoogleAuthResult {
   final bool success;
   final bool isNewUser;
   final bool cancelled;
+  final bool requiresWebAuth;
   final String? errorMessage;
   final GoogleAccountDetails? account;
   final String? suggestedUsername;
@@ -36,6 +38,7 @@ class GoogleAuthResult {
     required this.success,
     this.isNewUser = false,
     this.cancelled = false,
+    this.requiresWebAuth = false,
     this.errorMessage,
     this.account,
     this.suggestedUsername,
@@ -322,10 +325,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? chosenName,
     String? chosenUsername,
     GoogleAccountDetails? accountDetails,
+    GoogleWebAuthPayload? webPayload,
   }) async {
     state = state.copyWith(status: AuthStatus.authenticating, errorMessage: null);
     try {
       GoogleAccountDetails? details = accountDetails;
+
+      if (details == null && webPayload != null) {
+        details = GoogleAccountDetails(
+          idToken: webPayload.idToken,
+          email: webPayload.email ?? '',
+          displayName: webPayload.displayName,
+          photoUrl: webPayload.photoUrl,
+          googleId: webPayload.googleId,
+        );
+      }
 
       if (details == null) {
         final GoogleSignIn googleSignIn = GoogleSignIn(
@@ -347,20 +361,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
             state = state.copyWith(status: AuthStatus.unauthenticated);
             return GoogleAuthResult(success: false, cancelled: true);
           }
-          state = state.copyWith(
-            status: AuthStatus.error,
-            errorMessage: 'Google Sign-In failed: ${pe.message ?? pe.code}',
-          );
+          // On any native platform exception (e.g. 10: DEVELOPER_ERROR in emulators/MSI App Player), seamlessly trigger Webview OAuth!
+          state = state.copyWith(status: AuthStatus.unauthenticated);
           return GoogleAuthResult(
             success: false,
-            errorMessage: 'Google Sign-In failed: ${pe.message ?? pe.code}',
+            requiresWebAuth: true,
+            errorMessage: pe.message ?? pe.code,
           );
         } catch (e) {
-          state = state.copyWith(
-            status: AuthStatus.error,
-            errorMessage: 'Google sign-in was cancelled or failed.',
+          state = state.copyWith(status: AuthStatus.unauthenticated);
+          return GoogleAuthResult(
+            success: false,
+            requiresWebAuth: true,
+            errorMessage: e.toString(),
           );
-          return GoogleAuthResult(success: false, errorMessage: 'Google sign-in was cancelled or failed.');
         }
 
         if (account == null) {
@@ -380,6 +394,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           photoUrl: account.photoUrl,
           googleId: account.id,
         );
+      }
+
+      if (details.email.isEmpty) {
+        state = state.copyWith(status: AuthStatus.error, errorMessage: 'Could not retrieve email from Google.');
+        return GoogleAuthResult(success: false, errorMessage: 'Could not retrieve email from Google.');
       }
 
       // If no username provided yet, check if this is an existing user or new user

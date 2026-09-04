@@ -10,6 +10,7 @@ router.post('/register', AuthController.register);
 router.post('/verify-otp', AuthController.verifyRegistrationOtp);
 router.post('/resend-otp', AuthController.resendRegistrationOtp);
 router.post('/google', AuthController.googleSignIn);
+router.get('/google/callback', AuthController.googleCallback);
 router.get('/check-username', AuthController.checkUsername);
 router.post('/check-username', AuthController.checkUsername);
 router.get('/ai-usernames', AuthController.suggestAiUsernames);

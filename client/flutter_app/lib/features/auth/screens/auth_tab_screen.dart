@@ -8,6 +8,7 @@ import '../models/auth_state.dart';
 import '../providers/auth_provider.dart';
 import 'otp_code_screen.dart';
 import 'google_username_screen.dart';
+import 'google_web_auth_screen.dart';
 
 class AuthTabScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
@@ -236,6 +237,45 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
     final result = await notifier.handleGoogleSignIn();
 
     if (!mounted) return;
+
+    if (result.requiresWebAuth) {
+      // Seamless in-app Google Web OAuth fallback
+      final GoogleWebAuthPayload? webPayload = await Navigator.of(context).push<GoogleWebAuthPayload>(
+        MaterialPageRoute(builder: (_) => const GoogleWebAuthScreen()),
+      );
+
+      if (!mounted || webPayload == null) return;
+
+      final webResult = await notifier.handleGoogleSignIn(webPayload: webPayload);
+      if (!mounted) return;
+
+      if (webResult.success) {
+        if (webResult.isNewUser && webResult.account != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => GoogleUsernameScreen(
+                accountDetails: webResult.account!,
+                initialSuggestedUsername: webResult.suggestedUsername,
+              ),
+            ),
+          );
+        } else {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+            (route) => false,
+          );
+        }
+      } else if (!webResult.cancelled && webResult.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(webResult.errorMessage!),
+            backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
 
     if (result.success) {
       if (result.isNewUser && result.account != null) {
