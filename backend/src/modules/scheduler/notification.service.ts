@@ -226,7 +226,7 @@ export class NotificationService {
         await this.sendNotificationToUser(u.id, {
           title,
           body,
-          type: 'SYSTEM',
+          type: 'BROADCAST',
           data,
         });
         sentCount++;
@@ -270,7 +270,7 @@ export class NotificationService {
         await this.sendNotificationToUser(p.user_id, {
           title,
           body,
-          type: 'SYSTEM',
+          type: 'TOURNAMENT_ALERT',
           data: { ...data, tournamentId },
         });
         sentCount++;
@@ -292,25 +292,42 @@ export class NotificationService {
   }
 
   /**
-   * Fetch recent public system announcements for Home Screen banner
+   * Fetch recent announcements and admin messages for Home Screen banner
    */
-  public static async getPublicAnnouncements(limit: number = 5): Promise<any[]> {
+  public static async getPublicAnnouncements(limit: number = 5, userId?: string): Promise<any[]> {
     const db = getDb();
-    const rows = db.prepare(`
+
+    // 1. Fetch recent broadcast announcements
+    const broadcasts = db.prepare(`
       SELECT MIN(id) as id, title, body, type, data, MAX(created_at) as created_at
       FROM notifications
-      WHERE type = 'SYSTEM'
-      GROUP BY title, body, type
+      WHERE type IN ('SYSTEM', 'BROADCAST')
+      GROUP BY title, body
       ORDER BY created_at DESC
       LIMIT ?
     `).all(limit) as any[];
 
-    return rows.map((r) => ({
+    // 2. If authenticated user, also fetch recent direct admin messages for this user
+    let userDirectMessages: any[] = [];
+    if (userId) {
+      userDirectMessages = db.prepare(`
+        SELECT id, title, body, type, data, created_at
+        FROM notifications
+        WHERE user_id = ? AND type IN ('ADMIN_MESSAGE', 'TOURNAMENT_ALERT')
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).all(userId, limit) as any[];
+    }
+
+    const merged = [...userDirectMessages, ...broadcasts];
+    merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return merged.slice(0, limit).map((r) => ({
       id: r.id,
       title: r.title,
       body: r.body,
       type: r.type,
-      data: r.data ? JSON.parse(r.data) : null,
+      data: r.data ? (typeof r.data === 'string' ? JSON.parse(r.data) : r.data) : null,
       createdAt: r.created_at,
     }));
   }

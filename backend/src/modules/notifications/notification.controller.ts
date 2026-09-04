@@ -124,7 +124,7 @@ export class NotificationController {
       const notification = await NotificationService.sendNotificationToUser(parsed.userId, {
         title: parsed.title,
         body: parsed.body,
-        type: 'SYSTEM',
+        type: 'ADMIN_MESSAGE',
         data: parsed.data,
       });
 
@@ -164,7 +164,8 @@ export class NotificationController {
   public static async getPublicAnnouncements(req: any, res: Response, next: NextFunction): Promise<void> {
     try {
       const limit = parseInt(req.query.limit as string || '5', 10);
-      const announcements = await NotificationService.getPublicAnnouncements(limit);
+      const userId = req.user?.userId || (req.query.userId as string);
+      const announcements = await NotificationService.getPublicAnnouncements(limit, userId);
       res.status(200).json({
         success: true,
         data: { announcements },

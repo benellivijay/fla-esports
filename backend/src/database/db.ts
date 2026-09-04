@@ -118,6 +118,7 @@ export class DatabaseManager {
         this.instance.exec(`
           UPDATE tournaments SET max_slots = max_slots * 4 WHERE mode = 'squad' AND max_slots <= 12;
           UPDATE tournaments SET max_slots = max_slots * 2 WHERE mode = 'duo' AND max_slots <= 24;
+          DROP INDEX IF EXISTS idx_unique_confirmed_user;
         `);
       } catch (_) {}
 

@@ -254,6 +254,82 @@ async function runBookingTests() {
     });
     assert(bookFreedSlotRes.status === 201 && bookFreedSlotRes.data.data.slot_number === 5, 'Freed Slot #5 can now be booked by another player');
 
+    // 13. SQUAD MULTI-SLOT TEST (4 slots): User 1 books Team 1 (slots 1, 2, 3, 4)
+    const squadTournamentId = uuidv4();
+    db.prepare(`
+      INSERT INTO tournaments (
+        id, title, game, mode, map, entry_type, entry_fee, prize_pool, prize_distribution, 
+        max_slots, filled_slots, start_time, room_reveal_time_minutes, status, created_at, updated_at
+      ) VALUES (
+        ?, 'Squad Championship Pro', 'Free Fire', 'squad', 'Bermuda', 'free', 0.0, 5000.0, '[]', 
+        12, 0, ?, 15, 'upcoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).run(squadTournamentId, startFree);
+
+    const squadBookRes = await makeRequest(server, {
+      method: 'POST',
+      path: `/api/v1/tournaments/${squadTournamentId}/book`,
+      token: user1.token,
+      body: { slotNumbers: [1, 2, 3, 4], teamName: 'Team Alpha' },
+    });
+    assert(squadBookRes.status === 201 && squadBookRes.data.success === true, 'User 1 successfully books all 4 Squad slots (Team 1)');
+
+    const squadGridRes = await makeRequest(server, {
+      method: 'GET',
+      path: `/api/v1/tournaments/${squadTournamentId}/slots`,
+      token: user1.token,
+    });
+    assert(
+      squadGridRes.status === 200 &&
+      Array.isArray(squadGridRes.data.data.currentUserBookedSlots) &&
+      squadGridRes.data.data.currentUserBookedSlots.length === 4 &&
+      squadGridRes.data.data.filledSlots === 4,
+      'Squad Slot Grid returns 4 booked slots for current user in Team 1'
+    );
+
+    // Another player cannot steal slot 2 from Team 1
+    const conflictSquadRes = await makeRequest(server, {
+      method: 'POST',
+      path: `/api/v1/tournaments/${squadTournamentId}/book`,
+      token: user2.token,
+      body: { slotNumbers: [1, 2, 3, 4] },
+    });
+    assert(conflictSquadRes.status === 409, 'Double booking Team 1 squad slots correctly rejected with 409 Conflict');
+
+    // 14. DUO MULTI-SLOT TEST (2 slots): User 2 books Team 1 (slots 1, 2)
+    const duoTournamentId = uuidv4();
+    db.prepare(`
+      INSERT INTO tournaments (
+        id, title, game, mode, map, entry_type, entry_fee, prize_pool, prize_distribution, 
+        max_slots, filled_slots, start_time, room_reveal_time_minutes, status, created_at, updated_at
+      ) VALUES (
+        ?, 'Duo Battle Showdown', 'Free Fire', 'duo', 'Purgatory', 'free', 0.0, 3000.0, '[]', 
+        24, 0, ?, 15, 'upcoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).run(duoTournamentId, startFree);
+
+    const duoBookRes = await makeRequest(server, {
+      method: 'POST',
+      path: `/api/v1/tournaments/${duoTournamentId}/book`,
+      token: user2.token,
+      body: { slotNumbers: [1, 2], teamName: 'Duo Power' },
+    });
+    assert(duoBookRes.status === 201 && duoBookRes.data.success === true, 'User 2 successfully books both 2 Duo slots (Team 1)');
+
+    const duoGridRes = await makeRequest(server, {
+      method: 'GET',
+      path: `/api/v1/tournaments/${duoTournamentId}/slots`,
+      token: user2.token,
+    });
+    assert(
+      duoGridRes.status === 200 &&
+      Array.isArray(duoGridRes.data.data.currentUserBookedSlots) &&
+      duoGridRes.data.data.currentUserBookedSlots.length === 2 &&
+      duoGridRes.data.data.filledSlots === 2,
+      'Duo Slot Grid returns 2 booked slots for current user in Team 1'
+    );
+
+
   } catch (err) {
     console.error('Unexpected test error:', err);
     failedCount++;

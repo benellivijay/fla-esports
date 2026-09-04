@@ -154,12 +154,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF6366F1),
+                              color: announcement.type == 'ADMIN_MESSAGE' 
+                                  ? const Color(0xFFD97706) 
+                                  : const Color(0xFF6366F1),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'ADMIN NOTICE',
-                              style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                            child: Text(
+                              announcement.type == 'ADMIN_MESSAGE' ? 'MESSAGE FOR YOU' : 'ADMIN NOTICE',
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.5),
                             ),
                           ),
                           const SizedBox(width: 6),

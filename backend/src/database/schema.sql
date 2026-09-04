@@ -150,9 +150,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_confirmed_slot
 ON tournament_entries(tournament_id, slot_number) 
 WHERE status = 'confirmed';
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_confirmed_user 
-ON tournament_entries(tournament_id, user_id) 
-WHERE status = 'confirmed';
+CREATE INDEX IF NOT EXISTS idx_tournament_entries_user 
+ON tournament_entries(tournament_id, user_id);
 
 -- Section 3.3: Ledger-based wallet (deposit, entry_fee_debit, prize_credit, refund, withdrawal)
 CREATE TABLE IF NOT EXISTS wallet_ledger (

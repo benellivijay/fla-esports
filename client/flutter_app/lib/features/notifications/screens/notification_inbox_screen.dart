@@ -107,6 +107,18 @@ class _NotificationInboxScreenState extends ConsumerState<NotificationInboxScree
         icon = Icons.cancel_outlined;
         iconColor = AppColors.danger;
         break;
+      case 'BROADCAST':
+        icon = Icons.campaign_rounded;
+        iconColor = AppColors.highlight;
+        break;
+      case 'ADMIN_MESSAGE':
+        icon = Icons.support_agent_rounded;
+        iconColor = AppColors.primary;
+        break;
+      case 'TOURNAMENT_ALERT':
+        icon = Icons.notification_important_rounded;
+        iconColor = AppColors.warning;
+        break;
       case 'WITHDRAWAL_COMPLETED':
         icon = Icons.account_balance_outlined;
         iconColor = AppColors.success;

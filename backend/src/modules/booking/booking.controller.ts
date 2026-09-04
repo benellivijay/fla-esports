@@ -11,9 +11,12 @@ const teammateSchema = z.object({
 });
 
 const bookSlotSchema = z.object({
-  slotNumber: z.number().int().min(1).max(100),
+  slotNumber: z.number().int().min(1).max(100).optional(),
+  slotNumbers: z.array(z.number().int().min(1).max(100)).min(1).max(4).optional(),
   teamName: z.string().max(40).optional(),
   teammates: z.array(teammateSchema).optional(),
+}).refine(data => data.slotNumber !== undefined || (data.slotNumbers !== undefined && data.slotNumbers.length > 0), {
+  message: 'At least one slot number must be selected.',
 });
 
 export class BookingController {
@@ -37,13 +40,18 @@ export class BookingController {
       const entry = await BookingService.bookSlot(userId, {
         tournamentId,
         slotNumber: parsed.slotNumber,
+        slotNumbers: parsed.slotNumbers,
         teamName: parsed.teamName,
         teammates: parsed.teammates,
       });
 
+      const slotMsg = parsed.slotNumbers && parsed.slotNumbers.length > 1
+        ? `Slots #${parsed.slotNumbers.join(', #')} booked successfully!`
+        : `Slot #${parsed.slotNumber || parsed.slotNumbers?.[0]} booked successfully!`;
+
       res.status(201).json({
         success: true,
-        message: `Slot #${parsed.slotNumber} booked successfully!`,
+        message: slotMsg,
         data: entry,
       });
     } catch (err) {

@@ -114,7 +114,7 @@ class _MyMatchesScreenState extends ConsumerState<MyMatchesScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildPillTag(
-                'Your slot #${match.slotNumber}',
+                match.slotDisplayLabel,
                 AppColors.success,
                 AppColors.successBg,
               ),

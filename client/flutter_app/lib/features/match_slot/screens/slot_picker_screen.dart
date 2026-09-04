@@ -145,7 +145,31 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
 
   void _handleConfirmBooking() async {
     final state = ref.read(slotBookingProvider);
-    if (state.selectedSlotNumber == null) {
+    final isSquad = widget.tournament.mode == 'squad';
+    final isDuo = widget.tournament.mode == 'duo';
+    final selectedSlots = state.selectedSlotNumbers;
+
+    if (isSquad && selectedSlots.length != 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select all 4 squad player slots for your team (${selectedSlots.length}/4 selected).'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (isDuo && selectedSlots.length != 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select both 2 duo player slots for your team (${selectedSlots.length}/2 selected).'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (!isSquad && !isDuo && selectedSlots.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please choose your match slot first.'),
@@ -162,10 +186,20 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     if (!mounted) return;
 
     if (success) {
-      final slotInfo = _getSlotLabel(state.selectedSlotNumber!);
+      final String successMsg;
+      if (isSquad) {
+        final team = ((selectedSlots.first - 1) ~/ 4) + 1;
+        successMsg = 'Team $team Squad (4 slots: #${selectedSlots.join(", #")}) booked successfully!';
+      } else if (isDuo) {
+        final team = ((selectedSlots.first - 1) ~/ 2) + 1;
+        successMsg = 'Team $team Duo (2 slots: #${selectedSlots.join(", #")}) booked successfully!';
+      } else {
+        successMsg = 'Slot #${selectedSlots.first} booked successfully!';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$slotInfo booked successfully!'),
+          content: Text(successMsg),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -221,7 +255,55 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(slotBookingProvider);
     final grid = state.grid;
-    final isAlreadyJoined = grid?.currentUserBookedSlot != null;
+    final isSquad = widget.tournament.mode == 'squad';
+    final isDuo = widget.tournament.mode == 'duo';
+    final userSlots = grid?.currentUserBookedSlots.isNotEmpty == true 
+        ? grid!.currentUserBookedSlots 
+        : (grid?.currentUserBookedSlot != null ? [grid!.currentUserBookedSlot!] : <int>[]);
+    final isAlreadyJoined = userSlots.isNotEmpty;
+
+    // Determine bottom button state
+    final selectedSlots = state.selectedSlotNumbers;
+    final bool canConfirm;
+    final String buttonLabel;
+    final String? selectionInfo;
+
+    if (isSquad) {
+      canConfirm = selectedSlots.length == 4;
+      if (canConfirm) {
+        final team = ((selectedSlots.first - 1) ~/ 4) + 1;
+        buttonLabel = 'CONFIRM SQUAD (TEAM $team - 4 SLOTS)';
+        selectionInfo = 'Team $team: Slots A, B, C, D (#${selectedSlots.join(", #")})';
+      } else if (selectedSlots.isNotEmpty) {
+        buttonLabel = 'SELECT 4 SLOTS (${selectedSlots.length}/4)';
+        selectionInfo = '${selectedSlots.length} of 4 slots selected for your squad';
+      } else {
+        buttonLabel = 'SELECT A SQUAD (4 SLOTS)';
+        selectionInfo = null;
+      }
+    } else if (isDuo) {
+      canConfirm = selectedSlots.length == 2;
+      if (canConfirm) {
+        final team = ((selectedSlots.first - 1) ~/ 2) + 1;
+        buttonLabel = 'CONFIRM DUO (TEAM $team - 2 SLOTS)';
+        selectionInfo = 'Team $team: Slots A, B (#${selectedSlots.join(", #")})';
+      } else if (selectedSlots.isNotEmpty) {
+        buttonLabel = 'SELECT 2 SLOTS (${selectedSlots.length}/2)';
+        selectionInfo = '1 of 2 slots selected for your duo';
+      } else {
+        buttonLabel = 'SELECT A DUO (2 SLOTS)';
+        selectionInfo = null;
+      }
+    } else {
+      canConfirm = selectedSlots.length == 1;
+      if (canConfirm) {
+        buttonLabel = 'CONFIRM SLOT #${selectedSlots.first}';
+        selectionInfo = 'Selected: Slot #${selectedSlots.first}';
+      } else {
+        buttonLabel = 'SELECT A SLOT';
+        selectionInfo = null;
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -232,9 +314,13 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Choose your match slot',
-          style: TextStyle(
+        title: Text(
+          isSquad 
+              ? 'Select Squad (4 Slots)' 
+              : isDuo 
+                  ? 'Select Duo (2 Slots)' 
+                  : 'Choose your match slot',
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -333,7 +419,11 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'You are already registered in ${_getSlotLabel(grid!.currentUserBookedSlot!)}',
+                                    isSquad 
+                                        ? 'You are already registered in Team ${((userSlots.first - 1) ~/ 4) + 1} Squad (Slots: #${userSlots.join(", #")})'
+                                        : isDuo
+                                            ? 'You are already registered in Team ${((userSlots.first - 1) ~/ 2) + 1} Duo (Slots: #${userSlots.join(", #")})'
+                                            : 'You are already registered in ${_getSlotLabel(userSlots.first)}',
                                     style: const TextStyle(color: Color(0xFF065F46), fontWeight: FontWeight.w600, fontSize: 12),
                                   ),
                                 ),
@@ -354,7 +444,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                   ),
                 ),
 
-                // Bottom Bar with NEXT Button
+                // Bottom Bar with Dynamic Confirmation Button
                 if (!isAlreadyJoined)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -365,7 +455,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (state.selectedSlotNumber != null) ...[
+                        if (selectionInfo != null) ...[
                           Padding(
                             padding: const EdgeInsets.only(bottom: 8.0),
                             child: Row(
@@ -373,12 +463,15 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                               children: [
                                 const Icon(Icons.sports_esports, size: 14, color: Color(0xFF2B88B8)),
                                 const SizedBox(width: 6),
-                                Text(
-                                  'Selected: ${_getSlotLabel(state.selectedSlotNumber!)}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF2B88B8),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                                Flexible(
+                                  child: Text(
+                                    selectionInfo,
+                                    style: const TextStyle(
+                                      color: Color(0xFF2B88B8),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -389,7 +482,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                           width: double.infinity,
                           height: 48,
                           child: ElevatedButton(
-                            onPressed: state.isBooking || state.selectedSlotNumber == null
+                            onPressed: state.isBooking || !canConfirm
                                 ? null
                                 : _handleConfirmBooking,
                             style: ElevatedButton.styleFrom(
@@ -406,13 +499,13 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                                     width: 20,
                                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                                   )
-                                : const Text(
-                                    'NEXT',
-                                    style: TextStyle(
+                                : Text(
+                                    buttonLabel,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w800,
-                                      fontSize: 16,
-                                      letterSpacing: 1.0,
+                                      fontSize: 14,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                           ),
@@ -424,7 +517,6 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
             ),
     );
   }
-
   // --- SQUAD 12-TEAM TABLE (Team | A | B | C | D) ---
   Widget _buildSquadTable(SlotGridModel? grid, SlotBookingState state) {
     return Container(
@@ -494,20 +586,54 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
             padding: const EdgeInsets.symmetric(vertical: 4),
             itemBuilder: (context, teamIndex) {
               final teamNumber = teamIndex + 1;
+              final startSlot = (teamIndex * 4) + 1;
+              final squadSlots = [startSlot, startSlot + 1, startSlot + 2, startSlot + 3];
+              final isTeamSelected = squadSlots.every((s) => state.selectedSlotNumbers.contains(s));
+              final isTeamBookedByUser = squadSlots.any((s) => 
+                  (grid?.currentUserBookedSlots.contains(s) == true) || 
+                  (grid?.currentUserBookedSlot == s));
+
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                 child: Row(
                   children: [
-                    // Team Number (1 to 12)
-                    SizedBox(
-                      width: 54,
-                      child: Text(
-                        '$teamNumber',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF1E293B),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                    // Clickable Team Number (tap selects/unselects entire 4-man squad)
+                    InkWell(
+                      onTap: () {
+                        ref.read(slotBookingProvider.notifier).selectTeam(teamNumber, mode: 'squad');
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        width: 54,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isTeamSelected 
+                              ? const Color(0xFF2B88B8).withValues(alpha: 0.15) 
+                              : isTeamBookedByUser
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isTeamSelected 
+                                ? const Color(0xFF2B88B8) 
+                                : isTeamBookedByUser
+                                    ? const Color(0xFF10B981)
+                                    : Colors.transparent,
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Text(
+                          '$teamNumber',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isTeamSelected 
+                                ? const Color(0xFF2B88B8) 
+                                : isTeamBookedByUser
+                                    ? const Color(0xFF059669)
+                                    : const Color(0xFF1E293B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -587,20 +713,52 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
               final teamNumber = teamIndex + 1;
               final slotA = ((teamIndex) * 2) + 1;
               final slotB = ((teamIndex) * 2) + 2;
+              final duoSlots = [slotA, slotB];
+              final isTeamSelected = duoSlots.every((s) => state.selectedSlotNumbers.contains(s));
+              final isTeamBookedByUser = duoSlots.any((s) => 
+                  (grid?.currentUserBookedSlots.contains(s) == true) || 
+                  (grid?.currentUserBookedSlot == s));
 
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
                 child: Row(
                   children: [
-                    SizedBox(
-                      width: 60,
-                      child: Text(
-                        '$teamNumber',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFF1E293B),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                    InkWell(
+                      onTap: () {
+                        ref.read(slotBookingProvider.notifier).selectTeam(teamNumber, mode: 'duo');
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        width: 60,
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isTeamSelected 
+                              ? const Color(0xFF2B88B8).withValues(alpha: 0.15) 
+                              : isTeamBookedByUser
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isTeamSelected 
+                                ? const Color(0xFF2B88B8) 
+                                : isTeamBookedByUser
+                                    ? const Color(0xFF10B981)
+                                    : Colors.transparent,
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Text(
+                          '$teamNumber',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: isTeamSelected 
+                                ? const Color(0xFF2B88B8) 
+                                : isTeamBookedByUser
+                                    ? const Color(0xFF059669)
+                                    : const Color(0xFF1E293B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -674,8 +832,10 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
       }
     }
 
-    final isSelected = state.selectedSlotNumber == slotNumber;
-    final isUserSlot = slot?.isCurrentUser == true;
+    final isSelected = state.selectedSlotNumbers.contains(slotNumber);
+    final isUserSlot = (slot?.isCurrentUser == true) || 
+        (grid?.currentUserBookedSlots.contains(slotNumber) == true) ||
+        (grid?.currentUserBookedSlot == slotNumber);
     final isBooked = (slot?.isBooked == true) && !isUserSlot;
 
     return InkWell(
@@ -690,12 +850,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
               );
             }
           : () {
-              if (isSelected) {
-                // Deselect if already selected
-                ref.read(slotBookingProvider.notifier).selectSlot(0);
-              } else {
-                ref.read(slotBookingProvider.notifier).selectSlot(slotNumber);
-              }
+              ref.read(slotBookingProvider.notifier).toggleSlot(slotNumber, mode: widget.tournament.mode);
             },
       borderRadius: BorderRadius.circular(4),
       child: Container(

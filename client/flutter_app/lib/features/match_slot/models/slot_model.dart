@@ -31,6 +31,7 @@ class SlotGridModel {
   final int filledSlots;
   final int availableSlotsCount;
   final int? currentUserBookedSlot;
+  final List<int> currentUserBookedSlots;
   final List<SlotItemModel> slots;
 
   SlotGridModel({
@@ -40,11 +41,17 @@ class SlotGridModel {
     required this.filledSlots,
     required this.availableSlotsCount,
     this.currentUserBookedSlot,
+    this.currentUserBookedSlots = const [],
     required this.slots,
   });
 
   factory SlotGridModel.fromJson(Map<String, dynamic> json) {
     final List slotList = json['slots'] ?? [];
+    final rawBookedSlots = json['currentUserBookedSlots'];
+    final List<int> userSlots = rawBookedSlots is List
+        ? rawBookedSlots.map((e) => (e as num).toInt()).toList()
+        : (json['currentUserBookedSlot'] != null ? [(json['currentUserBookedSlot'] as num).toInt()] : []);
+
     return SlotGridModel(
       tournamentId: json['tournamentId'] as String,
       mode: json['mode'] as String? ?? 'solo',
@@ -53,7 +60,8 @@ class SlotGridModel {
       availableSlotsCount: (json['availableSlotsCount'] as num?)?.toInt() ?? 0,
       currentUserBookedSlot: json['currentUserBookedSlot'] != null 
           ? (json['currentUserBookedSlot'] as num).toInt() 
-          : null,
+          : (userSlots.isNotEmpty ? userSlots.first : null),
+      currentUserBookedSlots: userSlots,
       slots: slotList.map((s) => SlotItemModel.fromJson(s as Map<String, dynamic>)).toList(),
     );
   }
@@ -62,6 +70,7 @@ class SlotGridModel {
 class UserBookingMatchModel {
   final String entryId;
   final int slotNumber;
+  final List<int> slotNumbers;
   final String? teamName;
   final String playerFfUid;
   final String playerFfIgn;
@@ -84,6 +93,7 @@ class UserBookingMatchModel {
   UserBookingMatchModel({
     required this.entryId,
     required this.slotNumber,
+    this.slotNumbers = const [],
     this.teamName,
     required this.playerFfUid,
     required this.playerFfIgn,
@@ -104,10 +114,28 @@ class UserBookingMatchModel {
     required this.tournamentStatus,
   });
 
+  String get slotDisplayLabel {
+    final effectiveSlots = slotNumbers.isNotEmpty ? slotNumbers : [slotNumber];
+    if (mode == 'squad') {
+      final team = ((slotNumber - 1) ~/ 4) + 1;
+      return 'Team $team • Squad (${effectiveSlots.join(", ")})';
+    } else if (mode == 'duo') {
+      final team = ((slotNumber - 1) ~/ 2) + 1;
+      return 'Team $team • Duo (${effectiveSlots.join(", ")})';
+    }
+    return 'Slot #$slotNumber';
+  }
+
   factory UserBookingMatchModel.fromJson(Map<String, dynamic> json) {
+    final rawSlots = json['slot_numbers'];
+    final List<int> slotNumbersList = rawSlots is List
+        ? rawSlots.map((e) => (e as num).toInt()).toList()
+        : [(json['slot_number'] as num).toInt()];
+
     return UserBookingMatchModel(
       entryId: json['entry_id'] as String,
       slotNumber: (json['slot_number'] as num).toInt(),
+      slotNumbers: slotNumbersList,
       teamName: json['team_name'] as String?,
       playerFfUid: json['player_ff_uid'] as String,
       playerFfIgn: json['player_ff_ign'] as String,

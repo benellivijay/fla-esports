@@ -6,7 +6,7 @@ class SlotBookingState {
   final bool isLoading;
   final bool isBooking;
   final SlotGridModel? grid;
-  final int? selectedSlotNumber;
+  final List<int> selectedSlotNumbers;
   final String? errorMessage;
   final List<UserBookingMatchModel> myMatches;
 
@@ -14,15 +14,18 @@ class SlotBookingState {
     this.isLoading = false,
     this.isBooking = false,
     this.grid,
-    this.selectedSlotNumber,
+    this.selectedSlotNumbers = const [],
     this.errorMessage,
     this.myMatches = const [],
   });
+
+  int? get selectedSlotNumber => selectedSlotNumbers.isNotEmpty ? selectedSlotNumbers.first : null;
 
   SlotBookingState copyWith({
     bool? isLoading,
     bool? isBooking,
     SlotGridModel? grid,
+    List<int>? selectedSlotNumbers,
     int? selectedSlotNumber,
     String? errorMessage,
     List<UserBookingMatchModel>? myMatches,
@@ -31,7 +34,7 @@ class SlotBookingState {
       isLoading: isLoading ?? this.isLoading,
       isBooking: isBooking ?? this.isBooking,
       grid: grid ?? this.grid,
-      selectedSlotNumber: selectedSlotNumber ?? this.selectedSlotNumber,
+      selectedSlotNumbers: selectedSlotNumbers ?? (selectedSlotNumber != null ? [selectedSlotNumber] : this.selectedSlotNumbers),
       errorMessage: errorMessage,
       myMatches: myMatches ?? this.myMatches,
     );
@@ -47,8 +50,95 @@ class SlotBookingNotifier extends StateNotifier<SlotBookingState> {
 
   SlotBookingNotifier() : super(const SlotBookingState());
 
-  void selectSlot(int slotNumber) {
-    state = state.copyWith(selectedSlotNumber: slotNumber);
+  void selectSlot(int slotNumber, {String mode = 'solo'}) {
+    if (slotNumber <= 0) {
+      state = state.copyWith(selectedSlotNumbers: []);
+      return;
+    }
+
+    if (mode == 'squad') {
+      final teamNum = ((slotNumber - 1) ~/ 4) + 1;
+      final start = (teamNum - 1) * 4 + 1;
+      final squadSlots = [start, start + 1, start + 2, start + 3];
+      // If entire team is already selected, unselect
+      if (state.selectedSlotNumbers.length == 4 && state.selectedSlotNumbers.every((s) => squadSlots.contains(s))) {
+        state = state.copyWith(selectedSlotNumbers: []);
+      } else {
+        state = state.copyWith(selectedSlotNumbers: squadSlots);
+      }
+    } else if (mode == 'duo') {
+      final teamNum = ((slotNumber - 1) ~/ 2) + 1;
+      final start = (teamNum - 1) * 2 + 1;
+      final duoSlots = [start, start + 1];
+      // If entire duo is already selected, unselect
+      if (state.selectedSlotNumbers.length == 2 && state.selectedSlotNumbers.every((s) => duoSlots.contains(s))) {
+        state = state.copyWith(selectedSlotNumbers: []);
+      } else {
+        state = state.copyWith(selectedSlotNumbers: duoSlots);
+      }
+    } else {
+      if (state.selectedSlotNumbers.contains(slotNumber)) {
+        state = state.copyWith(selectedSlotNumbers: []);
+      } else {
+        state = state.copyWith(selectedSlotNumbers: [slotNumber]);
+      }
+    }
+  }
+
+  void selectTeam(int teamNumber, {required String mode}) {
+    if (mode == 'squad') {
+      final start = (teamNumber - 1) * 4 + 1;
+      final squadSlots = [start, start + 1, start + 2, start + 3];
+      if (state.selectedSlotNumbers.length == 4 && state.selectedSlotNumbers.every((s) => squadSlots.contains(s))) {
+        state = state.copyWith(selectedSlotNumbers: []);
+      } else {
+        state = state.copyWith(selectedSlotNumbers: squadSlots);
+      }
+    } else if (mode == 'duo') {
+      final start = (teamNumber - 1) * 2 + 1;
+      final duoSlots = [start, start + 1];
+      if (state.selectedSlotNumbers.length == 2 && state.selectedSlotNumbers.every((s) => duoSlots.contains(s))) {
+        state = state.copyWith(selectedSlotNumbers: []);
+      } else {
+        state = state.copyWith(selectedSlotNumbers: duoSlots);
+      }
+    }
+  }
+
+  void toggleSlot(int slotNumber, {required String mode}) {
+    if (mode == 'solo') {
+      selectSlot(slotNumber, mode: mode);
+      return;
+    }
+
+    final current = List<int>.from(state.selectedSlotNumbers);
+    final targetTeam = mode == 'squad' 
+        ? ((slotNumber - 1) ~/ 4) + 1 
+        : ((slotNumber - 1) ~/ 2) + 1;
+
+    // Check if currently selected slots belong to a different team
+    if (current.isNotEmpty) {
+      final currentTeam = mode == 'squad' 
+          ? ((current.first - 1) ~/ 4) + 1 
+          : ((current.first - 1) ~/ 2) + 1;
+      if (currentTeam != targetTeam) {
+        // Reset selection to the new slot in the new team
+        state = state.copyWith(selectedSlotNumbers: [slotNumber]);
+        return;
+      }
+    }
+
+    if (current.contains(slotNumber)) {
+      current.remove(slotNumber);
+    } else {
+      current.add(slotNumber);
+      current.sort();
+    }
+    state = state.copyWith(selectedSlotNumbers: current);
+  }
+
+  void clearSelection() {
+    state = state.copyWith(selectedSlotNumbers: []);
   }
 
   Future<void> fetchSlotGrid(String tournamentId) async {
@@ -60,7 +150,9 @@ class SlotBookingNotifier extends StateNotifier<SlotBookingState> {
         state = state.copyWith(
           isLoading: false,
           grid: grid,
-          selectedSlotNumber: grid.currentUserBookedSlot,
+          selectedSlotNumbers: grid.currentUserBookedSlots.isNotEmpty 
+              ? grid.currentUserBookedSlots 
+              : (grid.currentUserBookedSlot != null ? [grid.currentUserBookedSlot!] : []),
         );
       } else {
         state = state.copyWith(isLoading: false);
@@ -76,8 +168,8 @@ class SlotBookingNotifier extends StateNotifier<SlotBookingState> {
     String? teamName,
     List<Map<String, dynamic>>? teammates,
   }) async {
-    if (state.selectedSlotNumber == null) {
-      state = state.copyWith(errorMessage: 'Please select an available slot number first.');
+    if (state.selectedSlotNumbers.isEmpty) {
+      state = state.copyWith(errorMessage: 'Please select your match slot(s) first.');
       return false;
     }
 
@@ -86,14 +178,15 @@ class SlotBookingNotifier extends StateNotifier<SlotBookingState> {
       final res = await _apiClient.dio.post(
         '/tournaments/$tournamentId/book',
         data: {
-          'slotNumber': state.selectedSlotNumber,
+          'slotNumbers': state.selectedSlotNumbers,
+          'slotNumber': state.selectedSlotNumbers.first,
           if (teamName != null && teamName.isNotEmpty) 'teamName': teamName,
           if (teammates != null && teammates.isNotEmpty) 'teammates': teammates,
         },
       );
 
       if (res.statusCode == 201 && res.data['success'] == true) {
-        state = state.copyWith(isBooking: false);
+        state = state.copyWith(isBooking: false, selectedSlotNumbers: []);
         await fetchSlotGrid(tournamentId);
         await fetchMyMatches();
         return true;

@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { NotificationController } from './notification.controller';
-import { authenticateToken, requireAdminOrModerator } from '../../middleware/auth.middleware';
+import { authenticateToken, requireAdminOrModerator, optionalAuthToken } from '../../middleware/auth.middleware';
 
 const router = Router();
 const adminRouter = Router();
 
-// Public announcement route for Home Screen
-router.get('/announcements', NotificationController.getPublicAnnouncements);
+// Public announcement route for Home Screen (with optional user context)
+router.get('/announcements', optionalAuthToken, NotificationController.getPublicAnnouncements);
 
 // User notification routes
 router.post('/device-token', authenticateToken, NotificationController.registerDeviceToken);

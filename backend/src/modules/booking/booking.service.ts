@@ -7,7 +7,8 @@ import { NotificationService } from '../scheduler/notification.service';
 
 export interface BookSlotDTO {
   tournamentId: string;
-  slotNumber: number;
+  slotNumber?: number;
+  slotNumbers?: number[];
   teamName?: string;
   teammates?: TeammateDetail[];
 }
@@ -55,6 +56,7 @@ export class BookingService {
     filledSlots: number;
     availableSlotsCount: number;
     currentUserBookedSlot?: number;
+    currentUserBookedSlots?: number[];
     slots: SlotInfo[];
   }> {
     const db = getDb();
@@ -72,11 +74,13 @@ export class BookingService {
 
     const entriesMap = new Map<number, any>();
     let currentUserBookedSlot: number | undefined;
+    const currentUserBookedSlots: number[] = [];
 
     entries.forEach((e) => {
       entriesMap.set(e.slot_number, e);
       if (currentUserId && e.user_id === currentUserId) {
-        currentUserBookedSlot = e.slot_number;
+        if (!currentUserBookedSlot) currentUserBookedSlot = e.slot_number;
+        currentUserBookedSlots.push(e.slot_number);
       }
     });
 
@@ -108,16 +112,20 @@ export class BookingService {
       filledSlots: entries.length,
       availableSlotsCount: Math.max(0, maxSlots - entries.length),
       currentUserBookedSlot,
+      currentUserBookedSlots,
       slots,
     };
   }
 
   /**
-   * Atomically books a tournament slot with double-booking prevention & wallet debit
+   * Atomically books tournament slot(s) with double-booking prevention & wallet debit.
+   * In Squad matches: a player books all 4 player slots for the team.
+   * In Duo matches: a player books both 2 player slots for the team.
+   * In Solo matches: a player books 1 slot.
    */
   public static async bookSlot(userId: string, data: BookSlotDTO): Promise<TournamentEntry> {
     const db = getDb();
-    const { tournamentId, slotNumber, teamName, teammates } = data;
+    const { tournamentId, teamName, teammates } = data;
 
     // 1. Fetch tournament
     const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId) as any;
@@ -137,37 +145,78 @@ export class BookingService {
       effectiveMaxSlots = effectiveMaxSlots * 2;
     }
 
+    // 3. Resolve requested slots list
+    let requestedSlots: number[] = [];
+    if (data.slotNumbers && Array.isArray(data.slotNumbers) && data.slotNumbers.length > 0) {
+      requestedSlots = [...new Set(data.slotNumbers.map(Number))].sort((a, b) => a - b);
+    } else if (data.slotNumber !== undefined) {
+      requestedSlots = [Number(data.slotNumber)];
+    }
+
+    if (requestedSlots.length === 0) {
+      throw new AppError('At least one slot number must be selected.', 400);
+    }
+
+    // Auto-expand single slot selection to full team requirement if mode is squad or duo
+    if (tournament.mode === 'squad') {
+      if (requestedSlots.length === 1) {
+        const teamNum = Math.floor((requestedSlots[0] - 1) / 4) + 1;
+        const startSlot = (teamNum - 1) * 4 + 1;
+        requestedSlots = [startSlot, startSlot + 1, startSlot + 2, startSlot + 3];
+      }
+      if (requestedSlots.length !== 4) {
+        throw new AppError('Squad tournament registration requires selecting 4 player slots (A, B, C, D).', 400);
+      }
+      const teamNum = Math.floor((requestedSlots[0] - 1) / 4) + 1;
+      for (const s of requestedSlots) {
+        if (Math.floor((s - 1) / 4) + 1 !== teamNum) {
+          throw new AppError('All 4 squad slots must belong to the same team.', 400);
+        }
+      }
+    } else if (tournament.mode === 'duo') {
+      if (requestedSlots.length === 1) {
+        const teamNum = Math.floor((requestedSlots[0] - 1) / 2) + 1;
+        const startSlot = (teamNum - 1) * 2 + 1;
+        requestedSlots = [startSlot, startSlot + 1];
+      }
+      if (requestedSlots.length !== 2) {
+        throw new AppError('Duo tournament registration requires selecting 2 player slots (A, B).', 400);
+      }
+      const teamNum = Math.floor((requestedSlots[0] - 1) / 2) + 1;
+      for (const s of requestedSlots) {
+        if (Math.floor((s - 1) / 2) + 1 !== teamNum) {
+          throw new AppError('Both duo slots must belong to the same team.', 400);
+        }
+      }
+    }
+
     // Validate slot number range
-    if (slotNumber < 1 || slotNumber > effectiveMaxSlots) {
-      throw new AppError(`Invalid slot number. Must be between 1 and ${effectiveMaxSlots}.`, 400);
+    for (const slotNumber of requestedSlots) {
+      if (slotNumber < 1 || slotNumber > effectiveMaxSlots) {
+        throw new AppError(`Invalid slot number ${slotNumber}. Must be between 1 and ${effectiveMaxSlots}.`, 400);
+      }
     }
 
-    // 3. Check user profile for Free Fire UID (auto-initialize default if player has not customized it yet)
-    let profile = db.prepare('SELECT ff_uid, ff_ign, display_name FROM profiles WHERE user_id = ?').get(userId) as any;
-    let userFfUid = profile?.ff_uid;
-    let userFfIgn = profile?.ff_ign;
-
-    if (!userFfUid || userFfUid.trim() === '') {
-      userFfUid = `FF_${userId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
-      userFfIgn = profile?.display_name || `Player_${userId.slice(-4)}`;
-      db.prepare(`
-        UPDATE profiles 
-        SET ff_uid = ?, ff_ign = ?, ff_verification_status = 'verified', updated_at = CURRENT_TIMESTAMP 
-        WHERE user_id = ?
-      `).run(userFfUid, userFfIgn, userId);
+    // 4. Check user profile for Free Fire UID
+    const profile = db.prepare('SELECT ff_uid, ff_ign, display_name FROM profiles WHERE user_id = ?').get(userId) as any;
+    if (!profile || !profile.ff_uid || profile.ff_uid.trim() === '') {
+      throw new AppError('Please link your Free Fire UID in your profile before booking a slot.', 400, 'FF_UID_REQUIRED');
     }
+    const userFfUid = profile.ff_uid;
+    const userFfIgn = profile.ff_ign || profile.display_name || `Player_${userId.slice(-4)}`;
 
-    // 4. Check if user already booked a slot in this tournament
-    const existingUserEntry = db.prepare(`
+    // 5. Check if user already booked slots in this tournament
+    const existingUserEntries = db.prepare(`
       SELECT id, slot_number FROM tournament_entries 
       WHERE tournament_id = ? AND user_id = ? AND status = 'confirmed'
-    `).get(tournamentId, userId) as any;
+    `).all(tournamentId, userId) as any[];
 
-    if (existingUserEntry) {
-      throw new AppError(`You are already registered in this tournament (Slot #${existingUserEntry.slot_number}).`, 409, 'ALREADY_REGISTERED');
+    if (existingUserEntries.length > 0) {
+      const slotsList = existingUserEntries.map(e => '#' + e.slot_number).join(', ');
+      throw new AppError(`You are already registered in this tournament (Slots: ${slotsList}).`, 409, 'ALREADY_REGISTERED');
     }
 
-    // 5. Check wallet balance for paid tournaments
+    // 6. Check wallet balance for paid tournaments
     const isPaid = tournament.entry_type === 'paid' && tournament.entry_fee > 0;
     const entryFee = isPaid ? Number(tournament.entry_fee) : 0.0;
 
@@ -182,20 +231,22 @@ export class BookingService {
       }
     }
 
-    // 6. Execute ACID Atomic Transaction
-    const entryId = uuidv4();
+    // 7. Execute ACID Atomic Transaction
     const teammatesJson = teammates && teammates.length > 0 ? JSON.stringify(teammates) : null;
+    let firstEntryId = '';
 
     db.exec('BEGIN TRANSACTION;');
     try {
       // Re-verify slot availability under lock
-      const slotOccupied = db.prepare(`
-        SELECT id FROM tournament_entries 
-        WHERE tournament_id = ? AND slot_number = ? AND status = 'confirmed'
-      `).get(tournamentId, slotNumber) as any;
+      for (const slotNumber of requestedSlots) {
+        const slotOccupied = db.prepare(`
+          SELECT id FROM tournament_entries 
+          WHERE tournament_id = ? AND slot_number = ? AND status = 'confirmed'
+        `).get(tournamentId, slotNumber) as any;
 
-      if (slotOccupied) {
-        throw new AppError(`Slot #${slotNumber} has just been taken by another player. Please select another slot.`, 409, 'SLOT_ALREADY_TAKEN');
+        if (slotOccupied) {
+          throw new AppError(`Slot #${slotNumber} has just been taken by another team. Please choose another slot.`, 409, 'SLOT_ALREADY_TAKEN');
+        }
       }
 
       // If paid match, record atomic ledger debit
@@ -208,34 +259,67 @@ export class BookingService {
           userId,
           entryFee,
           tournamentId,
-          `Entry fee for ${tournament.title} (Slot #${slotNumber})`
+          `Entry fee for ${tournament.title} (Slots #${requestedSlots.join(', #')})`
         );
       }
 
-      // Insert confirmed entry
-      db.prepare(`
-        INSERT INTO tournament_entries (
-          id, tournament_id, user_id, slot_number, team_name, 
-          player_ff_uid, player_ff_ign, teammate_details, 
-          entry_fee_paid, status, created_at, updated_at
-        ) VALUES (
-          ?, ?, ?, ?, ?, 
-          ?, ?, ?, 
-          ?, 'confirmed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-        )
-      `).run(
-        entryId,
-        tournamentId,
-        userId,
-        slotNumber,
-        teamName || null,
-        userFfUid,
-        userFfIgn,
-        teammatesJson,
-        entryFee
-      );
+      const entryFeePerSlot = entryFee / requestedSlots.length;
+      const teamNumber = tournament.mode === 'squad'
+        ? Math.floor((requestedSlots[0] - 1) / 4) + 1
+        : tournament.mode === 'duo'
+        ? Math.floor((requestedSlots[0] - 1) / 2) + 1
+        : null;
 
-      // Increment filled_slots
+      const defaultTeamName = teamName || (teamNumber ? `Team ${teamNumber}` : null);
+
+      // Insert confirmed entry for each selected slot
+      for (let i = 0; i < requestedSlots.length; i++) {
+        const slotNumber = requestedSlots[i];
+        const entryId = uuidv4();
+        if (i === 0) firstEntryId = entryId;
+
+        let slotIgn = userFfIgn;
+        let slotUid = userFfUid;
+
+        if (tournament.mode === 'squad') {
+          const pos = ['A', 'B', 'C', 'D'][(slotNumber - 1) % 4];
+          slotIgn = (i === 0) ? userFfIgn : `${userFfIgn} (${pos})`;
+          slotUid = (i === 0) ? userFfUid : `${userFfUid}_${pos}`;
+        } else if (tournament.mode === 'duo') {
+          const pos = ['A', 'B'][(slotNumber - 1) % 2];
+          slotIgn = (i === 0) ? userFfIgn : `${userFfIgn} (${pos})`;
+          slotUid = (i === 0) ? userFfUid : `${userFfUid}_${pos}`;
+        }
+
+        if (teammates && teammates[i]) {
+          slotUid = teammates[i].ffUid || slotUid;
+          slotIgn = teammates[i].ffIgn || slotIgn;
+        }
+
+        db.prepare(`
+          INSERT INTO tournament_entries (
+            id, tournament_id, user_id, slot_number, team_name, 
+            player_ff_uid, player_ff_ign, teammate_details, 
+            entry_fee_paid, status, created_at, updated_at
+          ) VALUES (
+            ?, ?, ?, ?, ?, 
+            ?, ?, ?, 
+            ?, 'confirmed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+          )
+        `).run(
+          entryId,
+          tournamentId,
+          userId,
+          slotNumber,
+          defaultTeamName,
+          slotUid,
+          slotIgn,
+          teammatesJson,
+          entryFeePerSlot
+        );
+      }
+
+      // Update filled_slots in tournament
       db.prepare(`
         UPDATE tournaments 
         SET filled_slots = (SELECT COUNT(*) FROM tournament_entries WHERE tournament_id = ? AND status = 'confirmed'), 
@@ -248,7 +332,7 @@ export class BookingService {
       try { db.exec('ROLLBACK;'); } catch (_) {}
       
       if (err.message && (err.message.includes('UNIQUE constraint failed') || err.message.includes('ERR_SQLITE_ERROR'))) {
-        throw new AppError(`Slot #${slotNumber} is already booked. Please choose another slot.`, 409, 'SLOT_ALREADY_TAKEN');
+        throw new AppError(`One or more of the selected slots are already booked. Please choose another slot.`, 409, 'SLOT_ALREADY_TAKEN');
       }
       throw err;
     }
@@ -257,31 +341,35 @@ export class BookingService {
       actorId: userId,
       action: 'SLOT_BOOKED',
       targetResource: 'tournament_entries',
-      targetId: entryId,
-      details: { tournamentId, slotNumber, entryFee, isPaid },
+      targetId: firstEntryId,
+      details: { tournamentId, requestedSlots, entryFee, isPaid },
     });
+
+    const slotsLabel = requestedSlots.length > 1
+      ? `Slots #${requestedSlots.join(', #')}`
+      : `Slot #${requestedSlots[0]}`;
 
     NotificationService.sendNotificationToUser(userId, {
       title: 'Slot Confirmed! 🎮',
-      body: `You are booked in Slot #${slotNumber} for ${tournament.title}.`,
+      body: `You are booked in ${slotsLabel} for ${tournament.title}.`,
       type: 'BOOKING_CONFIRMED',
-      data: { tournamentId, slotNumber },
+      data: { tournamentId, slotNumber: requestedSlots[0], slotNumbers: requestedSlots },
     }).catch((e) => Logger.error(`Failed to send booking notification: ${e.message}`));
 
-    return db.prepare('SELECT * FROM tournament_entries WHERE id = ?').get(entryId) as unknown as TournamentEntry;
+    return db.prepare('SELECT * FROM tournament_entries WHERE id = ?').get(firstEntryId) as unknown as TournamentEntry;
   }
 
   /**
-   * Cancels a slot booking and issues automatic refund to wallet ledger
+   * Cancels a slot booking (or full squad/duo booking) and issues automatic refund to wallet ledger
    */
   public static async cancelBooking(userId: string, tournamentId: string): Promise<{ success: boolean; refundedAmount: number }> {
     const db = getDb();
-    const entry = db.prepare(`
+    const entries = db.prepare(`
       SELECT * FROM tournament_entries 
       WHERE tournament_id = ? AND user_id = ? AND status = 'confirmed'
-    `).get(tournamentId, userId) as any;
+    `).all(tournamentId, userId) as any[];
 
-    if (!entry) {
+    if (!entries || entries.length === 0) {
       throw new AppError('No active booking found for this tournament.', 404);
     }
 
@@ -293,16 +381,17 @@ export class BookingService {
       }
     }
 
-    const refundAmount = Number(entry.entry_fee_paid || 0);
+    const refundAmount = entries.reduce((sum: number, e: any) => sum + Number(e.entry_fee_paid || 0), 0);
+    const slotNumbers = entries.map((e: any) => e.slot_number);
 
     db.exec('BEGIN TRANSACTION;');
     try {
-      // Mark entry cancelled
+      // Mark all confirmed entries cancelled for this user
       db.prepare(`
         UPDATE tournament_entries 
         SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ?
-      `).run(entry.id);
+        WHERE tournament_id = ? AND user_id = ? AND status = 'confirmed'
+      `).run(tournamentId, userId);
 
       // Refund to wallet ledger if paid
       if (refundAmount > 0) {
@@ -314,7 +403,7 @@ export class BookingService {
           userId,
           refundAmount,
           tournamentId,
-          `Refund for cancelled slot #${entry.slot_number} in ${tournament?.title || 'Tournament'}`
+          `Refund for cancelled booking in ${tournament?.title || 'Tournament'} (Slots #${slotNumbers.join(', #')})`
         );
       }
 
@@ -336,13 +425,13 @@ export class BookingService {
       actorId: userId,
       action: 'SLOT_BOOKING_CANCELLED',
       targetResource: 'tournament_entries',
-      targetId: entry.id,
-      details: { tournamentId, slotNumber: entry.slot_number, refundAmount },
+      targetId: entries[0].id,
+      details: { tournamentId, slotNumbers, refundAmount },
     });
 
     NotificationService.sendNotificationToUser(userId, {
       title: 'Booking Cancelled & Refunded 💸',
-      body: `Your slot for ${tournament?.title || 'tournament'} has been cancelled and ₹${refundAmount.toFixed(2)} refunded to your wallet.`,
+      body: `Your booking for ${tournament?.title || 'tournament'} has been cancelled and ₹${refundAmount.toFixed(2)} refunded to your wallet.`,
       type: 'BOOKING_REFUNDED',
       data: { tournamentId, refundedAmount: refundAmount },
     }).catch((e) => Logger.error(`Failed to send cancellation notification: ${e.message}`));
@@ -384,19 +473,30 @@ export class BookingService {
         t.status AS tournament_status
       FROM tournament_entries e
       JOIN tournaments t ON t.id = e.tournament_id
-      WHERE e.user_id = ?
+      WHERE e.user_id = ? AND e.status = 'confirmed'
       ORDER BY t.start_time ASC
     `).all(userId) as any[];
 
-    return rows.map((r) => {
+    // Group rows by tournament_id so multi-slot bookings (Squad/Duo) collapse to single match card
+    const tournamentMap = new Map<string, any>();
+    for (const r of rows) {
       const isRoomRevealed = r.room_revealed === 1 || r.room_revealed === true;
-      return {
-        ...r,
-        room_id: isRoomRevealed ? r.room_id : null,
-        room_password: isRoomRevealed ? r.room_password : null,
-        room_revealed: isRoomRevealed,
-        teammate_details: r.teammate_details ? JSON.parse(r.teammate_details) : [],
-      };
-    });
+      if (!tournamentMap.has(r.tournament_id)) {
+        tournamentMap.set(r.tournament_id, {
+          ...r,
+          slot_numbers: [r.slot_number],
+          room_id: isRoomRevealed ? r.room_id : null,
+          room_password: isRoomRevealed ? r.room_password : null,
+          room_revealed: isRoomRevealed,
+          teammate_details: r.teammate_details ? JSON.parse(r.teammate_details) : [],
+        });
+      } else {
+        const item = tournamentMap.get(r.tournament_id);
+        item.slot_numbers.push(r.slot_number);
+        item.entry_fee_paid = Number(item.entry_fee_paid || 0) + Number(r.entry_fee_paid || 0);
+      }
+    }
+
+    return Array.from(tournamentMap.values());
   }
 }

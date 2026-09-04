@@ -309,6 +309,9 @@ export type NotificationType =
   | 'PRIZE_CREDITED'
   | 'WITHDRAWAL_COMPLETED'
   | 'WITHDRAWAL_REJECTED'
+  | 'BROADCAST'
+  | 'ADMIN_MESSAGE'
+  | 'TOURNAMENT_ALERT'
   | 'SYSTEM';
 
 export interface DeviceTokenRecord {

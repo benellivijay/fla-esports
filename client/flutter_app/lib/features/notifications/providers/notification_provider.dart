@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api_client.dart';
 import '../models/notification_model.dart';
@@ -44,10 +45,20 @@ final notificationProvider = StateNotifierProvider<NotificationNotifier, Notific
 
 class NotificationNotifier extends StateNotifier<NotificationState> {
   final ApiClient _apiClient = ApiClient();
+  Timer? _pollTimer;
 
   NotificationNotifier() : super(const NotificationState()) {
     fetchUnreadCount();
     fetchAnnouncements();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      fetchUnreadCount();
+      fetchAnnouncements();
+    });
   }
 
   Future<void> fetchUnreadCount() async {
@@ -139,5 +150,11 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
       state = state.copyWith(notifications: updatedList, unreadCount: 0);
     } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 }
