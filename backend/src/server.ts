@@ -18,6 +18,7 @@ import { notificationRoutes, adminNotificationRoutes } from './modules/notificat
 import { walletRoutes } from './modules/wallet/wallet.routes';
 import { supportRoutes } from './modules/support/support.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
+import { AdminController } from './modules/admin/admin.controller';
 import { RoomRevealWorker } from './modules/scheduler/room_reveal.worker';
 import { errorHandler } from './middleware/error.middleware';
 import { Logger } from './utils/logger';
@@ -100,6 +101,7 @@ export const createApp = () => {
   app.use('/api/v1/admin/notifications', adminNotificationRoutes);
   app.use('/api/v1/admin/withdrawals', adminWithdrawalRoutes);
   app.use('/api/v1/admin/results', adminResultRoutes);
+  app.post('/api/v1/analytics/device-heartbeat', AdminController.recordDeviceHeartbeat);
   app.use('/api/v1/admin', adminRoutes);
 
   // Serve Next.js static pages for HTML routes (/login, /staff, /tournaments, etc.)

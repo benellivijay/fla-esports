@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import jwt from 'jsonwebtoken';
+import { config } from '../../config/env';
 import { AdminService } from './admin.service';
 import { WalletService } from '../wallet/wallet.service';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware';
+import { JWTPayload } from '../../types';
 
 const adminLoginSchema = z.object({
   email: z.string().email(),
@@ -451,4 +454,58 @@ export class AdminController {
       next(err);
     }
   }
+
+  /**
+   * Public device install/heartbeat analytics (POST /api/v1/analytics/device-heartbeat)
+   */
+  public static async recordDeviceHeartbeat(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { deviceId, platform, appVersion, deviceModel, osVersion } = req.body;
+      if (!deviceId || typeof deviceId !== 'string' || deviceId.trim().length === 0) {
+        res.status(400).json({ success: false, message: 'deviceId is required.' });
+        return;
+      }
+
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || undefined;
+      const authHeader = req.headers.authorization;
+      let userId: string | undefined = undefined;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.split(' ')[1];
+          const decoded = jwt.verify(token, config.jwt.accessSecret) as JWTPayload;
+          if (decoded && decoded.userId) {
+            userId = decoded.userId;
+          }
+        } catch (_) {}
+      }
+
+      await AdminService.recordDeviceHeartbeat({
+        deviceId: deviceId.trim(),
+        userId,
+        platform: platform || 'android',
+        appVersion: appVersion || '1.0.0',
+        deviceModel: deviceModel || 'Android Device',
+        osVersion: osVersion || 'Android',
+        ipAddress,
+      });
+
+      res.status(200).json({ success: true, message: 'Device heartbeat recorded.' });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Admin APK usage and devices breakdown (GET /api/v1/admin/analytics/devices)
+   */
+  public static async getApkUsageStats(_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const data = await AdminService.getApkUsageStats();
+      res.status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
+

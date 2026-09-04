@@ -18,6 +18,7 @@ import {
   Shield,
   RefreshCw,
   Users,
+  Smartphone,
 } from 'lucide-react';
 import { AdminApi } from '@/lib/api';
 import { DashboardStats, TournamentItem } from '@/types';
@@ -85,6 +86,36 @@ export default function DashboardHomePage() {
         {/* Core Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
+            title="Total APK installs"
+            value={stats?.totalApkInstalls ?? 0}
+            subtitle="Registered Android device instances"
+            icon={Smartphone}
+          />
+          <StatCard
+            title="Active APK users today"
+            value={stats?.activeApkUsersToday ?? 0}
+            subtitle="Device heartbeats in last 24h"
+            icon={Users}
+          />
+          <StatCard
+            title="Active APK users (7d)"
+            value={stats?.activeApkUsersWeek ?? 0}
+            subtitle="Active players this week"
+            icon={Trophy}
+          />
+          <StatCard
+            title="Total wallet balance"
+            value={`₹${(stats?.totalPlatformBalance ?? 0).toLocaleString('en-IN', {
+              minimumFractionDigits: 2,
+            })}`}
+            subtitle="Across all player ledgers"
+            icon={Wallet}
+          />
+        </div>
+
+        {/* Secondary Operational Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard
             title="Pending result reviews"
             value={stats?.pendingResultReviews ?? 0}
             subtitle="Uploaded match scoreboards"
@@ -95,14 +126,6 @@ export default function DashboardHomePage() {
             value={stats?.tournamentsLiveToday ?? 0}
             subtitle="Scheduled esports lobbies"
             icon={Trophy}
-          />
-          <StatCard
-            title="Total wallet balance"
-            value={`₹${(stats?.totalPlatformBalance ?? 0).toLocaleString('en-IN', {
-              minimumFractionDigits: 2,
-            })}`}
-            subtitle="Across all player ledgers"
-            icon={Wallet}
           />
           <StatCard
             title="Disputed results"

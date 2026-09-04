@@ -18,8 +18,9 @@ router.post('/auth/2fa/verify', AdminController.verifyTotp);
 router.use(authenticateToken);
 router.use(requireAdminOrModerator);
 
-// Dashboard Home Stats
+// Dashboard Home Stats & Device Analytics
 router.get('/dashboard/stats', AdminController.getDashboardStats);
+router.get('/analytics/devices', AdminController.getApkUsageStats);
 
 // Tournament Management
 router.get('/tournaments', TournamentController.listTournaments);

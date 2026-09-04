@@ -280,4 +280,18 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(actor_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS app_installs (
+    id TEXT PRIMARY KEY,
+    device_id TEXT NOT NULL UNIQUE,
+    user_id TEXT,
+    platform TEXT NOT NULL DEFAULT 'android',
+    app_version TEXT NOT NULL DEFAULT '1.0.0',
+    device_model TEXT,
+    os_version TEXT,
+    ip_address TEXT,
+    first_installed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_active_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+);
 `;

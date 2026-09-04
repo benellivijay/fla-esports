@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'constants/api_endpoints.dart';
@@ -240,4 +242,49 @@ class ApiClient {
       }
     } catch (_) {}
   }
+
+  static const String keyDeviceId = 'ff_device_id';
+
+  Future<String> getOrCreateDeviceId() async {
+    try {
+      final savedId = await _storage.read(key: keyDeviceId);
+      if (savedId != null && savedId.isNotEmpty) {
+        return savedId;
+      }
+    } catch (_) {}
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+    final randomPart = (100000 + (DateTime.now().microsecond % 900000)).toString();
+    final bytes = utf8.encode('fla_device_${timestamp}_$randomPart');
+    final digest = sha256.convert(bytes);
+    final newId = 'fla_${digest.toString().substring(0, 16)}';
+
+    try {
+      await _storage.write(key: keyDeviceId, value: newId);
+    } catch (_) {}
+
+    return newId;
+  }
+
+  Future<void> sendDeviceHeartbeat() async {
+    try {
+      final deviceId = await getOrCreateDeviceId();
+      final platform = Platform.isIOS ? 'ios' : Platform.isAndroid ? 'android' : 'web';
+      final osVersion = '${Platform.operatingSystem} ${Platform.operatingSystemVersion}';
+
+      await dio.post(
+        '/analytics/device-heartbeat',
+        data: {
+          'deviceId': deviceId,
+          'platform': platform,
+          'appVersion': '1.0.0',
+          'deviceModel': Platform.isAndroid ? 'Android Device' : Platform.isIOS ? 'iOS Device' : 'Web Browser',
+          'osVersion': osVersion,
+        },
+      );
+    } catch (_) {
+      // Non-blocking background heartbeat
+    }
+  }
 }
+

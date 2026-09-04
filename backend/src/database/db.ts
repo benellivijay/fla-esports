@@ -60,6 +60,22 @@ export class DatabaseManager {
       try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN actor_id TEXT;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN target_resource TEXT;'); } catch (_) {}
       try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN target_id TEXT;'); } catch (_) {}
+      try {
+        this.instance.exec(`
+          CREATE TABLE IF NOT EXISTS app_installs (
+            id TEXT PRIMARY KEY,
+            device_id TEXT NOT NULL UNIQUE,
+            user_id TEXT,
+            platform TEXT NOT NULL DEFAULT 'android',
+            app_version TEXT NOT NULL DEFAULT '1.0.0',
+            device_model TEXT,
+            os_version TEXT,
+            ip_address TEXT,
+            first_installed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_active_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+      } catch (_) {}
 
       // Seed default superadmins if not exists
       try {

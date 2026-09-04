@@ -89,6 +89,36 @@ export class CryptoUtil {
   }
 
   /**
+   * Generates RFC 6238 standard TOTP 6-digit code for a given Base32 secret
+   */
+  public static generateTOTPCode(secret: string): string {
+    const base32chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = '';
+    for (let i = 0; i < secret.length; i++) {
+      const val = base32chars.indexOf(secret.charAt(i).toUpperCase());
+      if (val === -1) continue;
+      bits += val.toString(2).padStart(5, '0');
+    }
+    const bytes: number[] = [];
+    for (let i = 0; i + 8 <= bits.length; i += 8) {
+      bytes.push(parseInt(bits.substring(i, i + 8), 2));
+    }
+    const key = Buffer.from(bytes);
+
+    const epoch = Math.floor(Date.now() / 1000);
+    const counter = Math.floor(epoch / 30);
+    const buf = Buffer.alloc(8);
+    buf.writeBigInt64BE(BigInt(counter));
+    const hmac = crypto.createHmac('sha1', key).update(buf).digest();
+    const offset = hmac[hmac.length - 1] & 0xf;
+    const code = (((hmac[offset] & 0x7f) << 24) |
+                  ((hmac[offset + 1] & 0xff) << 16) |
+                  ((hmac[offset + 2] & 0xff) << 8) |
+                  (hmac[offset + 3] & 0xff)) % 1000000;
+    return code.toString().padStart(6, '0');
+  }
+
+  /**
    * Generates a unique temporary verification challenge string for in-game Free Fire nickname verification
    */
   public static generateFFChallenge(): string {

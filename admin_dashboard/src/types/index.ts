@@ -18,7 +18,36 @@ export interface DashboardStats {
   totalUsers: number;
   totalTournaments: number;
   pendingWithdrawalsCount: number;
+  totalApkInstalls?: number;
+  activeApkUsersToday?: number;
+  activeApkUsersWeek?: number;
+  platformBreakdown?: { platform: string; count: number }[];
   recentAuditLogs: AuditLogItem[];
+}
+
+export interface ApkUsageStats {
+  totalApkInstalls: number;
+  activeToday: number;
+  activeThisWeek: number;
+  totalRegisteredUsersWithApk: number;
+  platformBreakdown: { platform: string; count: number }[];
+  osBreakdown: { osVersion: string; count: number }[];
+  recentDevices: ApkDeviceItem[];
+}
+
+export interface ApkDeviceItem {
+  device_id: string;
+  platform: string;
+  app_version: string;
+  device_model?: string;
+  os_version?: string;
+  first_installed_at: string;
+  last_active_at: string;
+  phone?: string;
+  email?: string;
+  display_name?: string;
+  ff_uid?: string;
+  ff_ign?: string;
 }
 
 export interface TournamentItem {

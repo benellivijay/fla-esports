@@ -158,4 +158,9 @@ export const AdminApi = {
 
   deleteStaff: (staffId: string) =>
     apiClient.delete(`/admin/staff/${staffId}`),
+
+  // APK & Device Analytics
+  getApkUsageStats: () =>
+    apiClient.get('/admin/analytics/devices'),
 };
+

@@ -29,6 +29,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   void _startNavigationTimer() async {
+    // Send background device install & heartbeat analytics
+    ApiClient().sendDeviceHeartbeat();
+
     // Smooth splash branding duration
     await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
