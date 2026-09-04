@@ -28,7 +28,6 @@ class GoogleAuthResult {
   final bool success;
   final bool isNewUser;
   final bool cancelled;
-  final bool requiresFallback;
   final String? errorMessage;
   final GoogleAccountDetails? account;
   final String? suggestedUsername;
@@ -37,7 +36,6 @@ class GoogleAuthResult {
     required this.success,
     this.isNewUser = false,
     this.cancelled = false,
-    this.requiresFallback = false,
     this.errorMessage,
     this.account,
     this.suggestedUsername,
@@ -335,43 +333,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
           scopes: ['email', 'profile'],
         );
 
-        // Always sign out of GoogleSignIn client first so Android prompts the account chooser!
+        // Always disconnect and signOut first so Google Play Services prompts the account selection dialog!
         try {
           await googleSignIn.signOut();
+          await googleSignIn.disconnect();
         } catch (_) {}
 
         GoogleSignInAccount? account;
         try {
           account = await googleSignIn.signIn();
         } on PlatformException catch (pe) {
-          if (pe.code == 'sign_in_canceled') {
+          if (pe.code == 'sign_in_canceled' || pe.code == '12501') {
             state = state.copyWith(status: AuthStatus.unauthenticated);
             return GoogleAuthResult(success: false, cancelled: true);
           }
-          final isDevOrConfigError = pe.code == '10' ||
-              pe.code == 'sign_in_failed' ||
-              (pe.message?.contains('10') ?? false) ||
-              (pe.message?.contains('DEVELOPER_ERROR') ?? false) ||
-              (pe.message?.contains('ApiException: 10') ?? false);
-
           state = state.copyWith(
-            status: AuthStatus.unauthenticated,
-            errorMessage: null,
+            status: AuthStatus.error,
+            errorMessage: 'Google Sign-In failed: ${pe.message ?? pe.code}',
           );
           return GoogleAuthResult(
             success: false,
-            requiresFallback: isDevOrConfigError,
-            errorMessage: isDevOrConfigError ? null : 'Google Sign-In failed: ${pe.message ?? pe.code}',
+            errorMessage: 'Google Sign-In failed: ${pe.message ?? pe.code}',
           );
         } catch (e) {
           state = state.copyWith(
-            status: AuthStatus.unauthenticated,
-            errorMessage: null,
+            status: AuthStatus.error,
+            errorMessage: 'Google sign-in was cancelled or failed.',
           );
-          return GoogleAuthResult(
-            success: false,
-            requiresFallback: true,
-          );
+          return GoogleAuthResult(success: false, errorMessage: 'Google sign-in was cancelled or failed.');
         }
 
         if (account == null) {
