@@ -73,6 +73,23 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     }
   }
 
+  Future<void> _launchRecordingEmail() async {
+    final uri = Uri.parse(
+      'mailto:$supportEmail?subject=Match%20Recording%20Submission%20-%20FLA%20ESPORTS&body=Player%20IGN:%0AFree%20Fire%20UID:%0ATournament%20Name%20/%20Match%20Time:%0ASlot%20Number:%0AGoogle%20Drive%20or%20Video%20Proof%20Link:%0A',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        Clipboard.setData(const ClipboardData(text: supportEmail));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Support email copied to clipboard: flaadmin40@gmail.com')),
+        );
+      }
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,7 +167,55 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
+              // Mandatory Winner Game Recording Notice Banner
+              Container(
+                margin: const EdgeInsets.only(top: 14, bottom: 4),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F1206),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.6), width: 1),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDC2626).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.videocam_rounded, color: Color(0xFFEF4444), size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Mandatory Match Recording Notice',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Winning players must send their game recording to the Support Gmail (flaadmin40@gmail.com). A game recording is mandatory and must be submitted through the Support page.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFFFDE68A),
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // Quick Contact Channels Header
               const Text(
@@ -158,6 +223,19 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 10),
+
+              // Game Recording Submission Card (Mandatory for Winners)
+              _buildChannelCard(
+                title: 'Send Game Recording',
+                subtitle: 'flaadmin40@gmail.com • Winning players must email match video or drive link',
+                actionLabel: 'Submit Video',
+                badgeText: 'MANDATORY FOR WINNERS',
+                badgeColor: const Color(0xFFEF4444),
+                icon: Icons.videocam_rounded,
+                iconColor: const Color(0xFFEF4444),
+                onTap: _launchRecordingEmail,
+              ),
+              const SizedBox(height: 12),
 
               // Discord Channel Card
               _buildChannelCard(
