@@ -235,7 +235,10 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
     final notifier = ref.read(authProvider.notifier);
     final result = await notifier.handleGoogleSignIn();
 
-    if (!mounted) return;
+    if (result.requiresFallback) {
+      _showGoogleQuickConnectSheet();
+      return;
+    }
 
     if (result.success) {
       if (result.isNewUser && result.account != null) {
@@ -264,6 +267,159 @@ class _AuthTabScreenState extends ConsumerState<AuthTabScreen> with SingleTicker
         ),
       );
     }
+  }
+
+  void _showGoogleQuickConnectSheet() {
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSending = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: Image.network(
+                          'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png',
+                          width: 22,
+                          height: 22,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, color: Colors.blue, size: 28),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Continue with Google',
+                          style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Enter your Gmail address to connect',
+                          style: TextStyle(color: Colors.white60, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'yourname@gmail.com',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.35)),
+                    prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary, size: 20),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                    ),
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Please enter your email';
+                    if (!v.contains('@') || !v.contains('.')) return 'Please enter a valid email';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: isSending
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            final email = emailController.text.trim().toLowerCase();
+                            setModalState(() => isSending = true);
+                            Navigator.of(ctx).pop();
+
+                            final notifier = ref.read(authProvider.notifier);
+                            final regSuccess = await notifier.register(
+                              username: email.split('@')[0].replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_'),
+                              email: email,
+                              password: 'GoogleUser@${DateTime.now().millisecondsSinceEpoch % 100000}',
+                              name: email.split('@')[0],
+                            );
+
+                            if (!mounted) return;
+
+                            if (regSuccess) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => OtpCodeScreen(email: email),
+                                ),
+                              );
+                            } else {
+                              await notifier.resendRegistrationOtp(email: email);
+                              if (!mounted) return;
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => OtpCodeScreen(email: email),
+                                ),
+                              );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: isSending
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                        : const Text(
+                            'Send Verification Code',
+                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override

@@ -28,6 +28,7 @@ class GoogleAuthResult {
   final bool success;
   final bool isNewUser;
   final bool cancelled;
+  final bool requiresFallback;
   final String? errorMessage;
   final GoogleAccountDetails? account;
   final String? suggestedUsername;
@@ -36,6 +37,7 @@ class GoogleAuthResult {
     required this.success,
     this.isNewUser = false,
     this.cancelled = false,
+    this.requiresFallback = false,
     this.errorMessage,
     this.account,
     this.suggestedUsername,
@@ -346,20 +348,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
             state = state.copyWith(status: AuthStatus.unauthenticated);
             return GoogleAuthResult(success: false, cancelled: true);
           }
+          final isDevOrConfigError = pe.code == '10' ||
+              pe.code == 'sign_in_failed' ||
+              (pe.message?.contains('10') ?? false) ||
+              (pe.message?.contains('DEVELOPER_ERROR') ?? false) ||
+              (pe.message?.contains('ApiException: 10') ?? false);
+
           state = state.copyWith(
-            status: AuthStatus.error,
-            errorMessage: 'Google Sign-In failed: ${pe.message ?? pe.code}',
+            status: AuthStatus.unauthenticated,
+            errorMessage: null,
           );
           return GoogleAuthResult(
             success: false,
-            errorMessage: 'Google Sign-In failed: ${pe.message ?? pe.code}',
+            requiresFallback: isDevOrConfigError,
+            errorMessage: isDevOrConfigError ? null : 'Google Sign-In failed: ${pe.message ?? pe.code}',
           );
         } catch (e) {
           state = state.copyWith(
-            status: AuthStatus.error,
-            errorMessage: 'Google sign-in was cancelled or failed.',
+            status: AuthStatus.unauthenticated,
+            errorMessage: null,
           );
-          return GoogleAuthResult(success: false, errorMessage: 'Google sign-in was cancelled or failed.');
+          return GoogleAuthResult(
+            success: false,
+            requiresFallback: true,
+          );
         }
 
         if (account == null) {
