@@ -228,6 +228,42 @@ export class NotificationService {
   }
 
   /**
+   * Admin dispatches notification to all participants of a specific tournament
+   */
+  public static async notifyTournamentParticipants(
+    adminUserId: string,
+    tournamentId: string,
+    title: string,
+    body: string,
+    data?: any
+  ): Promise<{ sentCount: number }> {
+    const db = getDb();
+    const participants = db.prepare(`
+      SELECT DISTINCT user_id 
+      FROM tournament_entries 
+      WHERE tournament_id = ? AND status = 'confirmed'
+    `).all(tournamentId) as any[];
+
+    for (const p of participants) {
+      await this.sendNotificationToUser(p.user_id, {
+        title,
+        body,
+        type: 'SYSTEM',
+        data: { ...data, tournamentId },
+      });
+    }
+
+    Logger.audit({
+      actorId: adminUserId,
+      action: 'TOURNAMENT_NOTIFICATION_BROADCAST',
+      targetResource: `tournaments/${tournamentId}`,
+      details: { title, body, userCount: participants.length },
+    });
+
+    return { sentCount: participants.length };
+  }
+
+  /**
    * Helper: Dispatches room revealed notification to all confirmed participants
    */
   public static async notifyRoomRevealed(

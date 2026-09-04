@@ -15,6 +15,20 @@ const broadcastNotificationSchema = z.object({
   data: z.record(z.any()).optional(),
 });
 
+const sendToUserSchema = z.object({
+  userId: z.string().uuid(),
+  title: z.string().min(2).max(100),
+  body: z.string().min(2).max(300),
+  data: z.record(z.any()).optional(),
+});
+
+const sendToTournamentSchema = z.object({
+  tournamentId: z.string().uuid(),
+  title: z.string().min(2).max(100),
+  body: z.string().min(2).max(300),
+  data: z.record(z.any()).optional(),
+});
+
 export class NotificationController {
   public static async registerDeviceToken(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -96,6 +110,50 @@ export class NotificationController {
       res.status(200).json({
         success: true,
         message: `Broadcast notification sent to ${result.sentCount} active users.`,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async sendToUser(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const parsed = sendToUserSchema.parse(req.body);
+
+      const notification = await NotificationService.sendNotificationToUser(parsed.userId, {
+        title: parsed.title,
+        body: parsed.body,
+        type: 'SYSTEM',
+        data: parsed.data,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Notification sent to user successfully.',
+        data: notification,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async sendToTournament(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const adminUserId = req.user!.userId;
+      const parsed = sendToTournamentSchema.parse(req.body);
+
+      const result = await NotificationService.notifyTournamentParticipants(
+        adminUserId,
+        parsed.tournamentId,
+        parsed.title,
+        parsed.body,
+        parsed.data
+      );
+
+      res.status(200).json({
+        success: true,
+        message: `Notification sent to ${result.sentCount} tournament participants.`,
         data: result,
       });
     } catch (err) {

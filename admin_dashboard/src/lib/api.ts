@@ -117,6 +117,16 @@ export const AdminApi = {
   rejectDeposit: (orderId: string, reason?: string) =>
     apiClient.post(`/admin/deposits/${orderId}/reject`, { reason }),
 
+  // Notifications & Announcements
+  broadcastNotification: (data: { title: string; body: string; data?: any }) =>
+    apiClient.post('/admin/notifications/broadcast', data),
+
+  sendUserNotification: (data: { userId: string; title: string; body: string; data?: any }) =>
+    apiClient.post('/admin/notifications/send-user', data),
+
+  sendTournamentNotification: (data: { tournamentId: string; title: string; body: string; data?: any }) =>
+    apiClient.post('/admin/notifications/send-tournament', data),
+
   // Audit Logs
   getAuditLogs: (params?: { page?: number; limit?: number; action?: string; actorId?: string }) =>
     apiClient.get('/admin/audit-logs', { params }),

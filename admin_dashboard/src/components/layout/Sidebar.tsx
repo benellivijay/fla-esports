@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   QrCode,
   KeyRound,
+  Bell,
   X,
 } from 'lucide-react';
 import { PillBadge } from '../ui/PillBadge';
@@ -63,6 +64,7 @@ export const Sidebar: React.FC = () => {
       icon: CheckSquare,
       badge: pendingReviewCount > 0 ? pendingReviewCount : undefined,
     },
+    { label: 'Announcements', href: '/notifications', icon: Bell },
     { label: 'Deposit requests', href: '/deposits', icon: QrCode },
     { label: 'Payout runs', href: '/payouts', icon: BadgeDollarSign },
     { label: 'Wallet adjustments', href: '/wallet', icon: Wallet },

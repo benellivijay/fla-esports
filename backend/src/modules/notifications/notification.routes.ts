@@ -13,8 +13,10 @@ router.get('/unread-count', authenticateToken, NotificationController.getUnreadC
 router.patch('/:id/read', authenticateToken, NotificationController.markAsRead);
 router.patch('/mark-all-read', authenticateToken, NotificationController.markAllAsRead);
 
-// Admin broadcast routes
+// Admin broadcast & messaging routes
 adminRouter.post('/broadcast', authenticateToken, requireAdminOrModerator, NotificationController.broadcastNotification);
+adminRouter.post('/send-user', authenticateToken, requireAdminOrModerator, NotificationController.sendToUser);
+adminRouter.post('/send-tournament', authenticateToken, requireAdminOrModerator, NotificationController.sendToTournament);
 
 export const notificationRoutes = router;
 export const adminNotificationRoutes = adminRouter;
