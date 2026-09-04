@@ -114,6 +114,13 @@ export class DatabaseManager {
         `);
       } catch (_) {}
 
+      try {
+        this.instance.exec(`
+          UPDATE tournaments SET max_slots = max_slots * 4 WHERE mode = 'squad' AND max_slots <= 12;
+          UPDATE tournaments SET max_slots = max_slots * 2 WHERE mode = 'duo' AND max_slots <= 24;
+        `);
+      } catch (_) {}
+
       // Seed default superadmins if not exists
       try {
         const admins = [

@@ -66,12 +66,27 @@ export default function CreateTournamentPage() {
     setDistribution(updated);
   };
 
+  const handleModeChange = (newMode: 'solo' | 'duo' | 'squad') => {
+    setMode(newMode);
+    // Standard Free Fire matches are 48 players (12 squads or 24 duos or 48 solo)
+    if (newMode === 'squad') setMaxSlots(48);
+    else if (newMode === 'duo') setMaxSlots(48);
+    else setMaxSlots(48);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
     try {
+      let finalSlots = Number(maxSlots);
+      if (mode === 'squad' && finalSlots <= 12) {
+        finalSlots = finalSlots * 4;
+      } else if (mode === 'duo' && finalSlots <= 24) {
+        finalSlots = finalSlots * 2;
+      }
+
       const payload = {
         title: title.trim(),
         description: description.trim() || undefined,
@@ -84,7 +99,7 @@ export default function CreateTournamentPage() {
         prizePool: Number(prizePool),
         perKillPrize: Number(perKillPrize),
         prizeDistribution: distribution.map((d) => ({ rank: d.rank, amount: d.amount })),
-        maxSlots: Number(maxSlots),
+        maxSlots: finalSlots,
         startTime: new Date(startTime).toISOString(),
         roomRevealTimeMinutes: Number(roomRevealTimeMinutes),
         roomId: roomId.trim() || undefined,
@@ -174,12 +189,12 @@ export default function CreateTournamentPage() {
               </label>
               <select
                 value={mode}
-                onChange={(e: any) => setMode(e.target.value)}
+                onChange={(e: any) => handleModeChange(e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary focus:outline-none focus:border-primary"
               >
-                <option value="solo">Solo (1 vs All)</option>
-                <option value="duo">Duo (2 per team)</option>
-                <option value="squad">Squad (4 per team)</option>
+                <option value="solo">Solo (1 vs All - 48 Slots)</option>
+                <option value="duo">Duo (2 per team - 48 Slots / 24 Teams)</option>
+                <option value="squad">Squad (4 per team - 48 Slots / 12 Teams)</option>
               </select>
             </div>
 
@@ -202,7 +217,7 @@ export default function CreateTournamentPage() {
 
             <div>
               <label className="block text-xs font-semibold text-textSecondary mb-1">
-                Max Slots <span className="text-status-danger">*</span>
+                Max Player Slots <span className="text-status-danger">*</span>
               </label>
               <input
                 type="number"
@@ -213,6 +228,13 @@ export default function CreateTournamentPage() {
                 onChange={(e) => setMaxSlots(Number(e.target.value))}
                 className="w-full px-3 py-2 text-xs bg-surfaceMuted border border-hairline border-border rounded-lg text-textPrimary focus:outline-none focus:border-primary"
               />
+              <span className="text-[10px] text-textSecondary mt-1 block">
+                {mode === 'squad'
+                  ? 'Total player slots (12 teams = 48 player slots)'
+                  : mode === 'duo'
+                  ? 'Total player slots (24 teams = 48 player slots)'
+                  : 'Total solo player slots (48 player slots)'}
+              </span>
             </div>
 
             <div>

@@ -56,16 +56,28 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
       _selectedTime.minute,
     );
 
-    final prizePool = double.tryParse(_prizePoolController.text.trim()) ?? 0.0;
-    final perKill = double.tryParse(_perKillController.text.trim()) ?? 0.0;
+    final prizePool = _selectedEntryType == 'paid'
+        ? (double.tryParse(_prizePoolController.text.trim()) ?? 0.0)
+        : (double.tryParse(_prizePoolController.text.trim()) ?? 0.0);
+    final perKill = _selectedEntryType == 'paid'
+        ? (double.tryParse(_perKillController.text.trim()) ?? 0.0)
+        : (double.tryParse(_perKillController.text.trim()) ?? 0.0);
     final entryFee = _selectedEntryType == 'paid' ? (double.tryParse(_entryFeeController.text.trim()) ?? 0.0) : 0.0;
-    final maxSlots = int.tryParse(_maxSlotsController.text.trim()) ?? 48;
+    
+    int maxSlots = int.tryParse(_maxSlotsController.text.trim()) ?? 48;
+    if (_selectedMode == 'squad' && maxSlots <= 12) {
+      maxSlots = maxSlots * 4; // 12 squad teams = 48 player slots
+    } else if (_selectedMode == 'duo' && maxSlots <= 24) {
+      maxSlots = maxSlots * 2; // 24 duo teams = 48 player slots
+    }
 
-    final prizeDistribution = [
-      {'rank': 1, 'amount': (prizePool * 0.5), 'percentage': 50},
-      {'rank': 2, 'amount': (prizePool * 0.3), 'percentage': 30},
-      {'rank': 3, 'amount': (prizePool * 0.2), 'percentage': 20},
-    ];
+    final prizeDistribution = prizePool > 0
+        ? [
+            {'rank': 1, 'amount': (prizePool * 0.5), 'percentage': 50},
+            {'rank': 2, 'amount': (prizePool * 0.3), 'percentage': 30},
+            {'rank': 3, 'amount': (prizePool * 0.2), 'percentage': 20},
+          ]
+        : [];
 
     final payload = {
       'title': _titleController.text.trim(),
@@ -86,17 +98,23 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
     };
 
     setState(() => _isSubmitting = true);
-    final success = await ref.read(tournamentListProvider.notifier).createTournament(payload);
+    final errorResult = await ref.read(tournamentListProvider.notifier).createTournament(payload);
     setState(() => _isSubmitting = false);
 
-    if (success && mounted) {
+    if (errorResult == null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tournament published successfully.')),
+        const SnackBar(
+          content: Text('Tournament published successfully!'),
+          backgroundColor: AppColors.success,
+        ),
       );
       Navigator.pop(context);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to publish tournament. Please check details.')),
+        SnackBar(
+          content: Text(errorResult ?? 'Failed to publish tournament. Please check details.'),
+          backgroundColor: AppColors.danger,
+        ),
       );
     }
   }
@@ -160,11 +178,18 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                             decoration: const InputDecoration(labelText: 'Mode'),
                             items: const [
-                              DropdownMenuItem(value: 'solo', child: Text('Solo')),
-                              DropdownMenuItem(value: 'duo', child: Text('Duo')),
-                              DropdownMenuItem(value: 'squad', child: Text('Squad')),
+                              DropdownMenuItem(value: 'solo', child: Text('Solo (48 Players)')),
+                              DropdownMenuItem(value: 'duo', child: Text('Duo (24 Teams = 48 Players)')),
+                              DropdownMenuItem(value: 'squad', child: Text('Squad (12 Teams = 48 Players)')),
                             ],
-                            onChanged: (val) => setState(() => _selectedMode = val!),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selectedMode = val;
+                                  _maxSlotsController.text = '48';
+                                });
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -238,7 +263,6 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
                             keyboardType: TextInputType.number,
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                             decoration: const InputDecoration(labelText: 'Prize pool (₹)'),
-                            validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -270,7 +294,18 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
                       controller: _maxSlotsController,
                       keyboardType: TextInputType.number,
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                      decoration: const InputDecoration(labelText: 'Max player slots (e.g. 48)'),
+                      decoration: InputDecoration(
+                        labelText: _selectedMode == 'squad'
+                            ? 'Max Player Slots (48 for 12 Teams)'
+                            : _selectedMode == 'duo'
+                                ? 'Max Player Slots (48 for 24 Teams)'
+                                : 'Max Player Slots (48)',
+                        helperText: _selectedMode == 'squad'
+                            ? '12 Squad Teams x 4 = 48 total individual slots'
+                            : _selectedMode == 'duo'
+                                ? '24 Duo Teams x 2 = 48 total individual slots'
+                                : null,
+                      ),
                       validator: (val) => val == null || val.isEmpty ? 'Required' : null,
                     ),
                     const SizedBox(height: 10),

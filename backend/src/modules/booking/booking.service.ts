@@ -81,7 +81,12 @@ export class BookingService {
     });
 
     const slots: SlotInfo[] = [];
-    const maxSlots = tournament.max_slots;
+    let maxSlots = tournament.max_slots;
+    if (tournament.mode === 'squad' && maxSlots <= 12) {
+      maxSlots = maxSlots * 4;
+    } else if (tournament.mode === 'duo' && maxSlots <= 24) {
+      maxSlots = maxSlots * 2;
+    }
 
     for (let i = 1; i <= maxSlots; i++) {
       const bookedEntry = entriesMap.get(i);
@@ -99,7 +104,7 @@ export class BookingService {
     return {
       tournamentId,
       mode: tournament.mode,
-      maxSlots: tournament.max_slots,
+      maxSlots,
       filledSlots: entries.length,
       availableSlotsCount: Math.max(0, maxSlots - entries.length),
       currentUserBookedSlot,
@@ -124,9 +129,17 @@ export class BookingService {
       throw new AppError(`Cannot join a tournament that is ${tournament.status}.`, 400);
     }
 
-    // 2. Validate slot number range
-    if (slotNumber < 1 || slotNumber > tournament.max_slots) {
-      throw new AppError(`Invalid slot number. Must be between 1 and ${tournament.max_slots}.`, 400);
+    // 2. Compute effective max slots (e.g. 12 squad teams = 48 player slots)
+    let effectiveMaxSlots = tournament.max_slots;
+    if (tournament.mode === 'squad' && effectiveMaxSlots <= 12) {
+      effectiveMaxSlots = effectiveMaxSlots * 4;
+    } else if (tournament.mode === 'duo' && effectiveMaxSlots <= 24) {
+      effectiveMaxSlots = effectiveMaxSlots * 2;
+    }
+
+    // Validate slot number range
+    if (slotNumber < 1 || slotNumber > effectiveMaxSlots) {
+      throw new AppError(`Invalid slot number. Must be between 1 and ${effectiveMaxSlots}.`, 400);
     }
 
     // 3. Check user profile for Free Fire UID (auto-initialize default if player has not customized it yet)

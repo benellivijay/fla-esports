@@ -46,20 +46,34 @@ function getPublicDir(): string {
 export const createApp = () => {
   const app = express();
   const publicDir = getPublicDir();
-  Logger.info(`[STATIC] Admin dashboard serving from: ${publicDir}`);
+  // Enable trust proxy for Render, Cloudflare, and cloud load balancers
+  app.set('trust proxy', 1);
 
   // Basic security and parsing
   app.use(cors());
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Static uploads directory for screenshot and proof access
   app.use('/uploads', express.static(config.uploads.directory));
 
-  // Global rate limiter for API endpoints
+  // Global rate limiter for API endpoints (generous limit + bypass for admin / heartbeats)
   const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200,
+    max: 5000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+      // Skip rate limiting for admin dashboard API routes, device heartbeat pings, and health check
+      const path = req.path || req.originalUrl || '';
+      return (
+        path.startsWith('/api/v1/admin') ||
+        path.startsWith('/api/v1/analytics') ||
+        path.startsWith('/health') ||
+        req.ip === '127.0.0.1' ||
+        req.ip === '::1'
+      );
+    },
     message: { success: false, message: 'Too many requests from this IP, please try again later.' },
   });
   app.use('/api/', globalLimiter);

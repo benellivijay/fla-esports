@@ -89,6 +89,13 @@ export class TournamentService {
       throw new AppError('Max slots must be between 1 and 100.', 400);
     }
 
+    let finalMaxSlots = data.maxSlots;
+    if (data.mode === 'squad' && finalMaxSlots <= 12) {
+      finalMaxSlots = finalMaxSlots * 4; // 12 squad teams = 48 player slots
+    } else if (data.mode === 'duo' && finalMaxSlots <= 24) {
+      finalMaxSlots = finalMaxSlots * 2; // 24 duos = 48 player slots
+    }
+
     const prizeDistributionJson = JSON.stringify(data.prizeDistribution || []);
     const gameMode = data.game_mode || data.gameMode || 'survival';
 
@@ -121,7 +128,7 @@ export class TournamentService {
       data.prizePool,
       prizeDistributionJson,
       data.perKillPrize || 0.0,
-      data.maxSlots,
+      finalMaxSlots,
       data.startTime,
       data.registrationClosesAt || null,
       data.roomRevealTimeMinutes || 15,

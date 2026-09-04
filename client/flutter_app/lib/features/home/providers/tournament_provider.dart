@@ -142,16 +142,20 @@ class TournamentListNotifier extends StateNotifier<TournamentListState> {
     }
   }
 
-  Future<bool> createTournament(Map<String, dynamic> data) async {
+  Future<String?> createTournament(Map<String, dynamic> data) async {
     try {
       final res = await _apiClient.dio.post('/tournaments', data: data);
-      if (res.statusCode == 201 && res.data['success'] == true) {
+      if ((res.statusCode == 200 || res.statusCode == 201) && res.data['success'] == true) {
         await fetchTournaments();
-        return true;
+        return null;
       }
-      return false;
-    } catch (_) {
-      return false;
+      return res.data?['message']?.toString() ?? 'Failed to publish tournament.';
+    } catch (e) {
+      try {
+        final msg = (e as dynamic).response?.data?['message']?.toString();
+        if (msg != null && msg.isNotEmpty) return msg;
+      } catch (_) {}
+      return 'Failed to publish tournament. Please check details.';
     }
   }
 }
