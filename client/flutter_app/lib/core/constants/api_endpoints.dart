@@ -4,7 +4,7 @@ class ApiEndpoints {
   // Set to true to connect app to your live Render backend
   static const bool useCloudServer = true;
   static const String cloudBaseUrl = 'https://fla-esports-api.onrender.com/api/v1';
-  static const String googleWebClientId = '779800067040-jok3uvqesf655tn63cit51m583vsatl7.apps.googleusercontent.com';
+  static const String googleWebClientId = '779800067040-holg1ss8c8ipiesdb9kkubih7d3vs0o7.apps.googleusercontent.com';
 
   static String get baseUrl {
     if (useCloudServer || kReleaseMode) {

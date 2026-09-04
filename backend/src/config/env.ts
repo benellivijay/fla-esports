@@ -25,6 +25,6 @@ export const config = {
     maxSizeBytes: 5 * 1024 * 1024, // 5 MB
   },
   google: {
-    clientId: process.env.GOOGLE_CLIENT_ID || '779800067040-jok3uvqesf655tn63cit51m583vsatl7.apps.googleusercontent.com',
+    clientId: process.env.GOOGLE_CLIENT_ID || '779800067040-holg1ss8c8ipiesdb9kkubih7d3vs0o7.apps.googleusercontent.com',
   },
 };
