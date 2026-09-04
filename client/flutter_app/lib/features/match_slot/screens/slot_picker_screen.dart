@@ -224,7 +224,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     final isAlreadyJoined = grid?.currentUserBookedSlot != null;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFF6200EE),
         elevation: 0,
@@ -242,15 +242,15 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
         ),
       ),
       body: state.isLoading && grid == null
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6200EE), strokeWidth: 2))
           : Column(
               children: [
                 // Tournament Details Header
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+                    color: Color(0xFFF8FAFC),
+                    border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -262,7 +262,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                             Text(
                               widget.tournament.title,
                               style: const TextStyle(
-                                color: AppColors.textPrimary,
+                                color: Color(0xFF0F172A),
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
                               ),
@@ -271,7 +271,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                             const SizedBox(height: 2),
                             Text(
                               '${_toSentenceCase(widget.tournament.mode)} • ${_toSentenceCase(widget.tournament.map)} • ${widget.tournament.isPaid ? '₹${widget.tournament.entryFee.toStringAsFixed(0)}' : 'Free Entry'}',
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
                             ),
                           ],
                         ),
@@ -279,14 +279,14 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.surfaceMuted,
+                          color: const Color(0xFFEDE9FE),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border, width: 0.5),
+                          border: Border.all(color: const Color(0xFFDDD6FE), width: 1.0),
                         ),
                         child: Text(
                           '${grid?.availableSlotsCount ?? 0} slots left',
                           style: const TextStyle(
-                            color: AppColors.primary,
+                            color: Color(0xFF6200EE),
                             fontWeight: FontWeight.bold,
                             fontSize: 11,
                           ),
@@ -298,16 +298,16 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
 
                 // Legend Indicator Row
                 Container(
-                  color: AppColors.surfaceMuted,
+                  color: const Color(0xFFF1F5F9),
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildLegendItem('Available', Colors.white, borderColor: Colors.black54),
-                      _buildLegendItem('Selected', AppColors.primary, isChecked: true),
+                      _buildLegendItem('Available', Colors.white, borderColor: const Color(0xFF1E293B)),
+                      _buildLegendItem('Selected', const Color(0xFF2B88B8), isChecked: true),
                       _buildLegendItem('Booked', const Color(0xFFB0B0B0), isChecked: true),
                       if (isAlreadyJoined)
-                        _buildLegendItem('Your slot', AppColors.success, isChecked: true),
+                        _buildLegendItem('Your slot', const Color(0xFF10B981), isChecked: true),
                     ],
                   ),
                 ),
@@ -323,18 +323,18 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                             padding: const EdgeInsets.all(12),
                             margin: const EdgeInsets.only(bottom: 14),
                             decoration: BoxDecoration(
-                              color: AppColors.successBg,
+                              color: const Color(0xFFECFDF5),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.successBorder, width: 0.5),
+                              border: Border.all(color: const Color(0xFFA7F3D0), width: 1.0),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
+                                const Icon(Icons.check_circle_outline, color: Color(0xFF059669), size: 18),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     'You are already registered in ${_getSlotLabel(grid!.currentUserBookedSlot!)}',
-                                    style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 12),
+                                    style: const TextStyle(color: Color(0xFF065F46), fontWeight: FontWeight.w600, fontSize: 12),
                                   ),
                                 ),
                               ],
@@ -359,8 +359,8 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: const BoxDecoration(
-                      color: AppColors.surface,
-                      border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
+                      color: Colors.white,
+                      border: Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -371,12 +371,12 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.sports_esports, size: 14, color: AppColors.primary),
+                                const Icon(Icons.sports_esports, size: 14, color: Color(0xFF2B88B8)),
                                 const SizedBox(width: 6),
                                 Text(
                                   'Selected: ${_getSlotLabel(state.selectedSlotNumber!)}',
                                   style: const TextStyle(
-                                    color: AppColors.primary,
+                                    color: Color(0xFF2B88B8),
                                     fontWeight: FontWeight.bold,
                                     fontSize: 13,
                                   ),
@@ -429,9 +429,9 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
   Widget _buildSquadTable(SlotGridModel? grid, SlotBookingState state) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
       ),
       child: Column(
         children: [
@@ -505,7 +505,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                         '$teamNumber',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: AppColors.textPrimary,
+                          color: Color(0xFF1E293B),
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -538,9 +538,9 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
   Widget _buildDuoTable(SlotGridModel? grid, SlotBookingState state) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 0.5),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
       ),
       child: Column(
         children: [
@@ -598,7 +598,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                         '$teamNumber',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          color: AppColors.textPrimary,
+                          color: Color(0xFF1E293B),
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -619,20 +619,28 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
 
   // --- SOLO GRID (1 to 48) ---
   Widget _buildSoloGrid(SlotGridModel? grid, SlotBookingState state) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 6,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 1.0,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
       ),
-      itemCount: grid?.slots.length ?? 48,
-      itemBuilder: (context, index) {
-        final slotNumber = index + 1;
-        return _buildDirectSlotBox(grid, state, slotNumber, 'Slot #$slotNumber', showNumber: true);
-      },
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 6,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 1.0,
+        ),
+        itemCount: grid?.slots.length ?? 48,
+        itemBuilder: (context, index) {
+          final slotNumber = index + 1;
+          return _buildDirectSlotBox(grid, state, slotNumber, 'Slot #$slotNumber', showNumber: true);
+        },
+      ),
     );
   }
 
@@ -695,18 +703,18 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
         height: 28,
         decoration: BoxDecoration(
           color: isUserSlot
-              ? AppColors.success
+              ? const Color(0xFF10B981)
               : isSelected
-                  ? AppColors.primary
+                  ? const Color(0xFF2B88B8)
                   : isBooked
                       ? const Color(0xFFB0B0B0)
                       : Colors.white,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: isUserSlot
-                ? AppColors.success
+                ? const Color(0xFF10B981)
                 : isSelected
-                    ? AppColors.primary
+                    ? const Color(0xFF2B88B8)
                     : isBooked
                         ? const Color(0xFF9E9E9E)
                         : const Color(0xFF1E293B),
@@ -715,7 +723,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.4),
+                    color: const Color(0xFF2B88B8).withValues(alpha: 0.4),
                     blurRadius: 6,
                     offset: const Offset(0, 1),
                   ),
@@ -724,10 +732,10 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
         ),
         child: Center(
           child: isUserSlot || isSelected
-              ? Icon(
+              ? const Icon(
                   Icons.check,
                   size: 18,
-                  color: isSelected ? const Color(0xFF0B0E17) : Colors.white,
+                  color: Colors.white,
                 )
               : isBooked
                   ? const Icon(
@@ -769,7 +777,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                     size: 12,
                     color: color == const Color(0xFFB0B0B0)
                         ? const Color(0xFF616161)
-                        : (color == AppColors.primary ? const Color(0xFF0B0E17) : Colors.white),
+                        : Colors.white,
                   ),
                 )
               : null,
@@ -777,7 +785,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w500),
+          style: const TextStyle(color: Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w500),
         ),
       ],
     );

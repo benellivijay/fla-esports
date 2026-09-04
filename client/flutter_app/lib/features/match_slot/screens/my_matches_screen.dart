@@ -74,15 +74,15 @@ class _MyMatchesScreenState extends ConsumerState<MyMatchesScreen> {
       body: state.isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
           : state.myMatches.isEmpty
-              ? Center(
+              ? const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.sports_esports_outlined, size: 48, color: AppColors.textMuted),
-                      const SizedBox(height: 12),
-                      const Text('You have not joined any tournaments yet.', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                      const SizedBox(height: 4),
-                      const Text('Browse upcoming tournaments and book your slot.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                      Icon(Icons.sports_esports_outlined, size: 48, color: AppColors.textMuted),
+                      SizedBox(height: 12),
+                      Text('You have not joined any tournaments yet.', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                      SizedBox(height: 4),
+                      Text('Browse upcoming tournaments and book your slot.', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                     ],
                   ),
                 )
