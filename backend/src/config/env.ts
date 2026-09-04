@@ -24,4 +24,7 @@ export const config = {
     directory: path.resolve(__dirname, '../../uploads'),
     maxSizeBytes: 5 * 1024 * 1024, // 5 MB
   },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '779800067040-jok3uvqesf655tn63cit51m583vsatl7.apps.googleusercontent.com',
+  },
 };

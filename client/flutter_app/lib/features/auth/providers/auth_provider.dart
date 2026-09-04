@@ -329,6 +329,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       if (details == null) {
         final GoogleSignIn googleSignIn = GoogleSignIn(
+          serverClientId: ApiEndpoints.googleWebClientId,
           scopes: ['email', 'profile'],
         );
 
