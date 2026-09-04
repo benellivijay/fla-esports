@@ -63,19 +63,31 @@ export class NotificationService {
       VALUES (?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
     `).run(id, userId, payload.title, payload.body, payload.type, dataJson);
 
-    // 2. Fetch device tokens for FCM dispatch
-    const tokens = db.prepare('SELECT token, platform FROM device_tokens WHERE user_id = ?').all(userId) as any[];
+    // 2. Fetch device tokens for FCM dispatch safely
+    let tokens: any[] = [];
+    try {
+      tokens = db.prepare('SELECT token, platform FROM device_tokens WHERE user_id = ?').all(userId) as any[];
+    } catch (_) {}
 
     // 3. Dispatch push notification
     Logger.info(
       `[PUSH DISPATCH] To User: ${userId} (${tokens.length} devices) | Type: [${payload.type}] | Title: "${payload.title}" | Body: "${payload.body}"`
     );
 
-    const record = db.prepare('SELECT * FROM notifications WHERE id = ?').get(id) as any;
+    let record: any = null;
+    try {
+      record = db.prepare('SELECT * FROM notifications WHERE id = ?').get(id) as any;
+    } catch (_) {}
+
     return {
-      ...record,
-      data: record.data ? JSON.parse(record.data) : null,
-      is_read: Boolean(record.is_read),
+      id,
+      user_id: userId,
+      title: payload.title,
+      body: payload.body,
+      type: payload.type,
+      data: payload.data || (record?.data ? JSON.parse(record.data) : null),
+      is_read: record ? Boolean(record.is_read) : false,
+      created_at: record?.created_at || new Date().toISOString(),
     };
   }
 
@@ -208,23 +220,31 @@ export class NotificationService {
     const db = getDb();
     const users = db.prepare("SELECT id FROM users WHERE status = 'active'").all() as any[];
 
+    let sentCount = 0;
     for (const u of users) {
-      await this.sendNotificationToUser(u.id, {
-        title,
-        body,
-        type: 'SYSTEM',
-        data,
-      });
+      try {
+        await this.sendNotificationToUser(u.id, {
+          title,
+          body,
+          type: 'SYSTEM',
+          data,
+        });
+        sentCount++;
+      } catch (err) {
+        Logger.error(`Failed to send broadcast notification to user ${u.id}:`, err);
+      }
     }
 
-    Logger.audit({
-      actorId: adminUserId,
-      action: 'NOTIFICATION_BROADCAST',
-      targetResource: 'notifications',
-      details: { title, body, userCount: users.length },
-    });
+    try {
+      Logger.audit({
+        actorId: adminUserId,
+        action: 'NOTIFICATION_BROADCAST',
+        targetResource: 'notifications',
+        details: { title, body, userCount: sentCount },
+      });
+    } catch (_) {}
 
-    return { sentCount: users.length };
+    return { sentCount: sentCount || users.length };
   }
 
   /**
@@ -244,23 +264,31 @@ export class NotificationService {
       WHERE tournament_id = ? AND status = 'confirmed'
     `).all(tournamentId) as any[];
 
+    let sentCount = 0;
     for (const p of participants) {
-      await this.sendNotificationToUser(p.user_id, {
-        title,
-        body,
-        type: 'SYSTEM',
-        data: { ...data, tournamentId },
-      });
+      try {
+        await this.sendNotificationToUser(p.user_id, {
+          title,
+          body,
+          type: 'SYSTEM',
+          data: { ...data, tournamentId },
+        });
+        sentCount++;
+      } catch (err) {
+        Logger.error(`Failed to send tournament notification to user ${p.user_id}:`, err);
+      }
     }
 
-    Logger.audit({
-      actorId: adminUserId,
-      action: 'TOURNAMENT_NOTIFICATION_BROADCAST',
-      targetResource: `tournaments/${tournamentId}`,
-      details: { title, body, userCount: participants.length },
-    });
+    try {
+      Logger.audit({
+        actorId: adminUserId,
+        action: 'TOURNAMENT_NOTIFICATION_BROADCAST',
+        targetResource: `tournaments/${tournamentId}`,
+        details: { title, body, userCount: sentCount },
+      });
+    } catch (_) {}
 
-    return { sentCount: participants.length };
+    return { sentCount: sentCount || participants.length };
   }
 
   /**

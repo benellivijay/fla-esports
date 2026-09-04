@@ -62,6 +62,43 @@ export class DatabaseManager {
       try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN target_id TEXT;'); } catch (_) {}
       try {
         this.instance.exec(`
+          CREATE TABLE IF NOT EXISTS device_tokens (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            platform TEXT NOT NULL CHECK(platform IN ('android', 'ios', 'web')),
+            device_info TEXT,
+            last_active_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+          );
+        `);
+      } catch (_) {}
+      try {
+        const notifTable = this.instance.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='notifications'").get() as any;
+        if (notifTable && notifTable.sql && notifTable.sql.includes('CHECK(type IN')) {
+          this.instance.exec(`
+            CREATE TABLE IF NOT EXISTS notifications_v2 (
+              id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              title TEXT NOT NULL,
+              body TEXT NOT NULL,
+              type TEXT NOT NULL,
+              data TEXT,
+              is_read INTEGER NOT NULL DEFAULT 0,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            INSERT OR IGNORE INTO notifications_v2 (id, user_id, title, body, type, data, is_read, created_at)
+            SELECT id, user_id, title, body, type, data, is_read, created_at FROM notifications;
+            DROP TABLE notifications;
+            ALTER TABLE notifications_v2 RENAME TO notifications;
+          `);
+        }
+      } catch (_) {}
+      try {
+        this.instance.exec(`
           CREATE TABLE IF NOT EXISTS app_installs (
             id TEXT PRIMARY KEY,
             device_id TEXT NOT NULL UNIQUE,

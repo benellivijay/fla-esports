@@ -229,12 +229,13 @@ CREATE TABLE IF NOT EXISTS withdrawal_requests (
     FOREIGN KEY(reviewed_by) REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS push_tokens (
+CREATE TABLE IF NOT EXISTS device_tokens (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     token TEXT NOT NULL UNIQUE,
     platform TEXT NOT NULL CHECK(platform IN ('android', 'ios', 'web')),
-    device_id TEXT,
+    device_info TEXT,
+    last_active_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -245,7 +246,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     user_id TEXT NOT NULL,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('room_credentials', 'match_result', 'wallet', 'kyc', 'general')),
+    type TEXT NOT NULL,
     data TEXT,
     is_read INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
