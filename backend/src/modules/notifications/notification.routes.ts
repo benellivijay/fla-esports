@@ -5,6 +5,9 @@ import { authenticateToken, requireAdminOrModerator } from '../../middleware/aut
 const router = Router();
 const adminRouter = Router();
 
+// Public announcement route for Home Screen
+router.get('/announcements', NotificationController.getPublicAnnouncements);
+
 // User notification routes
 router.post('/device-token', authenticateToken, NotificationController.registerDeviceToken);
 router.delete('/device-token', authenticateToken, NotificationController.unregisterDeviceToken);

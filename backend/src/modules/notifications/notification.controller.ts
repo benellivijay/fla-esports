@@ -160,4 +160,17 @@ export class NotificationController {
       next(err);
     }
   }
+
+  public static async getPublicAnnouncements(req: any, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const limit = parseInt(req.query.limit as string || '5', 10);
+      const announcements = await NotificationService.getPublicAnnouncements(limit);
+      res.status(200).json({
+        success: true,
+        data: { announcements },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

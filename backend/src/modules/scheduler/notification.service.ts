@@ -264,6 +264,30 @@ export class NotificationService {
   }
 
   /**
+   * Fetch recent public system announcements for Home Screen banner
+   */
+  public static async getPublicAnnouncements(limit: number = 5): Promise<any[]> {
+    const db = getDb();
+    const rows = db.prepare(`
+      SELECT MIN(id) as id, title, body, type, data, MAX(created_at) as created_at
+      FROM notifications
+      WHERE type = 'SYSTEM'
+      GROUP BY title, body, type
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(limit) as any[];
+
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      body: r.body,
+      type: r.type,
+      data: r.data ? JSON.parse(r.data) : null,
+      createdAt: r.created_at,
+    }));
+  }
+
+  /**
    * Helper: Dispatches room revealed notification to all confirmed participants
    */
   public static async notifyRoomRevealed(

@@ -255,12 +255,12 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Section Header Label
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         'Game modes',
                         style: TextStyle(
@@ -272,11 +272,8 @@ class _GameModesScreenState extends ConsumerState<GameModesScreen> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Select a custom battle format to explore matches',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
+                        'Select mode to view lobbies',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),

@@ -11,6 +11,7 @@ import '../../support/screens/support_screen.dart';
 import 'game_modes_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/notification_inbox_screen.dart';
+import '../../notifications/models/notification_model.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -27,7 +28,183 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(tournamentListProvider.notifier).fetchTournaments();
       ref.read(walletProvider.notifier).fetchSummary();
       ref.read(notificationProvider.notifier).fetchUnreadCount();
+      ref.read(notificationProvider.notifier).fetchAnnouncements();
     });
+  }
+
+  void _showAnnouncementDialog(InAppNotificationModel announcement) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.border, width: 0.5),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.highlight.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.campaign_rounded, color: AppColors.highlight, size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Admin Announcement',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                announcement.title,
+                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                announcement.body,
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationInboxScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: const Color(0xFF0B0E17),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            child: const Text('All Notifications', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnnouncementBanner(NotificationState notificationState) {
+    final visibleAnnouncements = notificationState.announcements
+        .where((a) => !notificationState.dismissedAnnouncementIds.contains(a.id))
+        .toList();
+
+    if (visibleAnnouncements.isEmpty) return const SizedBox.shrink();
+
+    final announcement = visibleAnnouncements.first;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1B4B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.6), width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showAnnouncementDialog(announcement),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  margin: const EdgeInsets.only(top: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.highlight.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.campaign_rounded, color: AppColors.highlight, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF6366F1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'ADMIN NOTICE',
+                              style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              announcement.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        announcement.body,
+                        style: const TextStyle(
+                          color: Color(0xFFC7D2FE),
+                          fontSize: 11,
+                          height: 1.25,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 16, color: Color(0xFFA5B4FC)),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                  tooltip: 'Dismiss',
+                  onPressed: () {
+                    ref.read(notificationProvider.notifier).dismissAnnouncement(announcement.id);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -136,12 +313,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               notifier.fetchTournaments();
               ref.read(walletProvider.notifier).fetchSummary();
               ref.read(notificationProvider.notifier).fetchUnreadCount();
+              ref.read(notificationProvider.notifier).fetchAnnouncements();
             },
           ),
         ],
       ),
       body: Column(
         children: [
+          // Admin Announcement Banner on HomeScreen
+          _buildAnnouncementBanner(notificationState),
+
           // Filter Chips Section with 0.5px hairline bottom border
           Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -172,8 +353,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: AppColors.border, width: 0.5),
                           ),
-                          child: Row(
-                            children: const [
+                          child: const Row(
+                            children: [
                               Icon(Icons.grid_view_rounded, size: 14, color: AppColors.primary),
                               SizedBox(width: 6),
                               Text(
@@ -269,6 +450,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         onRefresh: () async {
                           await notifier.fetchTournaments();
                           await ref.read(walletProvider.notifier).fetchSummary();
+                          await ref.read(notificationProvider.notifier).fetchAnnouncements();
                         },
                         child: ListView.builder(
                           padding: const EdgeInsets.all(16),

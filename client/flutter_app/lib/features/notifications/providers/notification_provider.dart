@@ -6,12 +6,16 @@ class NotificationState {
   final bool isLoading;
   final int unreadCount;
   final List<InAppNotificationModel> notifications;
+  final List<InAppNotificationModel> announcements;
+  final Set<String> dismissedAnnouncementIds;
   final String? errorMessage;
 
   const NotificationState({
     this.isLoading = false,
     this.unreadCount = 0,
     this.notifications = const [],
+    this.announcements = const [],
+    this.dismissedAnnouncementIds = const {},
     this.errorMessage,
   });
 
@@ -19,12 +23,16 @@ class NotificationState {
     bool? isLoading,
     int? unreadCount,
     List<InAppNotificationModel>? notifications,
+    List<InAppNotificationModel>? announcements,
+    Set<String>? dismissedAnnouncementIds,
     String? errorMessage,
   }) {
     return NotificationState(
       isLoading: isLoading ?? this.isLoading,
       unreadCount: unreadCount ?? this.unreadCount,
       notifications: notifications ?? this.notifications,
+      announcements: announcements ?? this.announcements,
+      dismissedAnnouncementIds: dismissedAnnouncementIds ?? this.dismissedAnnouncementIds,
       errorMessage: errorMessage,
     );
   }
@@ -39,6 +47,7 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
   NotificationNotifier() : super(const NotificationState()) {
     fetchUnreadCount();
+    fetchAnnouncements();
   }
 
   Future<void> fetchUnreadCount() async {
@@ -49,6 +58,22 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         state = state.copyWith(unreadCount: count);
       }
     } catch (_) {}
+  }
+
+  Future<void> fetchAnnouncements() async {
+    try {
+      final res = await _apiClient.dio.get('/notifications/announcements');
+      if (res.statusCode == 200 && res.data['data'] != null) {
+        final List list = res.data['data']['announcements'] ?? [];
+        final parsed = list.map((item) => InAppNotificationModel.fromJson(item as Map<String, dynamic>)).toList();
+        state = state.copyWith(announcements: parsed);
+      }
+    } catch (_) {}
+  }
+
+  void dismissAnnouncement(String announcementId) {
+    final updatedSet = Set<String>.from(state.dismissedAnnouncementIds)..add(announcementId);
+    state = state.copyWith(dismissedAnnouncementIds: updatedSet);
   }
 
   Future<void> fetchInbox() async {
