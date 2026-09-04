@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../models/slot_model.dart';
 import '../providers/slot_booking_provider.dart';
 import '../../home/models/tournament_model.dart';
 import '../../profile/providers/profile_provider.dart';
@@ -20,18 +21,6 @@ class SlotPickerScreen extends ConsumerStatefulWidget {
 }
 
 class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
-  final TextEditingController _teamNameController = TextEditingController();
-  final List<TextEditingController> _teammateUidControllers = [];
-  final List<TextEditingController> _teammateIgnControllers = [];
-  final List<TextEditingController> _substituteUidControllers = [
-    TextEditingController(),
-    TextEditingController(),
-  ];
-  final List<TextEditingController> _substituteIgnControllers = [
-    TextEditingController(),
-    TextEditingController(),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -39,22 +28,6 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
       ref.read(slotBookingProvider.notifier).fetchSlotGrid(widget.tournament.id);
       ref.read(profileProvider.notifier).fetchProfile();
     });
-
-    final requiredTeammates = widget.tournament.mode == 'squad' ? 3 : (widget.tournament.mode == 'duo' ? 1 : 0);
-    for (int i = 0; i < requiredTeammates; i++) {
-      _teammateUidControllers.add(TextEditingController());
-      _teammateIgnControllers.add(TextEditingController());
-    }
-  }
-
-  @override
-  void dispose() {
-    _teamNameController.dispose();
-    for (var c in _teammateUidControllers) { c.dispose(); }
-    for (var c in _teammateIgnControllers) { c.dispose(); }
-    for (var c in _substituteUidControllers) { c.dispose(); }
-    for (var c in _substituteIgnControllers) { c.dispose(); }
-    super.dispose();
   }
 
   void _showQuickLinkUidDialog() {
@@ -99,7 +72,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'You must enter your Free Fire UID and in-game nickname to confirm tournament slot registration.',
+                    'You must link your Free Fire UID and Nickname to confirm tournament slot registration.',
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
                   const SizedBox(height: 14),
@@ -174,51 +147,27 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     final state = ref.read(slotBookingProvider);
     if (state.selectedSlotNumber == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an available slot number first.')),
+        const SnackBar(
+          content: Text('Please choose your match slot first.'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
 
-    final teammatesList = <Map<String, dynamic>>[];
-    for (int i = 0; i < _teammateUidControllers.length; i++) {
-      final uid = _teammateUidControllers[i].text.trim();
-      final ign = _teammateIgnControllers[i].text.trim();
-      if (uid.isNotEmpty || ign.isNotEmpty) {
-        teammatesList.add({
-          'ffUid': uid.isNotEmpty ? uid : 'UID_PENDING',
-          'ffIgn': ign.isNotEmpty ? ign : 'Teammate #${i + 2}',
-          'role': 'main',
-        });
-      }
-    }
-
-    if (widget.tournament.mode == 'squad') {
-      for (int i = 0; i < _substituteUidControllers.length; i++) {
-        final uid = _substituteUidControllers[i].text.trim();
-        final ign = _substituteIgnControllers[i].text.trim();
-        if (uid.isNotEmpty || ign.isNotEmpty) {
-          teammatesList.add({
-            'ffUid': uid.isNotEmpty ? uid : 'UID_SUB',
-            'ffIgn': ign.isNotEmpty ? ign : 'Substitute #${i + 1}',
-            'role': 'substitute',
-          });
-        }
-      }
-    }
-
     final success = await ref.read(slotBookingProvider.notifier).bookSelectedSlot(
           tournamentId: widget.tournament.id,
-          teamName: _teamNameController.text.trim().isEmpty ? null : _teamNameController.text.trim(),
-          teammates: teammatesList.isNotEmpty ? teammatesList : null,
         );
 
     if (!mounted) return;
 
     if (success) {
+      final slotInfo = _getSlotLabel(state.selectedSlotNumber!);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Slot #${state.selectedSlotNumber} booked successfully!'),
+          content: Text('$slotInfo booked successfully!'),
           backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       Navigator.pushReplacement(
@@ -234,6 +183,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
           const SnackBar(
             content: Text('Please sign in to confirm and join this tournament.'),
             backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
           ),
         );
         Navigator.push(
@@ -247,10 +197,24 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
           SnackBar(
             content: Text(errorMsg),
             backgroundColor: AppColors.danger,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     }
+  }
+
+  String _getSlotLabel(int slotNumber) {
+    if (widget.tournament.mode == 'squad') {
+      final team = ((slotNumber - 1) ~/ 4) + 1;
+      final pos = ['A', 'B', 'C', 'D'][(slotNumber - 1) % 4];
+      return 'Team $team - Slot $pos (Slot #$slotNumber)';
+    } else if (widget.tournament.mode == 'duo') {
+      final team = ((slotNumber - 1) ~/ 2) + 1;
+      final pos = ['A', 'B'][(slotNumber - 1) % 2];
+      return 'Team $team - Slot $pos (Slot #$slotNumber)';
+    }
+    return 'Slot #$slotNumber';
   }
 
   @override
@@ -262,15 +226,28 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Select match slot'),
+        backgroundColor: const Color(0xFF6200EE),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Choose your match slot',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
       ),
       body: state.isLoading && grid == null
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
           : Column(
               children: [
-                // Top Header Info
+                // Tournament Details Header
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
                     border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
@@ -278,327 +255,106 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.tournament.title,
-                            style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${_toSentenceCase(widget.tournament.mode)} • ${_toSentenceCase(widget.tournament.map)} • ${widget.tournament.isPaid ? '₹${widget.tournament.entryFee.toStringAsFixed(0)}' : 'Free'}',
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.tournament.title,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${_toSentenceCase(widget.tournament.mode)} • ${_toSentenceCase(widget.tournament.map)} • ${widget.tournament.isPaid ? '₹${widget.tournament.entryFee.toStringAsFixed(0)}' : 'Free Entry'}',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                            ),
+                          ],
+                        ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceMuted,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: AppColors.border, width: 0.5),
                         ),
                         child: Text(
-                          '${grid?.availableSlotsCount ?? 0} slots remaining',
-                          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500, fontSize: 11),
+                          '${grid?.availableSlotsCount ?? 0} slots left',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                // Legend (Pill tags)
+                // Legend Indicator Row
                 Container(
-                  color: AppColors.background,
+                  color: AppColors.surfaceMuted,
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildLegendItem('Available', AppColors.surface, borderColor: AppColors.border),
-                      _buildLegendItem('Selected', AppColors.primary),
-                      _buildLegendItem('Booked', AppColors.surfaceMuted, textColor: AppColors.textMuted),
-                      _buildLegendItem('Your slot', AppColors.success),
+                      _buildLegendItem('Available', Colors.white, borderColor: Colors.black54),
+                      _buildLegendItem('Selected', AppColors.primary, isChecked: true),
+                      _buildLegendItem('Booked', const Color(0xFFB0B0B0), isChecked: true),
+                      if (isAlreadyJoined)
+                        _buildLegendItem('Your slot', AppColors.success, isChecked: true),
                     ],
                   ),
                 ),
-                const Divider(height: 1),
 
-                // Grid View
+                // Main Slots Table View
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (isAlreadyJoined) ...[
                           Container(
                             padding: const EdgeInsets.all(12),
-                            margin: const EdgeInsets.only(bottom: 16),
+                            margin: const EdgeInsets.only(bottom: 14),
                             decoration: BoxDecoration(
                               color: AppColors.successBg,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                               border: Border.all(color: AppColors.successBorder, width: 0.5),
                             ),
                             child: Row(
                               children: [
                                 const Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'You are registered in slot #${grid!.currentUserBookedSlot}',
-                                  style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-
-                        // Slots Grid 1..48
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 6,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                            childAspectRatio: 1.0,
-                          ),
-                          itemCount: grid?.slots.length ?? 0,
-                          itemBuilder: (context, index) {
-                            final slot = grid!.slots[index];
-                            final isSelected = state.selectedSlotNumber == slot.slotNumber;
-                            final isUserSlot = slot.isCurrentUser;
-
-                            Color bg = AppColors.surface;
-                            Color textColor = AppColors.textPrimary;
-                            Border border = Border.all(color: AppColors.border, width: 0.5);
-
-                            if (slot.isBooked) {
-                              bg = AppColors.surfaceMuted;
-                              textColor = AppColors.textMuted;
-                            }
-                            if (isSelected) {
-                              bg = AppColors.primary;
-                              textColor = const Color(0xFF0B0E17);
-                              border = Border.all(color: AppColors.primary, width: 1.0);
-                            }
-                            if (isUserSlot) {
-                              bg = AppColors.success;
-                              textColor = const Color(0xFF0B0E17);
-                              border = Border.all(color: AppColors.success, width: 1.0);
-                            }
-
-                            return InkWell(
-                              onTap: slot.isBooked
-                                  ? () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Slot #${slot.slotNumber} is booked (${slot.bookedBy ?? 'Occupied'})'),
-                                          duration: const Duration(seconds: 1),
-                                        ),
-                                      );
-                                    }
-                                  : () => ref.read(slotBookingProvider.notifier).selectSlot(slot.slotNumber),
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: bg,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: border,
-                                ),
-                                child: Center(
+                                const SizedBox(width: 8),
+                                Expanded(
                                   child: Text(
-                                    '${slot.slotNumber}',
-                                    style: TextStyle(
-                                      color: textColor,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-
-                        // Multi-player format inputs (Duo / Squad)
-                        if (widget.tournament.mode != 'solo' && !isAlreadyJoined) ...[
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              const Icon(Icons.shield_outlined, size: 16, color: AppColors.primary),
-                              const SizedBox(width: 6),
-                              Text(
-                                widget.tournament.mode == 'squad' ? 'Squad Roster' : 'Duo Team Details',
-                                style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _teamNameController,
-                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                            decoration: const InputDecoration(
-                              labelText: 'Team or clan name',
-                              hintText: 'e.g. Total Gaming / Team Elite',
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Starting Playing Lineup Header
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceMuted,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.border, width: 0.5),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.group_outlined, size: 16, color: AppColors.primary),
-                                const SizedBox(width: 8),
-                                Text(
-                                  widget.tournament.mode == 'squad' ? 'Main Playing Lineup (Starting 4)' : 'Partner Details',
-                                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          for (int i = 0; i < _teammateUidControllers.length; i++) ...[
-                            Text(
-                              'Teammate #${i + 2} (Main Lineup)',
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _teammateUidControllers[i],
-                                    keyboardType: TextInputType.number,
-                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                                    decoration: const InputDecoration(
-                                      labelText: 'Free Fire UID',
-                                      hintText: 'e.g. 1029384812',
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _teammateIgnControllers[i],
-                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                                    decoration: const InputDecoration(
-                                      labelText: 'In-Game Nickname (IGN)',
-                                      hintText: 'e.g. Shadow_07',
-                                    ),
+                                    'You are already registered in ${_getSlotLabel(grid!.currentUserBookedSlot!)}',
+                                    style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 12),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                          ],
-
-                          // 2 Substitution Players (For Squad Mode)
-                          if (widget.tournament.mode == 'squad') ...[
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceMuted,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.border, width: 0.5),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.swap_horiz_rounded, size: 16, color: AppColors.accent),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Substitution Players (Optional • 2 Subs)',
-                                      style: TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Subs can replace main players if someone cannot join the match room.',
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-                            ),
-                            const SizedBox(height: 12),
-
-                            for (int i = 0; i < _substituteUidControllers.length; i++) ...[
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: AppColors.border, width: 0.5),
-                                    ),
-                                    child: Text(
-                                      'SUB #${i + 1}',
-                                      style: const TextStyle(color: AppColors.accent, fontSize: 10, fontWeight: FontWeight.w700),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Substitute Player #${i + 1} (Optional)',
-                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _substituteUidControllers[i],
-                                      keyboardType: TextInputType.number,
-                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                                      decoration: InputDecoration(
-                                        labelText: 'Substitute #${i + 1} UID',
-                                        hintText: 'e.g. 5839201948',
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _substituteIgnControllers[i],
-                                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                                      decoration: InputDecoration(
-                                        labelText: 'Substitute #${i + 1} IGN',
-                                        hintText: 'e.g. Killer_Sub',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          ],
-                        ],
-
-                        if (state.errorMessage != null) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            state.errorMessage!,
-                            style: const TextStyle(color: AppColors.danger, fontSize: 12),
-                            textAlign: TextAlign.center,
                           ),
                         ],
+
+                        // Render Squad 12-Team Custom Room Table (or Duo/Solo)
+                        if (widget.tournament.mode == 'squad')
+                          _buildSquadTable(grid, state)
+                        else if (widget.tournament.mode == 'duo')
+                          _buildDuoTable(grid, state)
+                        else
+                          _buildSoloGrid(grid, state),
                       ],
                     ),
                   ),
                 ),
 
-                // Bottom Bar with Pill CTA
+                // Bottom Bar with NEXT Button
                 if (!isAlreadyJoined)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -606,34 +362,60 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
                       color: AppColors.surface,
                       border: Border(top: BorderSide(color: AppColors.border, width: 0.5)),
                     ),
-                    child: Row(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Selected slot', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                            Text(
-                              state.selectedSlotNumber != null ? 'Slot #${state.selectedSlotNumber}' : 'None selected',
-                              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        ElevatedButton(
-                          onPressed: state.isBooking || state.selectedSlotNumber == null
-                              ? null
-                              : _handleConfirmBooking,
-                          child: state.isBooking
-                              ? const SizedBox(
-                                  height: 16,
-                                  width: 16,
-                                  child: CircularProgressIndicator(color: Color(0xFF0B0E17), strokeWidth: 1.5),
-                                )
-                              : Text(
-                                  widget.tournament.isPaid 
-                                      ? 'Pay ₹${widget.tournament.entryFee.toStringAsFixed(0)} and book' 
-                                      : 'Confirm free slot',
+                        if (state.selectedSlotNumber != null) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.sports_esports, size: 14, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Selected: ${_getSlotLabel(state.selectedSlotNumber!)}',
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: state.isBooking || state.selectedSlotNumber == null
+                                ? null
+                                : _handleConfirmBooking,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2B88B8),
+                              disabledBackgroundColor: const Color(0xFF2B88B8).withValues(alpha: 0.35),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: state.isBooking
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : const Text(
+                                    'NEXT',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                          ),
                         ),
                       ],
                     ),
@@ -643,20 +425,360 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     );
   }
 
-  Widget _buildLegendItem(String label, Color color, {Color? borderColor, Color? textColor}) {
+  // --- SQUAD 12-TEAM TABLE (Team | A | B | C | D) ---
+  Widget _buildSquadTable(SlotGridModel? grid, SlotBookingState state) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        children: [
+          // Table Header Bar (Team | A | B | C | D)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF53627A),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 54,
+                  child: Text(
+                    'Team',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'A',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'B',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'C',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'D',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // 12 Team Rows
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 12,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemBuilder: (context, teamIndex) {
+              final teamNumber = teamIndex + 1;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                child: Row(
+                  children: [
+                    // Team Number (1 to 12)
+                    SizedBox(
+                      width: 54,
+                      child: Text(
+                        '$teamNumber',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+
+                    // Slot A
+                    Expanded(child: Center(child: _buildSlotBox(grid, state, teamNumber, 0, 'A'))),
+
+                    // Slot B
+                    Expanded(child: Center(child: _buildSlotBox(grid, state, teamNumber, 1, 'B'))),
+
+                    // Slot C
+                    Expanded(child: Center(child: _buildSlotBox(grid, state, teamNumber, 2, 'C'))),
+
+                    // Slot D
+                    Expanded(child: Center(child: _buildSlotBox(grid, state, teamNumber, 3, 'D'))),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  // --- DUO 24-TEAM TABLE (Team | A | B) ---
+  Widget _buildDuoTable(SlotGridModel? grid, SlotBookingState state) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF53627A),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 60,
+                  child: Text(
+                    'Team',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'A',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'B',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 24,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemBuilder: (context, teamIndex) {
+              final teamNumber = teamIndex + 1;
+              final slotA = ((teamIndex) * 2) + 1;
+              final slotB = ((teamIndex) * 2) + 2;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      child: Text(
+                        '$teamNumber',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Center(child: _buildDirectSlotBox(grid, state, slotA, 'Team $teamNumber - Slot A'))),
+                    Expanded(child: Center(child: _buildDirectSlotBox(grid, state, slotB, 'Team $teamNumber - Slot B'))),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  // --- SOLO GRID (1 to 48) ---
+  Widget _buildSoloGrid(SlotGridModel? grid, SlotBookingState state) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 6,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.0,
+      ),
+      itemCount: grid?.slots.length ?? 48,
+      itemBuilder: (context, index) {
+        final slotNumber = index + 1;
+        return _buildDirectSlotBox(grid, state, slotNumber, 'Slot #$slotNumber', showNumber: true);
+      },
+    );
+  }
+
+  // --- REUSABLE CHECKBOX SLOT BOX ---
+  Widget _buildSlotBox(
+    SlotGridModel? grid,
+    SlotBookingState state,
+    int teamNumber,
+    int posIndex,
+    String posLetter,
+  ) {
+    final slotNumber = ((teamNumber - 1) * 4) + posIndex + 1;
+    final label = 'Team $teamNumber - Slot $posLetter (Slot #$slotNumber)';
+    return _buildDirectSlotBox(grid, state, slotNumber, label);
+  }
+
+  Widget _buildDirectSlotBox(
+    SlotGridModel? grid,
+    SlotBookingState state,
+    int slotNumber,
+    String label, {
+    bool showNumber = false,
+  }) {
+    SlotItemModel? slot;
+    if (grid != null && grid.slots.isNotEmpty) {
+      for (var s in grid.slots) {
+        if (s.slotNumber == slotNumber) {
+          slot = s;
+          break;
+        }
+      }
+    }
+
+    final isSelected = state.selectedSlotNumber == slotNumber;
+    final isUserSlot = slot?.isCurrentUser == true;
+    final isBooked = (slot?.isBooked == true) && !isUserSlot;
+
+    return InkWell(
+      onTap: isBooked
+          ? () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$label is occupied (${slot?.bookedBy ?? 'Booked'})'),
+                  duration: const Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          : () {
+              if (isSelected) {
+                // Deselect if already selected
+                ref.read(slotBookingProvider.notifier).selectSlot(0);
+              } else {
+                ref.read(slotBookingProvider.notifier).selectSlot(slotNumber);
+              }
+            },
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: isUserSlot
+              ? AppColors.success
+              : isSelected
+                  ? AppColors.primary
+                  : isBooked
+                      ? const Color(0xFFB0B0B0)
+                      : Colors.white,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isUserSlot
+                ? AppColors.success
+                : isSelected
+                    ? AppColors.primary
+                    : isBooked
+                        ? const Color(0xFF9E9E9E)
+                        : const Color(0xFF1E293B),
+            width: 1.8,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.4),
+                    blurRadius: 6,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: isUserSlot || isSelected
+              ? Icon(
+                  Icons.check,
+                  size: 18,
+                  color: isSelected ? const Color(0xFF0B0E17) : Colors.white,
+                )
+              : isBooked
+                  ? const Icon(
+                      Icons.check,
+                      size: 18,
+                      color: Color(0xFF616161),
+                    )
+                  : showNumber
+                      ? Text(
+                          '$slotNumber',
+                          style: const TextStyle(
+                            color: Color(0xFF0B0E17),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        )
+                      : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color, {Color? borderColor, bool isChecked = false}) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 16,
+          height: 16,
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(3),
-            border: borderColor != null ? Border.all(color: borderColor, width: 0.5) : null,
+            border: Border.all(color: borderColor ?? color, width: 1.2),
           ),
+          child: isChecked
+              ? Center(
+                  child: Icon(
+                    Icons.check,
+                    size: 12,
+                    color: color == const Color(0xFFB0B0B0)
+                        ? const Color(0xFF616161)
+                        : (color == AppColors.primary ? const Color(0xFF0B0E17) : Colors.white),
+                  ),
+                )
+              : null,
         ),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(color: textColor ?? AppColors.textSecondary, fontSize: 11)),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w500),
+        ),
       ],
     );
   }
