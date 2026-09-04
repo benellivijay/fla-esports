@@ -33,6 +33,13 @@ jobs:
       - name: 🔑 Setup Release Keystore & Print SHA-1 Fingerprint
         run: |
           KEYSTORE_PATH="client/flutter_app/android/app/fla_release.keystore"
+          if [ -f "$KEYSTORE_PATH" ]; then
+            if ! keytool -list -keystore "$KEYSTORE_PATH" -alias flakey -storepass flaesports2026 >/dev/null 2>&1; then
+              echo "Existing keystore invalid or missing alias flakey, recreating standard keystore..."
+              rm -f "$KEYSTORE_PATH"
+            fi
+          fi
+          
           if [ ! -f "$KEYSTORE_PATH" ]; then
             keytool -genkeypair -v \
               -keystore "$KEYSTORE_PATH" \
@@ -47,14 +54,14 @@ jobs:
           
           echo "=========================================================="
           echo "GOOGLE OAUTH 2.0 SHA-1 CERTIFICATE FINGERPRINTS:"
-          keytool -list -v -keystore "$KEYSTORE_PATH" -alias flakey -storepass flaesports2026 | grep -E "(SHA1|SHA256)"
+          keytool -list -v -keystore "$KEYSTORE_PATH" -alias flakey -storepass flaesports2026 || true
           echo "Package Name: com.flaesports.tournament"
           echo "=========================================================="
           
           echo "### 🔑 Google OAuth 2.0 SHA-1 Fingerprint (Copy for Google Cloud / Firebase)" >> $GITHUB_STEP_SUMMARY
           echo "- **Package Name**: \`com.flaesports.tournament\`" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          keytool -list -v -keystore "$KEYSTORE_PATH" -alias flakey -storepass flaesports2026 | grep -E "(SHA1|SHA256)" >> $GITHUB_STEP_SUMMARY
+          keytool -list -v -keystore "$KEYSTORE_PATH" -alias flakey -storepass flaesports2026 | grep -E "(SHA1|SHA256)" >> $GITHUB_STEP_SUMMARY || true
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: 🔨 Build Release APK
