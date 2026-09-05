@@ -149,7 +149,7 @@ class UserBookingMatchModel {
       entryType: json['entry_type'] as String? ?? 'paid',
       prizePool: (json['prize_pool'] as num?)?.toDouble() ?? 0.0,
       perKillPrize: (json['per_kill_prize'] as num?)?.toDouble() ?? 0.0,
-      startTime: DateTime.tryParse(json['start_time'] as String? ?? '') ?? DateTime.now(),
+      startTime: DateTime.tryParse(json['start_time'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       roomId: json['room_id'] as String?,
       roomPassword: json['room_password'] as String?,
       roomRevealed: json['room_revealed'] == true || json['room_revealed'] == 1,

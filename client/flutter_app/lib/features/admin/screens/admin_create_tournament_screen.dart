@@ -27,9 +27,29 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
   String _selectedMode = 'solo';
   String _selectedMap = 'Bermuda';
   String _selectedEntryType = 'paid';
-  DateTime _selectedDate = DateTime.now().add(const Duration(hours: 3));
-  TimeOfDay _selectedTime = TimeOfDay.fromDateTime(DateTime.now().add(const Duration(hours: 3)));
+  late DateTime _selectedDate;
+  late TimeOfDay _selectedTime;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    // Default to next upcoming slot (2 hours from now, rounded to 15 min intervals)
+    final future = now.add(const Duration(hours: 2));
+    final rem = future.minute % 15;
+    final roundedMin = rem == 0 ? future.minute : future.minute + (15 - rem);
+    final initialDate = DateTime(
+      future.year,
+      future.month,
+      future.day,
+      future.hour,
+      roundedMin >= 60 ? 0 : roundedMin,
+    ).add(roundedMin >= 60 ? const Duration(hours: 1) : Duration.zero);
+
+    _selectedDate = initialDate;
+    _selectedTime = TimeOfDay(hour: initialDate.hour, minute: initialDate.minute);
+  }
 
   @override
   void dispose() {
@@ -91,7 +111,7 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
       'prizeDistribution': prizeDistribution,
       'perKillPrize': perKill,
       'maxSlots': maxSlots,
-      'startTime': startDateTime.toIso8601String(),
+      'startTime': startDateTime.toUtc().toIso8601String(),
       'roomId': _roomIdController.text.trim().isEmpty ? null : _roomIdController.text.trim(),
       'roomPassword': _roomPassController.text.trim().isEmpty ? null : _roomPassController.text.trim(),
       'rules': _rulesController.text.trim().isEmpty ? null : _rulesController.text.trim(),
@@ -312,65 +332,120 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
                     Row(
                       children: [
                         Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              final d = await showDatePicker(
-                                context: context,
-                                initialDate: _selectedDate,
-                                firstDate: DateTime.now(),
-                                lastDate: DateTime.now().add(const Duration(days: 30)),
-                                builder: (ctx, child) => Theme(data: AppTheme.lightTheme, child: child!),
-                              );
-                              if (d != null) setState(() => _selectedDate = d);
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'MATCH DATE',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                              ),
+                              const SizedBox(height: 6),
+                              InkWell(
+                                onTap: () async {
+                                  final now = DateTime.now();
+                                  final todayMidnight = DateTime(now.year, now.month, now.day);
+                                  final d = await showDatePicker(
+                                    context: context,
+                                    initialDate: _selectedDate.isBefore(todayMidnight) ? todayMidnight : _selectedDate,
+                                    firstDate: todayMidnight,
+                                    lastDate: todayMidnight.add(const Duration(days: 60)),
+                                    builder: (ctx, child) => Theme(data: AppTheme.lightTheme, child: child!),
+                                  );
+                                  if (d != null) setState(() => _selectedDate = d);
+                                },
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.border, width: 0.5),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.border, width: 0.5),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 16),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          DateFormat('d MMM yyyy').format(_selectedDate),
+                                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.calendar_today_outlined, color: AppColors.textSecondary, size: 16),
-                                  const SizedBox(width: 8),
-                                  Text(DateFormat('d MMM yyyy').format(_selectedDate), style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-                                ],
-                              ),
-                            ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: InkWell(
-                            onTap: () async {
-                              final t = await showTimePicker(
-                                context: context,
-                                initialTime: _selectedTime,
-                                builder: (ctx, child) => Theme(data: AppTheme.lightTheme, child: child!),
-                              );
-                              if (t != null) setState(() => _selectedTime = t);
-                            },
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'START TIME',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                              ),
+                              const SizedBox(height: 6),
+                              InkWell(
+                                onTap: () async {
+                                  final t = await showTimePicker(
+                                    context: context,
+                                    initialTime: _selectedTime,
+                                    builder: (ctx, child) => Theme(data: AppTheme.lightTheme, child: child!),
+                                  );
+                                  if (t != null) setState(() => _selectedTime = t);
+                                },
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.border, width: 0.5),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.border, width: 0.5),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.access_time_rounded, color: AppColors.primary, size: 16),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _selectedTime.format(context),
+                                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.access_time_rounded, color: AppColors.textSecondary, size: 16),
-                                  const SizedBox(width: 8),
-                                  Text(_selectedTime.format(context), style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-                                ],
-                              ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceMuted,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.border, width: 0.5),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.schedule_rounded, color: AppColors.primary, size: 14),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Scheduled start: ${DateFormat('EEE, d MMM • h:mm a').format(DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, _selectedTime.hour, _selectedTime.minute))}',
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

@@ -129,7 +129,7 @@ export class TournamentService {
       prizeDistributionJson,
       data.perKillPrize || 0.0,
       finalMaxSlots,
-      data.startTime,
+      startDate.toISOString(),
       data.registrationClosesAt || null,
       data.roomRevealTimeMinutes || 15,
       data.roomId || null,
@@ -189,7 +189,14 @@ export class TournamentService {
     if (data.prizeDistribution !== undefined) { updates.push('prize_distribution = ?'); values.push(JSON.stringify(data.prizeDistribution)); }
     if (data.perKillPrize !== undefined) { updates.push('per_kill_prize = ?'); values.push(data.perKillPrize); }
     if (data.maxSlots !== undefined) { updates.push('max_slots = ?'); values.push(data.maxSlots); }
-    if (data.startTime !== undefined) { updates.push('start_time = ?'); values.push(data.startTime); }
+    if (data.startTime !== undefined) {
+      const parsedStart = new Date(data.startTime);
+      if (isNaN(parsedStart.getTime())) {
+        throw new AppError('Invalid start time format (ISO date string expected).', 400);
+      }
+      updates.push('start_time = ?');
+      values.push(parsedStart.toISOString());
+    }
     if (data.registrationClosesAt !== undefined) { updates.push('registration_closes_at = ?'); values.push(data.registrationClosesAt); }
     if (data.roomRevealTimeMinutes !== undefined) { updates.push('room_reveal_time_minutes = ?'); values.push(data.roomRevealTimeMinutes); }
     if (data.roomId !== undefined) { updates.push('room_id = ?'); values.push(data.roomId); }

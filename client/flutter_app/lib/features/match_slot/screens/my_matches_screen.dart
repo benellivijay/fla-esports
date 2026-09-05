@@ -101,7 +101,7 @@ class _MyMatchesScreenState extends ConsumerState<MyMatchesScreen> {
   }
 
   Widget _buildMatchCard(UserBookingMatchModel match) {
-    final formattedDate = DateFormat('EEE, d MMM • h:mm a').format(match.startTime);
+    final formattedDate = DateFormat('EEE, d MMM • h:mm a').format(match.startTime.toLocal());
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

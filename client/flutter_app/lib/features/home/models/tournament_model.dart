@@ -106,19 +106,19 @@ class TournamentModel {
       perKillPrize: (json['per_kill_prize'] as num?)?.toDouble() ?? 0.0,
       maxSlots: (json['max_slots'] as num?)?.toInt() ?? 48,
       filledSlots: (json['filled_slots'] as num?)?.toInt() ?? 0,
-      startTime: DateTime.tryParse(json['start_time'] as String? ?? '') ?? DateTime.now(),
+      startTime: DateTime.tryParse(json['start_time'] as String? ?? '')?.toLocal() ?? DateTime.now(),
       registrationClosesAt: json['registration_closes_at'] != null 
-          ? DateTime.tryParse(json['registration_closes_at'] as String) 
+          ? DateTime.tryParse(json['registration_closes_at'] as String)?.toLocal() 
           : null,
       roomRevealTimeMinutes: (json['room_reveal_time_minutes'] as num?)?.toInt() ?? 15,
       roomId: json['room_id'] as String?,
       roomPassword: json['room_password'] as String?,
       roomRevealed: json['room_revealed'] == true || json['room_revealed'] == 1,
       roomRevealedAt: json['room_revealed_at'] != null 
-          ? DateTime.tryParse(json['room_revealed_at'] as String) 
+          ? DateTime.tryParse(json['room_revealed_at'] as String)?.toLocal() 
           : null,
       roomUpdatedAt: json['room_updated_at'] != null 
-          ? DateTime.tryParse(json['room_updated_at'] as String) 
+          ? DateTime.tryParse(json['room_updated_at'] as String)?.toLocal() 
           : null,
       roomUpdatedBy: json['room_updated_by'] as String?,
       status: json['status'] as String? ?? 'upcoming',

@@ -18,7 +18,7 @@ class TournamentCard extends StatelessWidget {
         ? (tournament.filledSlots / tournament.maxSlots).clamp(0.0, 1.0) 
         : 0.0;
 
-    final String formattedDate = DateFormat('EEE, d MMM • h:mm a').format(tournament.startTime);
+    final String formattedDate = DateFormat('EEE, d MMM • h:mm a').format(tournament.startTime.toLocal());
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

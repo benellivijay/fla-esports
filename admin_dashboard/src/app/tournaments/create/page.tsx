@@ -32,9 +32,11 @@ export default function CreateTournamentPage() {
   const [prizePool, setPrizePool] = useState<number>(2000);
   const [perKillPrize, setPerKillPrize] = useState<number>(25);
   const [maxSlots, setMaxSlots] = useState<number>(48);
-  const [startTime, setStartTime] = useState<string>(
-    new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
-  );
+  const [startTime, setStartTime] = useState<string>(() => {
+    const d = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
   const [roomRevealTimeMinutes, setRoomRevealTimeMinutes] = useState<number>(15);
   const [roomId, setRoomId] = useState<string>('');
   const [roomPassword, setRoomPassword] = useState<string>('');

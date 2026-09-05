@@ -198,6 +198,36 @@ class AppTheme {
         ),
       ),
 
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        headerBackgroundColor: AppColors.surfaceMuted,
+        headerForegroundColor: AppColors.textPrimary,
+        dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return const Color(0xFF0B0E17);
+          if (states.contains(WidgetState.disabled)) return AppColors.textSecondary.withValues(alpha: 0.4);
+          return AppColors.textPrimary;
+        }),
+        dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return AppColors.primary;
+          return Colors.transparent;
+        }),
+        todayForegroundColor: const WidgetStatePropertyAll(AppColors.primary),
+        todayBorder: const BorderSide(color: AppColors.primary, width: 1),
+      ),
+
+      timePickerTheme: const TimePickerThemeData(
+        backgroundColor: AppColors.surface,
+        dialBackgroundColor: AppColors.surfaceMuted,
+        dialHandColor: AppColors.primary,
+        dialTextColor: AppColors.textPrimary,
+        entryModeIconColor: AppColors.primary,
+        hourMinuteColor: AppColors.surfaceMuted,
+        hourMinuteTextColor: AppColors.primary,
+        dayPeriodColor: AppColors.surfaceMuted,
+        dayPeriodTextColor: AppColors.primary,
+      ),
+
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,

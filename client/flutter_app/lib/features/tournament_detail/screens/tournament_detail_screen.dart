@@ -200,7 +200,7 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
     }
 
     final t = _tournament!;
-    final formattedDate = DateFormat('EEEE, d MMMM yyyy • h:mm a').format(t.startTime);
+    final formattedDate = DateFormat('EEEE, d MMMM yyyy • h:mm a').format(t.startTime.toLocal());
 
     return Scaffold(
       backgroundColor: AppColors.background,
