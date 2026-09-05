@@ -7,9 +7,7 @@ import '../../features/wallet/screens/wallet_screen.dart';
 class FcmNotificationService {
   static final ApiClient _apiClient = ApiClient();
 
-  /**
-   * Registers current device push token with backend API
-   */
+  /// Registers current device push token with backend API
   static Future<void> registerPushToken(String fcmToken) async {
     try {
       final platform = Platform.isIOS ? 'ios' : Platform.isAndroid ? 'android' : 'web';
@@ -24,9 +22,7 @@ class FcmNotificationService {
     } catch (_) {}
   }
 
-  /**
-   * De-registers push token on user logout
-   */
+  /// De-registers push token on user logout
   static Future<void> unregisterPushToken(String fcmToken) async {
     try {
       await _apiClient.dio.delete(
@@ -36,9 +32,7 @@ class FcmNotificationService {
     } catch (_) {}
   }
 
-  /**
-   * Routes notification click deep-links
-   */
+  /// Routes notification click deep-links
   static void handleNotificationClick(BuildContext context, String type, Map<String, dynamic>? data) {
     if (data == null) return;
 

@@ -193,7 +193,7 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _selectedMode,
+                            initialValue: _selectedMode,
                             dropdownColor: AppColors.surface,
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                             decoration: const InputDecoration(labelText: 'Mode'),
@@ -215,7 +215,7 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
                         const SizedBox(width: 10),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _selectedMap,
+                            initialValue: _selectedMap,
                             dropdownColor: AppColors.surface,
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                             decoration: const InputDecoration(labelText: 'Map'),
@@ -249,7 +249,7 @@ class _AdminCreateTournamentScreenState extends ConsumerState<AdminCreateTournam
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _selectedEntryType,
+                            initialValue: _selectedEntryType,
                             dropdownColor: AppColors.surface,
                             style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
                             decoration: const InputDecoration(labelText: 'Entry type'),

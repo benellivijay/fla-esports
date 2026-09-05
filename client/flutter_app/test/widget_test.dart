@@ -16,7 +16,8 @@ void main() {
         child: FlaEsportsApp(),
       ),
     );
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump();
     expect(find.byType(FlaEsportsApp), findsOneWidget);
   });
 }

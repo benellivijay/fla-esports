@@ -69,7 +69,7 @@ export class RoomService {
     );
 
     // If past reveal time but db flag was 0, auto-heal db flag
-    if (isRevealed && hasRoomCredentials && tournament.room_revealed !== 1) {
+    if (isPastRevealTime && tournament.room_revealed !== 1) {
       try {
         db.prepare('UPDATE tournaments SET room_revealed = 1, room_revealed_at = CURRENT_TIMESTAMP WHERE id = ?').run(tournament.id);
       } catch (_) {}

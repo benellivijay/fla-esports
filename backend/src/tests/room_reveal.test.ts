@@ -109,9 +109,9 @@ async function runRoomRevealTests() {
   const nonJoinedUser = createUser('02');
   const adminUser = createUser('99', 'admin');
 
-  // Create Tournament A: Starting in 10 minutes (reveal threshold 15m -> eligible for reveal!)
+  // Create Tournament A: Starting in 30 minutes (reveal threshold 15m -> not yet eligible for reveal)
   const tourneyAId = uuidv4();
-  const startTimeA = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 mins in future
+  const startTimeA = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 mins in future
 
   db.prepare(`
     INSERT INTO tournaments (
@@ -195,6 +195,10 @@ async function runRoomRevealTests() {
       adminViewRes.data.data.roomId === 'FF_ROOM_101',
       'Admin can view room credentials at any time'
     );
+
+    // Shift Tournament A to within reveal threshold (starts in 10 minutes, reveal threshold is 15 minutes)
+    db.prepare('UPDATE tournaments SET start_time = ? WHERE id = ?')
+      .run(new Date(Date.now() + 10 * 60 * 1000).toISOString(), tourneyAId);
 
     // 4. Execute RoomRevealWorker cycle
     const workerResult = await RoomRevealWorker.checkAndRevealRooms();

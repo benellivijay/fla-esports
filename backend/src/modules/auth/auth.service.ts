@@ -625,7 +625,7 @@ export class AuthService {
   /**
    * Legacy sendOtp support
    */
-  public static async sendOtp(identifier: string, type: 'phone' | 'email'): Promise<{ success: boolean; message: string }> {
+  public static async sendOtp(identifier: string, type: 'phone' | 'email'): Promise<{ success: boolean; message: string; debugOtp?: string }> {
     const cleanIdentifier = identifier.trim().toLowerCase();
     const db = getDb();
 
@@ -662,6 +662,7 @@ export class AuthService {
     return {
       success: true,
       message: `OTP sent successfully to ${type === 'phone' ? 'phone number' : 'email address'}.`,
+      ...(config.nodeEnv !== 'production' ? { debugOtp: otpCode } : {}),
     };
   }
 

@@ -278,9 +278,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /**
-   * Checks if a chosen username is available in real time.
-   */
+  /// Checks if a chosen username is available in real time.
   Future<bool> checkUsernameAvailable(String username) async {
     try {
       final res = await _apiClient.dio.get(
@@ -296,9 +294,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /**
-   * Fetches AI-generated gaming tag recommendations.
-   */
+  /// Fetches AI-generated gaming tag recommendations.
   Future<List<String>> fetchAiUsernames({String? name, String? email}) async {
     try {
       final res = await _apiClient.dio.get(
@@ -318,9 +314,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return [];
   }
 
-  /**
-   * Completes Google sign in / sign up with your chosen name & username.
-   */
+  /// Completes Google sign in / sign up with your chosen name & username.
   Future<GoogleAuthResult> handleGoogleSignIn({
     String? chosenName,
     String? chosenUsername,
