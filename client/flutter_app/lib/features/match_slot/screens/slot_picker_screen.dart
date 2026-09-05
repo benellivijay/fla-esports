@@ -30,111 +30,401 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     });
   }
 
-  void _showQuickLinkUidDialog() {
-    final uidController = TextEditingController();
-    final ignController = TextEditingController();
-    bool isSaving = false;
+  final Map<int, String> _cachedIgnBySlot = {};
+  final Map<int, String> _cachedUidBySlot = {};
+
+  void _showPlayerRosterSheet(List<int> selectedSlots) {
+    final isSquad = widget.tournament.mode == 'squad';
+    final isDuo = widget.tournament.mode == 'duo';
+    final profile = ref.read(profileProvider).profile;
+
+    final defaultTeamName = isSquad
+        ? 'Team ${((selectedSlots.first - 1) ~/ 4) + 1}'
+        : isDuo
+            ? 'Team ${((selectedSlots.first - 1) ~/ 2) + 1}'
+            : 'Team';
+
+    final teamNameController = TextEditingController(text: defaultTeamName);
+    final ignControllers = List.generate(selectedSlots.length, (_) => TextEditingController());
+    final uidControllers = List.generate(selectedSlots.length, (_) => TextEditingController());
+
+    // Pre-fill Player 1 from user profile if available
+    for (int i = 0; i < selectedSlots.length; i++) {
+      final slotNum = selectedSlots[i];
+      if (i == 0) {
+        if (profile != null) {
+          final pIgn = (profile.ffIgn?.isNotEmpty == true)
+              ? profile.ffIgn!
+              : (profile.displayName.isNotEmpty && profile.displayName != 'Player' ? profile.displayName : '');
+          ignControllers[0].text = _cachedIgnBySlot[slotNum] ?? pIgn;
+          uidControllers[0].text = _cachedUidBySlot[slotNum] ?? (profile.ffUid ?? '');
+        } else {
+          ignControllers[0].text = _cachedIgnBySlot[slotNum] ?? '';
+          uidControllers[0].text = _cachedUidBySlot[slotNum] ?? '';
+        }
+      } else {
+        ignControllers[i].text = _cachedIgnBySlot[slotNum] ?? '';
+        uidControllers[i].text = _cachedUidBySlot[slotNum] ?? '';
+      }
+    }
+
+    String? modalError;
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: const Color(0xFF0F172A),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-        side: BorderSide(color: AppColors.border, width: 0.5),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        side: BorderSide(color: Color(0xFF334155), width: 1.0),
       ),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (modalContext, setModalState) {
+            final bottomPadding = MediaQuery.of(modalContext).viewInsets.bottom;
+            final headerTitle = isSquad
+                ? 'Squad Player Details (${selectedSlots.length} Slots)'
+                : isDuo
+                    ? 'Duo Player Details (${selectedSlots.length} Slots)'
+                    : 'Player Details (Slot #${selectedSlots.first})';
+
             return Padding(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(modalContext).viewInsets.bottom + 20,
-                left: 20,
-                right: 20,
-                top: 20,
+                bottom: bottomPadding + 16,
+                left: 16,
+                right: 16,
+                top: 16,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Link Free Fire Game ID',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
-                        onPressed: () => Navigator.pop(modalContext),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'You must link your Free Fire UID and Nickname to confirm tournament slot registration.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: uidController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                    decoration: const InputDecoration(
-                      labelText: 'Free Fire UID (e.g. 1029384812)',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: ignController,
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-                    decoration: const InputDecoration(
-                      labelText: 'In-Game Nickname (IGN)',
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: isSaving
-                        ? null
-                        : () async {
-                            final uid = uidController.text.trim();
-                            final ign = ignController.text.trim();
-                            if (uid.isEmpty || ign.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please enter both UID and Nickname.')),
-                              );
-                              return;
-                            }
-                            setModalState(() => isSaving = true);
-                            final linked = await ref.read(profileProvider.notifier).linkFfUid(ffUid: uid, ffIgn: ign);
-                            setModalState(() => isSaving = false);
-                            if (linked && mounted) {
-                              if (modalContext.mounted) {
-                                Navigator.pop(modalContext);
-                              }
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Free Fire ID linked! Retrying slot booking...'),
-                                    backgroundColor: AppColors.success,
-                                  ),
-                                );
-                                _handleConfirmBooking();
-                              }
-                            } else if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Failed to link Free Fire ID. Please check details.'),
-                                  backgroundColor: AppColors.danger,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(modalContext).size.height * 0.85,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header Bar
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                headerTitle,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: 0.2,
                                 ),
-                              );
-                            }
-                          },
-                    child: isSaving
-                        ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5))
-                        : const Text('Link ID & Book Slot'),
-                  ),
-                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Provide Free Fire Nickname & UID for each player',
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white70, size: 22),
+                          onPressed: () => Navigator.pop(modalContext),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Scrollable Player Fields
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Team Name Input (for Squad/Duo)
+                            if (isSquad || isDuo) ...[
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E293B),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFF334155), width: 1.0),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.shield_outlined, size: 14, color: Color(0xFF38BDF8)),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'TEAM NAME',
+                                          style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold, fontSize: 11),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    TextField(
+                                      controller: teamNameController,
+                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                        hintText: defaultTeamName,
+                                        hintStyle: const TextStyle(color: Colors.white38),
+                                        filled: true,
+                                        fillColor: const Color(0xFF0F172A),
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: const BorderSide(color: Color(0xFF475569)),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: const BorderSide(color: Color(0xFF334155)),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                          borderSide: const BorderSide(color: Color(0xFF2B88B8), width: 1.5),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            // Individual Player Cards for each selected slot
+                            for (int i = 0; i < selectedSlots.length; i++) ...[
+                              _buildPlayerSlotCard(
+                                index: i,
+                                slotNumber: selectedSlots[i],
+                                isSquad: isSquad,
+                                isDuo: isDuo,
+                                ignController: ignControllers[i],
+                                uidController: uidControllers[i],
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+
+                            // Match Summary & Total Entry Fee Card
+                            Container(
+                              margin: const EdgeInsets.only(top: 4, bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E293B),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFF334155), width: 0.8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.sports_esports, size: 16, color: Color(0xFF2B88B8)),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${_toSentenceCase(widget.tournament.mode)} • ${_toSentenceCase(widget.tournament.map)}',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: widget.tournament.isPaid ? const Color(0xFFF59E0B).withValues(alpha: 0.15) : const Color(0xFF10B981).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: widget.tournament.isPaid ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      widget.tournament.isPaid ? 'Total Fee: ₹${widget.tournament.entryFee.toStringAsFixed(0)}' : 'Free Entry',
+                                      style: TextStyle(
+                                        color: widget.tournament.isPaid ? const Color(0xFFF59E0B) : const Color(0xFF34D399),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Error Box if any
+                            if (modalError != null) ...[
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF7F1D1D).withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFEF4444), width: 1.0),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.error_outline, color: Color(0xFFFCA5A5), size: 16),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        modalError!,
+                                        style: const TextStyle(color: Color(0xFFFCA5A5), fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Confirmation Submit Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                setModalState(() => modalError = null);
+
+                                // 1. Validate all player inputs
+                                for (int k = 0; k < selectedSlots.length; k++) {
+                                  final ign = ignControllers[k].text.trim();
+                                  final uid = uidControllers[k].text.trim();
+                                  final playerNum = k + 1;
+
+                                  if (ign.isEmpty) {
+                                    setModalState(() => modalError = 'Please enter Nickname (IGN) for Player $playerNum.');
+                                    return;
+                                  }
+                                  if (uid.isEmpty) {
+                                    setModalState(() => modalError = 'Please enter Free Fire UID for Player $playerNum.');
+                                    return;
+                                  }
+                                  if (uid.length < 3) {
+                                    setModalState(() => modalError = 'Free Fire UID for Player $playerNum must be at least 3 characters.');
+                                    return;
+                                  }
+                                }
+
+                                // 2. Cache valid entries for session
+                                for (int k = 0; k < selectedSlots.length; k++) {
+                                  _cachedIgnBySlot[selectedSlots[k]] = ignControllers[k].text.trim();
+                                  _cachedUidBySlot[selectedSlots[k]] = uidControllers[k].text.trim();
+                                }
+
+                                // 3. Build teammates list
+                                final teammates = <Map<String, dynamic>>[];
+                                for (int k = 0; k < selectedSlots.length; k++) {
+                                  teammates.add({
+                                    'ffUid': uidControllers[k].text.trim(),
+                                    'ffIgn': ignControllers[k].text.trim(),
+                                  });
+                                }
+
+                                final finalTeamName = teamNameController.text.trim().isNotEmpty
+                                    ? teamNameController.text.trim()
+                                    : defaultTeamName;
+
+                                setModalState(() => isSubmitting = true);
+
+                                final success = await ref.read(slotBookingProvider.notifier).bookSelectedSlot(
+                                      tournamentId: widget.tournament.id,
+                                      teamName: finalTeamName,
+                                      teammates: teammates,
+                                    );
+
+                                if (!mounted) return;
+
+                                if (success) {
+                                  ref.read(profileProvider.notifier).fetchProfile();
+                                  if (modalContext.mounted) {
+                                    Navigator.pop(modalContext);
+                                  }
+
+                                  final String successMsg;
+                                  if (isSquad) {
+                                    final team = ((selectedSlots.first - 1) ~/ 4) + 1;
+                                    successMsg = 'Team $team Squad (4 slots: #${selectedSlots.join(", #")}) booked successfully!';
+                                  } else if (isDuo) {
+                                    final team = ((selectedSlots.first - 1) ~/ 2) + 1;
+                                    successMsg = 'Team $team Duo (2 slots: #${selectedSlots.join(", #")}) booked successfully!';
+                                  } else {
+                                    successMsg = 'Slot #${selectedSlots.first} booked successfully!';
+                                  }
+
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(successMsg),
+                                        backgroundColor: AppColors.success,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const MyMatchesScreen()),
+                                    );
+                                  }
+                                } else {
+                                  setModalState(() => isSubmitting = false);
+                                  final updatedState = ref.read(slotBookingProvider);
+                                  final errorMsg = updatedState.errorMessage ?? 'Failed to book slot. Please try again.';
+
+                                  if (errorMsg.contains('Authentication required') ||
+                                      errorMsg.contains('Bearer token') ||
+                                      errorMsg.contains('sign in')) {
+                                    if (modalContext.mounted) Navigator.pop(modalContext);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please sign in to confirm and join this tournament.'),
+                                          backgroundColor: AppColors.primary,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const AuthTabScreen()),
+                                      );
+                                    }
+                                  } else {
+                                    setModalState(() => modalError = errorMsg);
+                                  }
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2B88B8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                        child: isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : Text(
+                                'CONFIRM & BOOK ${selectedSlots.length} SLOT${selectedSlots.length > 1 ? "S" : ""}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -143,7 +433,136 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     );
   }
 
-  void _handleConfirmBooking() async {
+  Widget _buildPlayerSlotCard({
+    required int index,
+    required int slotNumber,
+    required bool isSquad,
+    required bool isDuo,
+    required TextEditingController ignController,
+    required TextEditingController uidController,
+  }) {
+    final playerNum = index + 1;
+    final String slotBadgeText;
+    final String roleTag = (index == 0) ? 'Leader' : 'Teammate';
+
+    if (isSquad) {
+      final pos = ['A', 'B', 'C', 'D'][(slotNumber - 1) % 4];
+      final team = ((slotNumber - 1) ~/ 4) + 1;
+      slotBadgeText = 'Team $team • Slot $pos (#$slotNumber)';
+    } else if (isDuo) {
+      final pos = ['A', 'B'][(slotNumber - 1) % 2];
+      final team = ((slotNumber - 1) ~/ 2) + 1;
+      slotBadgeText = 'Team $team • Slot $pos (#$slotNumber)';
+    } else {
+      slotBadgeText = 'Slot #$slotNumber';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF334155), width: 1.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2B88B8),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$playerNum',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Player $playerNum ($slotBadgeText)',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (index == 0) ? const Color(0xFF10B981).withValues(alpha: 0.2) : const Color(0xFF475569),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  roleTag,
+                  style: TextStyle(
+                    color: (index == 0) ? const Color(0xFF34D399) : Colors.white70,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              // Player In-Game Nickname
+              Expanded(
+                child: TextField(
+                  controller: ignController,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    labelText: 'IGN (Nickname)',
+                    labelStyle: const TextStyle(color: Colors.white60, fontSize: 11),
+                    hintText: 'e.g. Player_$playerNum',
+                    hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+                    filled: true,
+                    fillColor: const Color(0xFF0F172A),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF334155))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF334155))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF2B88B8))),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Player Free Fire UID
+              Expanded(
+                child: TextField(
+                  controller: uidController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    labelText: 'Free Fire UID',
+                    labelStyle: const TextStyle(color: Colors.white60, fontSize: 11),
+                    hintText: 'e.g. 1029384812',
+                    hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+                    filled: true,
+                    fillColor: const Color(0xFF0F172A),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF334155))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF334155))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF2B88B8))),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleConfirmBooking() {
     final state = ref.read(slotBookingProvider);
     final isSquad = widget.tournament.mode == 'squad';
     final isDuo = widget.tournament.mode == 'duo';
@@ -179,63 +598,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
       return;
     }
 
-    final success = await ref.read(slotBookingProvider.notifier).bookSelectedSlot(
-          tournamentId: widget.tournament.id,
-        );
-
-    if (!mounted) return;
-
-    if (success) {
-      final String successMsg;
-      if (isSquad) {
-        final team = ((selectedSlots.first - 1) ~/ 4) + 1;
-        successMsg = 'Team $team Squad (4 slots: #${selectedSlots.join(", #")}) booked successfully!';
-      } else if (isDuo) {
-        final team = ((selectedSlots.first - 1) ~/ 2) + 1;
-        successMsg = 'Team $team Duo (2 slots: #${selectedSlots.join(", #")}) booked successfully!';
-      } else {
-        successMsg = 'Slot #${selectedSlots.first} booked successfully!';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(successMsg),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MyMatchesScreen()),
-      );
-    } else {
-      final updatedState = ref.read(slotBookingProvider);
-      final errorMsg = updatedState.errorMessage ?? 'Failed to book slot. Please try again.';
-
-      if (errorMsg.contains('Authentication required') || errorMsg.contains('Bearer token') || errorMsg.contains('sign in')) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please sign in to confirm and join this tournament.'),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AuthTabScreen()),
-        );
-      } else if (errorMsg.contains('Free Fire UID') || errorMsg.contains('FF_UID')) {
-        _showQuickLinkUidDialog();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: AppColors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
+    _showPlayerRosterSheet(selectedSlots);
   }
 
   String _getSlotLabel(int slotNumber) {
@@ -272,7 +635,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
       canConfirm = selectedSlots.length == 4;
       if (canConfirm) {
         final team = ((selectedSlots.first - 1) ~/ 4) + 1;
-        buttonLabel = 'CONFIRM SQUAD (TEAM $team - 4 SLOTS)';
+        buttonLabel = 'ENTER PLAYER DETAILS (TEAM $team - 4 SLOTS) ➔';
         selectionInfo = 'Team $team: Slots A, B, C, D (#${selectedSlots.join(", #")})';
       } else if (selectedSlots.isNotEmpty) {
         buttonLabel = 'SELECT 4 SLOTS (${selectedSlots.length}/4)';
@@ -285,7 +648,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
       canConfirm = selectedSlots.length == 2;
       if (canConfirm) {
         final team = ((selectedSlots.first - 1) ~/ 2) + 1;
-        buttonLabel = 'CONFIRM DUO (TEAM $team - 2 SLOTS)';
+        buttonLabel = 'ENTER PLAYER DETAILS (TEAM $team - 2 SLOTS) ➔';
         selectionInfo = 'Team $team: Slots A, B (#${selectedSlots.join(", #")})';
       } else if (selectedSlots.isNotEmpty) {
         buttonLabel = 'SELECT 2 SLOTS (${selectedSlots.length}/2)';
@@ -297,7 +660,7 @@ class _SlotPickerScreenState extends ConsumerState<SlotPickerScreen> {
     } else {
       canConfirm = selectedSlots.length == 1;
       if (canConfirm) {
-        buttonLabel = 'CONFIRM SLOT #${selectedSlots.first}';
+        buttonLabel = 'ENTER PLAYER DETAILS (SLOT #${selectedSlots.first}) ➔';
         selectionInfo = 'Selected: Slot #${selectedSlots.first}';
       } else {
         buttonLabel = 'SELECT A SLOT';

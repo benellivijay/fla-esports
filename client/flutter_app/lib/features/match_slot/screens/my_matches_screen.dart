@@ -136,6 +136,30 @@ class _MyMatchesScreenState extends ConsumerState<MyMatchesScreen> {
             '${_toSentenceCase(match.mode)} • ${_toSentenceCase(match.map)} • Start: $formattedDate',
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
+          if (match.rosterSummary != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B).withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0xFF334155), width: 0.8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.people_alt_outlined, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Roster: ${match.rosterSummary}',
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
 
           // Action Buttons: Enter Room & Cancel

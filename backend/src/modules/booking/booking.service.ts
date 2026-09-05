@@ -198,12 +198,21 @@ export class BookingService {
     }
 
     // 4. Check user profile for Free Fire UID
-    const profile = db.prepare('SELECT ff_uid, ff_ign, display_name FROM profiles WHERE user_id = ?').get(userId) as any;
+    let profile = db.prepare('SELECT ff_uid, ff_ign, display_name FROM profiles WHERE user_id = ?').get(userId) as any;
+    if ((!profile || !profile.ff_uid || profile.ff_uid.trim() === '') && teammates && teammates.length > 0 && teammates[0].ffUid) {
+      db.prepare(`
+        UPDATE profiles 
+        SET ff_uid = ?, ff_ign = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE user_id = ?
+      `).run(teammates[0].ffUid.trim(), teammates[0].ffIgn?.trim() || profile?.display_name || 'Player', userId);
+      profile = db.prepare('SELECT ff_uid, ff_ign, display_name FROM profiles WHERE user_id = ?').get(userId) as any;
+    }
+
     if (!profile || !profile.ff_uid || profile.ff_uid.trim() === '') {
       throw new AppError('Please link your Free Fire UID in your profile before booking a slot.', 400, 'FF_UID_REQUIRED');
     }
-    const userFfUid = profile.ff_uid;
-    const userFfIgn = profile.ff_ign || profile.display_name || `Player_${userId.slice(-4)}`;
+    const userFfUid = (teammates && teammates[0]?.ffUid) ? teammates[0].ffUid.trim() : profile.ff_uid;
+    const userFfIgn = (teammates && teammates[0]?.ffIgn) ? teammates[0].ffIgn.trim() : (profile.ff_ign || profile.display_name || `Player_${userId.slice(-4)}`);
 
     // 5. Check if user already booked slots in this tournament
     const existingUserEntries = db.prepare(`
@@ -292,8 +301,8 @@ export class BookingService {
         }
 
         if (teammates && teammates[i]) {
-          slotUid = teammates[i].ffUid || slotUid;
-          slotIgn = teammates[i].ffIgn || slotIgn;
+          slotUid = teammates[i].ffUid ? teammates[i].ffUid.trim() : slotUid;
+          slotIgn = teammates[i].ffIgn ? teammates[i].ffIgn.trim() : slotIgn;
         }
 
         db.prepare(`
@@ -482,13 +491,23 @@ export class BookingService {
     for (const r of rows) {
       const isRoomRevealed = r.room_revealed === 1 || r.room_revealed === true;
       if (!tournamentMap.has(r.tournament_id)) {
+        let parsedTeammates: any[] = [];
+        try {
+          if (r.teammate_details) {
+            parsedTeammates = typeof r.teammate_details === 'string' ? JSON.parse(r.teammate_details) : r.teammate_details;
+          }
+        } catch (_) {
+          parsedTeammates = [];
+        }
+
         tournamentMap.set(r.tournament_id, {
           ...r,
           slot_numbers: [r.slot_number],
           room_id: isRoomRevealed ? r.room_id : null,
           room_password: isRoomRevealed ? r.room_password : null,
           room_revealed: isRoomRevealed,
-          teammate_details: r.teammate_details ? JSON.parse(r.teammate_details) : [],
+          teammate_details: parsedTeammates,
+          teammates: parsedTeammates,
         });
       } else {
         const item = tournamentMap.get(r.tournament_id);

@@ -329,7 +329,64 @@ async function runBookingTests() {
       'Duo Slot Grid returns 2 booked slots for current user in Team 1'
     );
 
+    // --- TEST 14: SQUAD BOOKING WITH DISTINCT PLAYER NAMES AND UIDS ---
+    const squadCustomTourneyId = uuidv4();
+    db.prepare(`
+      INSERT INTO tournaments (
+        id, title, game, mode, map, entry_type, entry_fee, prize_pool, prize_distribution, 
+        max_slots, filled_slots, start_time, room_reveal_time_minutes, status, created_at, updated_at
+      ) VALUES (
+        ?, 'Squad Custom Roster Cup', 'Free Fire', 'squad', 'Bermuda', 'free', 0.0, 5000.0, '[]', 
+        12, 0, ?, 15, 'upcoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).run(squadCustomTourneyId, startFree);
 
+    const customTeammates = [
+      { ffUid: '10000001', ffIgn: 'Leader_Alpha' },
+      { ffUid: '10000002', ffIgn: 'Sniper_Beta' },
+      { ffUid: '10000003', ffIgn: 'Rusher_Gamma' },
+      { ffUid: '10000004', ffIgn: 'Support_Delta' },
+    ];
+
+    const customBookRes = await makeRequest(server, {
+      method: 'POST',
+      path: `/api/v1/tournaments/${squadCustomTourneyId}/book`,
+      token: user3.token,
+      body: {
+        slotNumbers: [5, 6, 7, 8],
+        teamName: 'Team Alpha Clan',
+        teammates: customTeammates,
+      },
+    });
+    assert(customBookRes.status === 201 && customBookRes.data.success === true, 'User 3 books Team 2 squad with distinct player names and UIDs');
+
+    const entriesInDb = db.prepare(`
+      SELECT slot_number, player_ff_uid, player_ff_ign 
+      FROM tournament_entries 
+      WHERE tournament_id = ? 
+      ORDER BY slot_number ASC
+    `).all(squadCustomTourneyId) as any[];
+
+    assert(
+      entriesInDb.length === 4 &&
+      entriesInDb[0].player_ff_uid === '10000001' && entriesInDb[0].player_ff_ign === 'Leader_Alpha' &&
+      entriesInDb[1].player_ff_uid === '10000002' && entriesInDb[1].player_ff_ign === 'Sniper_Beta' &&
+      entriesInDb[2].player_ff_uid === '10000003' && entriesInDb[2].player_ff_ign === 'Rusher_Gamma' &&
+      entriesInDb[3].player_ff_uid === '10000004' && entriesInDb[3].player_ff_ign === 'Support_Delta',
+      'Database accurately stored distinct Free Fire UID and IGN for each selected slot'
+    );
+
+    const myBookingsRes = await makeRequest(server, {
+      method: 'GET',
+      path: '/api/v1/tournaments/user/my-bookings',
+      token: user3.token,
+    });
+    const myMatch = myBookingsRes.data.data.find((m: any) => m.tournament_id === squadCustomTourneyId);
+    assert(
+      myMatch && Array.isArray(myMatch.teammates) && myMatch.teammates.length === 4 &&
+      myMatch.teammates[1].ffIgn === 'Sniper_Beta',
+      'My Bookings returns parsed teammates array for squad match'
+    );
   } catch (err) {
     console.error('Unexpected test error:', err);
     failedCount++;

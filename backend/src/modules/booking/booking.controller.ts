@@ -12,7 +12,7 @@ const teammateSchema = z.object({
 
 const bookSlotSchema = z.object({
   slotNumber: z.number().int().min(1).max(100).optional(),
-  slotNumbers: z.array(z.number().int().min(1).max(100)).min(1).max(4).optional(),
+  slotNumbers: z.array(z.number().int().min(1).max(100)).min(1).max(100).optional(),
   teamName: z.string().max(40).optional(),
   teammates: z.array(teammateSchema).optional(),
 }).refine(data => data.slotNumber !== undefined || (data.slotNumbers !== undefined && data.slotNumbers.length > 0), {
