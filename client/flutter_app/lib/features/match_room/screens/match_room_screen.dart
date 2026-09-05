@@ -196,6 +196,29 @@ class MatchRoomScreen extends ConsumerWidget {
                       ],
                       const SizedBox(height: 12),
 
+                      // Game Record Video Reminder
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1F1206),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4), width: 1),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.videocam_rounded, color: Color(0xFFEF4444), size: 16),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Note: Full match recording is mandatory. Save directly to our Google Drive folder.',
+                                style: TextStyle(color: Color(0xFFFDE68A), fontSize: 11, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
                       // Submit Match Result CTA (Pill Button)
                       ElevatedButton.icon(
                         onPressed: () {

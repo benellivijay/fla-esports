@@ -135,13 +135,24 @@ export default function ResultsQueuePage() {
         title="Result review queue"
         subtitle="Verify match scoreboard proofs, approve stats and resolve disputes"
         actions={
-          <button
-            onClick={fetchResults}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surface hover:bg-surfaceMuted rounded-full border border-hairline border-border transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Refresh queue</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="https://drive.google.com/drive/folders/11B5k-tOHXku9fN9qVXJJb7NPyZc0Gver?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 bg-amber-950/30 hover:bg-amber-950/50 rounded-full border border-amber-500/40 transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Recordings Drive Folder</span>
+            </a>
+            <button
+              onClick={fetchResults}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surface hover:bg-surfaceMuted rounded-full border border-hairline border-border transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Refresh queue</span>
+            </button>
+          </div>
         }
       />
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../results/providers/result_provider.dart';
 import '../../results/models/result_model.dart';
@@ -12,6 +14,23 @@ class AdminResultsQueueScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminResultsQueueScreenState extends ConsumerState<AdminResultsQueueScreen> {
+  static const String driveFolderUrl =
+      'https://drive.google.com/drive/folders/11B5k-tOHXku9fN9qVXJJb7NPyZc0Gver?usp=sharing';
+
+  Future<void> _openDriveFolder() async {
+    final uri = Uri.parse(driveFolderUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        Clipboard.setData(const ClipboardData(text: driveFolderUrl));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Drive link copied to clipboard!')),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -136,6 +155,11 @@ class _AdminResultsQueueScreenState extends ConsumerState<AdminResultsQueueScree
       appBar: AppBar(
         title: const Text('Results review queue'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.folder_shared_rounded, color: Color(0xFFF59E0B)),
+            tooltip: 'Open Recordings Drive Folder',
+            onPressed: _openDriveFolder,
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 20),
             onPressed: () => ref.read(resultProvider.notifier).fetchAdminQueue(status: 'pending_review'),

@@ -388,7 +388,7 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
                   const Text('Rules and guidelines', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                   const SizedBox(height: 8),
                   Text(
-                    t.rules ?? '1. Emulators and PC players are strictly prohibited.\n2. Hacks, scripts, and third-party tools lead to an immediate ban.\n3. Screenshot of results must be submitted within 15 minutes after match.\n4. Winning players must send their game recording to the Support Gmail (flaadmin40@gmail.com). A game recording is mandatory and must be submitted through the Support page.',
+                    t.rules ?? '1. Emulators and PC players are strictly prohibited.\n2. Hacks, scripts, and third-party tools lead to an immediate ban.\n3. Screenshot of results must be submitted within 15 minutes after match.\n4. Game recording is mandatory. Winning players must save their recording directly in our Google Drive folder or send to Support Gmail.',
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.5),
                   ),
                 ],

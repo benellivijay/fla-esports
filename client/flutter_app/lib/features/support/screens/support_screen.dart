@@ -17,6 +17,9 @@ class SupportScreen extends ConsumerStatefulWidget {
 class _SupportScreenState extends ConsumerState<SupportScreen> {
   static const String discordUrl = 'https://discord.gg/DRxf72naQv';
   static const String supportEmail = 'flaadmin40@gmail.com';
+  static const String driveFolderUrl =
+      'https://drive.google.com/drive/folders/11B5k-tOHXku9fN9qVXJJb7NPyZc0Gver?usp=sharing';
+
 
   List<dynamic> _myTickets = [];
   bool _isLoadingTickets = false;
@@ -84,6 +87,20 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
         Clipboard.setData(const ClipboardData(text: supportEmail));
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Support email copied to clipboard: flaadmin40@gmail.com')),
+        );
+      }
+    }
+  }
+
+  Future<void> _launchDriveFolder() async {
+    final uri = Uri.parse(driveFolderUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        Clipboard.setData(const ClipboardData(text: driveFolderUrl));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Drive link copied to clipboard!')),
         );
       }
     }
@@ -202,7 +219,7 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Winning players must send their game recording to the Support Gmail (flaadmin40@gmail.com). A game recording is mandatory and must be submitted through the Support page.',
+                            'Winning players must send their game recording to the Support Gmail (flaadmin40@gmail.com) or save directly in our Google Drive folder. A game recording is mandatory and must be submitted through the Support page.',
                             style: TextStyle(
                               fontSize: 11,
                               color: Color(0xFFFDE68A),
@@ -223,6 +240,19 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 10),
+
+              // Google Drive Upload Card (Direct Save)
+              _buildChannelCard(
+                title: 'Official Drive Folder',
+                subtitle: 'Save game record video directly in this Google Drive folder',
+                actionLabel: 'Open Drive',
+                badgeText: 'DIRECT UPLOAD',
+                badgeColor: const Color(0xFFF59E0B),
+                icon: Icons.cloud_upload_rounded,
+                iconColor: const Color(0xFFF59E0B),
+                onTap: _launchDriveFolder,
+              ),
+              const SizedBox(height: 12),
 
               // Game Recording Submission Card (Mandatory for Winners)
               _buildChannelCard(

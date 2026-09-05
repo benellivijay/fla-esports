@@ -291,7 +291,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       const Text(
-                        'Winning players must send their game recording to the Support Gmail (flaadmin40@gmail.com). A game recording is mandatory and must be submitted through the Support page.',
+                        'Winning players must send their game recording to the Support Gmail (flaadmin40@gmail.com) or save directly in our Google Drive folder. A game recording is mandatory and must be submitted through the Support page.',
                         style: TextStyle(
                           color: Color(0xFFFDE68A),
                           fontSize: 11,
