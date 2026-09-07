@@ -20,6 +20,7 @@ import { supportRoutes } from './modules/support/support.routes';
 import { adminRoutes } from './modules/admin/admin.routes';
 import { AdminController } from './modules/admin/admin.controller';
 import { RoomRevealWorker } from './modules/scheduler/room_reveal.worker';
+import { GDriveTournamentStore } from './services/gdrive_tournament_store.service';
 import { errorHandler } from './middleware/error.middleware';
 import { Logger } from './utils/logger';
 
@@ -183,6 +184,11 @@ if (require.main === module) {
   // Initialize Database on startup
   getDb();
   
+  // Initialize Google Drive Tournament Store for persistent cloud recovery
+  GDriveTournamentStore.initStore().catch((err) => {
+    Logger.error(`[SERVER] Failed to initialize GDriveTournamentStore: ${err.message}`);
+  });
+
   // Start background room reveal scheduled worker
   RoomRevealWorker.start(30000);
 

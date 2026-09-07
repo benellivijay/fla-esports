@@ -4,6 +4,7 @@ import { Logger } from '../../utils/logger';
 import { AppError } from '../../middleware/error.middleware';
 import { Tournament, TournamentMode, GameMode, TournamentMap, EntryType, TournamentStatus, PrizeDistributionItem } from '../../types';
 import { NotificationService } from '../scheduler/notification.service';
+import { GDriveTournamentStore } from '../../services/gdrive_tournament_store.service';
 
 export interface CreateTournamentDTO {
   title: string;
@@ -149,6 +150,11 @@ export class TournamentService {
 
     const created = await this.getTournamentById(tournamentId, 'admin');
 
+    // Persist to Google Drive Cloud Storage
+    GDriveTournamentStore.saveTournament(created as any).catch((e) =>
+      Logger.warn(`[GDRIVE] Save new tournament warning: ${e.message}`)
+    );
+
     // Broadcast new tournament notification to all registered players
     try {
       await NotificationService.broadcastNewTournamentNotification(created);
@@ -206,22 +212,6 @@ export class TournamentService {
     if (data.rules !== undefined) { updates.push('rules = ?'); values.push(data.rules); }
 
     if (updates.length > 0) {
-      if (data.status === 'completed') {
-        try { db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
-        try { db.prepare('DELETE FROM tournament_results WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
-        try { db.prepare('DELETE FROM payout_distributions WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
-        db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
-
-        Logger.audit({
-          actorId: adminId,
-          action: 'TOURNAMENT_COMPLETED_AND_AUTO_DELETED',
-          targetResource: 'tournaments',
-          targetId: tournamentId,
-          details: { title: existing.title },
-        });
-        return { ...existing, status: 'completed' } as any;
-      }
-
       updates.push('updated_at = CURRENT_TIMESTAMP');
       values.push(tournamentId);
 
@@ -237,7 +227,14 @@ export class TournamentService {
       });
     }
 
-    return this.getTournamentById(tournamentId, 'admin');
+    const updated = await this.getTournamentById(tournamentId, 'admin');
+
+    // Persist changes to Google Drive
+    GDriveTournamentStore.saveTournament(updated as any).catch((e) =>
+      Logger.warn(`[GDRIVE] Save updated tournament warning: ${e.message}`)
+    );
+
+    return updated;
   }
 
   /**
@@ -335,7 +332,12 @@ export class TournamentService {
       }
     }
 
-    return this.getTournamentById(tournamentId, 'admin');
+    const updated = await this.getTournamentById(tournamentId, 'admin');
+    GDriveTournamentStore.saveTournament(updated as any).catch((e) =>
+      Logger.warn(`[GDRIVE] Save room credentials warning: ${e.message}`)
+    );
+
+    return updated;
   }
 
   /**
@@ -354,6 +356,15 @@ export class TournamentService {
       SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
     `).run(tournamentId);
+
+    // Sync cancelled status to Google Drive
+    GDriveTournamentStore.getTournament(tournamentId).then((t) => {
+      if (t) {
+        t.status = 'cancelled';
+        t.updated_at = new Date().toISOString();
+        GDriveTournamentStore.saveTournament(t).catch(() => {});
+      }
+    }).catch(() => {});
 
     Logger.audit({
       actorId: adminId,
@@ -388,6 +399,9 @@ export class TournamentService {
     } catch (_) {}
 
     db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
+
+    // Explicitly delete from Google Drive persistent cloud storage
+    GDriveTournamentStore.deleteTournament(tournamentId).catch(() => {});
 
     Logger.audit({
       actorId: adminId,

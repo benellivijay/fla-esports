@@ -398,7 +398,7 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
 
             // Bottom CTA Pill Button
             ElevatedButton(
-              onPressed: t.isFull
+              onPressed: (t.isFull || t.isCompleted || t.isCancelled)
                   ? null
                   : () {
                       Navigator.push(
@@ -410,14 +410,20 @@ class _TournamentDetailScreenState extends ConsumerState<TournamentDetailScreen>
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.surfaceMuted,
+                disabledForegroundColor: AppColors.textMuted,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               child: Text(
-                t.isFull 
-                    ? 'Match full' 
-                    : t.isPaid 
-                        ? 'Select slot and join (₹${t.entryFee.toStringAsFixed(0)})' 
-                        : 'Select free slot',
+                t.isCompleted
+                    ? 'Tournament completed'
+                    : t.isCancelled
+                        ? 'Tournament cancelled'
+                        : t.isFull 
+                            ? 'Match full' 
+                            : t.isPaid 
+                                ? 'Select slot and join (₹${t.entryFee.toStringAsFixed(0)})' 
+                                : 'Select free slot',
               ),
             ),
           ],

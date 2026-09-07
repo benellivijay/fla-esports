@@ -4,6 +4,7 @@ import { Logger } from '../../utils/logger';
 import { AppError } from '../../middleware/error.middleware';
 import { PayoutDistributionSummary, PayoutDistributionItem, PrizeDistributionItem } from '../../types';
 import { NotificationService } from '../scheduler/notification.service';
+import { GDriveTournamentStore } from '../../services/gdrive_tournament_store.service';
 
 export class PayoutService {
   /**
@@ -108,11 +109,12 @@ export class PayoutService {
         `).run(dist.totalPrize, dist.userId);
       }
 
-      // Delete completed tournament
-      try { db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
-      try { db.prepare('DELETE FROM tournament_results WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
-      try { db.prepare('DELETE FROM payout_distributions WHERE tournament_id = ?').run(tournamentId); } catch (_) {}
-      db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
+      // Mark tournament completed and paid (never auto-delete)
+      db.prepare(`
+        UPDATE tournaments 
+        SET status = 'completed', payout_status = 'paid', payout_executed_at = CURRENT_TIMESTAMP, payout_executed_by = ?, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = ?
+      `).run(adminUserId, tournamentId);
 
       db.exec('COMMIT;');
     } catch (err) {
@@ -141,6 +143,17 @@ export class PayoutService {
         data: { tournamentId, totalPrize: dist.totalPrize, rank: dist.rank, kills: dist.kills },
       }).catch((e) => Logger.error(`Failed to send prize notification: ${e.message}`));
     }
+
+    // Sync updated tournament status to Google Drive
+    GDriveTournamentStore.getTournament(tournamentId).then((t) => {
+      if (t) {
+        t.status = 'completed';
+        t.payout_status = 'paid';
+        t.payout_executed_at = new Date().toISOString();
+        t.payout_executed_by = adminUserId;
+        GDriveTournamentStore.saveTournament(t).catch((e) => Logger.warn(`[GDRIVE] Payout sync warning: ${e.message}`));
+      }
+    }).catch(() => {});
 
     return {
       tournamentId: tournament.id,

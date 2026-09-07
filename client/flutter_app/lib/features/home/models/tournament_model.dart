@@ -162,6 +162,9 @@ class TournamentModel {
   bool get isFull => filledSlots >= maxSlots;
   int get availableSlots => maxSlots - filledSlots;
   bool get isRoomSet => roomId != null && roomId!.trim().isNotEmpty;
+  bool get isCompleted => status.toLowerCase() == 'completed';
+  bool get isOngoing => status.toLowerCase() == 'ongoing';
+  bool get isCancelled => status.toLowerCase() == 'cancelled';
   
   String get roomStatusProgression {
     if (!isRoomSet) return 'not_set';

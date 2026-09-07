@@ -98,6 +98,21 @@ class TournamentCard extends StatelessWidget {
                                 tournament.isPaid ? AppColors.textPrimary : AppColors.success,
                                 tournament.isPaid ? AppColors.surfaceMuted : AppColors.successBg,
                               ),
+                              if (tournament.isCompleted) ...[
+                                const SizedBox(width: 6),
+                                _buildPillTag(
+                                  'Completed',
+                                  AppColors.textMuted,
+                                  AppColors.surfaceMuted,
+                                ),
+                              ] else if (tournament.isOngoing) ...[
+                                const SizedBox(width: 6),
+                                _buildPillTag(
+                                  'LIVE',
+                                  AppColors.danger,
+                                  AppColors.dangerBg,
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -210,29 +225,36 @@ class TournamentCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 14),
                     ElevatedButton(
-                      onPressed: tournament.isFull
-                          ? null
-                          : () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => TournamentDetailScreen(tournamentId: tournament.id),
-                                ),
-                              );
-                            },
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TournamentDetailScreen(tournamentId: tournament.id),
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        disabledBackgroundColor: AppColors.surfaceMuted,
-                        disabledForegroundColor: AppColors.textMuted,
+                        backgroundColor: (tournament.isCompleted || tournament.isCancelled || tournament.isFull)
+                            ? AppColors.surfaceMuted
+                            : AppColors.primary,
+                        foregroundColor: (tournament.isCompleted || tournament.isCancelled || tournament.isFull)
+                            ? AppColors.textSecondary
+                            : Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         minimumSize: const Size(0, 36),
                       ),
                       child: Text(
-                        tournament.isFull 
-                            ? 'Full' 
-                            : tournament.isPaid 
-                                ? 'Join ₹${tournament.entryFee.toStringAsFixed(0)}' 
-                                : 'Join free',
+                        tournament.isCompleted
+                            ? 'Completed'
+                            : tournament.isCancelled
+                                ? 'Cancelled'
+                                : tournament.isOngoing
+                                    ? 'Live'
+                                    : tournament.isFull 
+                                        ? 'Full' 
+                                        : tournament.isPaid 
+                                            ? 'Join ₹${tournament.entryFee.toStringAsFixed(0)}' 
+                                            : 'Join free',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,

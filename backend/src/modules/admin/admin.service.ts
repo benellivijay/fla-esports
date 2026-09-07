@@ -7,6 +7,7 @@ import { AppError } from '../../middleware/error.middleware';
 import { config } from '../../config/env';
 import { User, Profile, Tournament } from '../../types';
 import { FileCleanupUtil } from '../../utils/file_cleanup.util';
+import { GDriveTournamentStore } from '../../services/gdrive_tournament_store.service';
 
 export class AdminService {
   /**
@@ -770,21 +771,27 @@ export class AdminService {
       }
     }
 
-    // Mark tournament payout status as completed and paid, then delete tournament
-    try {
-      db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(tournamentId);
-    } catch (_) {}
-    try {
-      db.prepare('DELETE FROM tournament_results WHERE tournament_id = ?').run(tournamentId);
-    } catch (_) {}
-    try {
-      db.prepare('DELETE FROM payout_distributions WHERE tournament_id = ?').run(tournamentId);
-    } catch (_) {}
-    db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
+    // Mark tournament payout status as completed and paid (never auto-delete)
+    db.prepare(`
+      UPDATE tournaments 
+      SET status = 'completed', payout_status = 'paid', payout_executed_at = CURRENT_TIMESTAMP, payout_executed_by = ?, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `).run(adminId, tournamentId);
+
+    // Sync updated tournament status to Google Drive
+    GDriveTournamentStore.getTournament(tournamentId).then((t) => {
+      if (t) {
+        t.status = 'completed';
+        t.payout_status = 'paid';
+        t.payout_executed_at = new Date().toISOString();
+        t.payout_executed_by = adminId;
+        GDriveTournamentStore.saveTournament(t).catch((e) => Logger.warn(`[GDRIVE] Admin payout sync warning: ${e.message}`));
+      }
+    }).catch(() => {});
 
     Logger.audit({
       actorId: adminId,
-      action: 'PAYOUT_RUN_EXECUTED_AND_TOURNAMENT_AUTO_DELETED',
+      action: 'PAYOUT_RUN_EXECUTED',
       targetResource: 'tournaments',
       targetId: tournamentId,
       details: {

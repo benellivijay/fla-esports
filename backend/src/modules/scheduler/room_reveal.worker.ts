@@ -123,24 +123,6 @@ export class RoomRevealWorker {
       }
     }
 
-    // 3. Auto-delete completed tournaments
-    const completedTournaments = db.prepare(`
-      SELECT id, title FROM tournaments WHERE status = 'completed'
-    `).all() as any[];
-
-    for (const ct of completedTournaments) {
-      try {
-        try { db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(ct.id); } catch (_) {}
-        try { db.prepare('DELETE FROM tournament_results WHERE tournament_id = ?').run(ct.id); } catch (_) {}
-        try { db.prepare('DELETE FROM payout_distributions WHERE tournament_id = ?').run(ct.id); } catch (_) {}
-        db.prepare('DELETE FROM tournaments WHERE id = ?').run(ct.id);
-
-        Logger.info(`[AUTO-CLEANUP] Deleted completed tournament: ${ct.title} (${ct.id})`);
-      } catch (err: any) {
-        Logger.error(`[AUTO-CLEANUP] Failed to delete completed tournament ${ct.id}: ${err.message}`);
-      }
-    }
-
     return {
       revealedCount,
       ongoingCount,

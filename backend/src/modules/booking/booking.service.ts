@@ -4,6 +4,7 @@ import { Logger } from '../../utils/logger';
 import { AppError } from '../../middleware/error.middleware';
 import { SlotInfo, TournamentEntry, TeammateDetail } from '../../types';
 import { NotificationService } from '../scheduler/notification.service';
+import { GDriveTournamentStore } from '../../services/gdrive_tournament_store.service';
 
 export interface BookSlotDTO {
   tournamentId: string;
@@ -354,6 +355,22 @@ export class BookingService {
       details: { tournamentId, requestedSlots, entryFee, isPaid },
     });
 
+    // Sync booked entries to GDriveTournamentStore for persistent cloud backup
+    try {
+      const insertedEntries = db.prepare(`
+        SELECT * FROM tournament_entries 
+        WHERE tournament_id = ? AND user_id = ? AND status = 'confirmed'
+      `).all(tournamentId, userId) as any[];
+
+      for (const entry of insertedEntries) {
+        GDriveTournamentStore.syncEntry(tournamentId, entry).catch((err) => {
+          Logger.warn(`[BOOKING] Failed to sync entry to GDrive store: ${err.message}`);
+        });
+      }
+    } catch (gdriveErr: any) {
+      Logger.warn(`[BOOKING] GDrive store sync error: ${gdriveErr.message}`);
+    }
+
     const slotsLabel = requestedSlots.length > 1
       ? `Slots #${requestedSlots.join(', #')}`
       : `Slot #${requestedSlots[0]}`;
@@ -437,6 +454,21 @@ export class BookingService {
       targetId: entries[0].id,
       details: { tournamentId, slotNumbers, refundAmount },
     });
+
+    // Sync cancelled entries to GDriveTournamentStore for persistent cloud backup
+    try {
+      for (const entry of entries) {
+        GDriveTournamentStore.syncEntry(tournamentId, {
+          ...entry,
+          status: 'cancelled',
+          updated_at: new Date().toISOString(),
+        }).catch((err) => {
+          Logger.warn(`[BOOKING] Failed to sync cancelled entry to GDrive store: ${err.message}`);
+        });
+      }
+    } catch (gdriveErr: any) {
+      Logger.warn(`[BOOKING] GDrive store cancel sync error: ${gdriveErr.message}`);
+    }
 
     NotificationService.sendNotificationToUser(userId, {
       title: 'Booking Cancelled & Refunded 💸',
