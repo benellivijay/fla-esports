@@ -9,8 +9,8 @@ export const config = {
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET || 'ff_esports_super_secret_access_jwt_key_2026',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'ff_esports_super_secret_refresh_jwt_key_2026',
-    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
-    refreshExpiresInDays: parseInt(process.env.JWT_REFRESH_EXPIRES_IN_DAYS || '30', 10),
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '30d',
+    refreshExpiresInDays: parseInt(process.env.JWT_REFRESH_EXPIRES_IN_DAYS || '90', 10),
   },
   db: {
     filename: process.env.DB_FILENAME || path.resolve(__dirname, '../../data/ff_esports.db'),

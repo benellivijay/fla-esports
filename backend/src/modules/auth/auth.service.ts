@@ -365,12 +365,14 @@ export class AuthService {
       throw new AppError('Invalid Google authentication payload or token.', 400, 'INVALID_GOOGLE_AUTH');
     }
 
-    // 1. Look up by google_id or email in Google Drive store
+    // 1. Look up by google_id or email in Google Drive store (with SQLite fallback)
     let player = verifiedGoogleId ? await GDriveAuthStore.getPlayerByGoogleId(verifiedGoogleId) : null;
     if (!player) {
       player = await GDriveAuthStore.getPlayer(verifiedEmail);
-      if (player && verifiedGoogleId) {
-        player.google_id = verifiedGoogleId;
+      if (player) {
+        if (verifiedGoogleId && !player.google_id) {
+          player.google_id = verifiedGoogleId;
+        }
         player.email_verified = true;
         await GDriveAuthStore.savePlayer(player);
       }
@@ -814,7 +816,16 @@ export class AuthService {
 
     db.prepare('UPDATE refresh_tokens SET revoked = 1 WHERE id = ?').run(record.id);
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(record.user_id) as any;
+    let user = db.prepare('SELECT * FROM users WHERE id = ?').get(record.user_id) as any;
+    if (!user) {
+      // Fallback: restore active user from GDriveAuthStore into SQLite users
+      const player = await GDriveAuthStore.getPlayer(record.user_id);
+      if (player) {
+        await GDriveAuthStore.savePlayer(player);
+        user = db.prepare('SELECT * FROM users WHERE id = ?').get(player.id) as any;
+      }
+    }
+
     if (!user || user.status !== 'active') {
       throw new AppError('User account not found or suspended.', 403, 'ACCOUNT_INACTIVE');
     }
@@ -845,7 +856,7 @@ export class AuthService {
     };
 
     const accessToken = jwt.sign(jwtPayload, config.jwt.accessSecret, {
-      expiresIn: '15m',
+      expiresIn: (config.jwt.accessExpiresIn || '30d') as any,
     });
 
     const rawRefreshToken = CryptoUtil.generateRefreshTokenString();

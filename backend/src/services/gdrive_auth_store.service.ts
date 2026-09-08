@@ -120,7 +120,49 @@ export class GDriveAuthStore {
   public static async getPlayer(identifier: string): Promise<StoredPlayerRecord | null> {
     if (!this.isInitialized) await this.initStore();
     const clean = identifier.toLowerCase().trim();
-    return this.playersCache.get(clean) || this.playersCache.get(identifier) || null;
+    const cached = this.playersCache.get(clean) || this.playersCache.get(identifier);
+    if (cached) return cached;
+
+    // Fallback: Check SQLite users table
+    try {
+      const db = getDb();
+      const u = db.prepare(`
+        SELECT * FROM users 
+        WHERE LOWER(email) = ? OR LOWER(username) = ? OR phone = ? OR id = ? OR google_id = ?
+      `).get(clean, clean, identifier, identifier, identifier) as any;
+
+      if (u) {
+        const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id) as any;
+        const record: StoredPlayerRecord = {
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          phone: u.phone || null,
+          password_hash: u.password_hash || null,
+          google_id: u.google_id || null,
+          email_verified: Boolean(u.is_email_verified ?? u.email_verified),
+          phone_verified: Boolean(u.is_phone_verified ?? u.phone_verified),
+          ff_uid: u.ff_uid || null,
+          ff_ign: u.ff_ign || null,
+          kyc_verified: Boolean(u.is_kyc_verified ?? u.kyc_verified),
+          role: u.role || 'player',
+          status: u.status || 'active',
+          created_at: u.created_at || new Date().toISOString(),
+          updated_at: u.updated_at || new Date().toISOString(),
+          profile: profile ? {
+            display_name: profile.display_name,
+            matches_played: profile.matches_played,
+            wins: profile.wins,
+            total_kills: profile.total_kills,
+            total_earnings: profile.total_earnings,
+          } : undefined,
+        };
+        this.cachePlayerRecord(record);
+        return record;
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   /**
@@ -128,7 +170,44 @@ export class GDriveAuthStore {
    */
   public static async getPlayerByGoogleId(googleId: string): Promise<StoredPlayerRecord | null> {
     if (!this.isInitialized) await this.initStore();
-    return this.playersCache.get(`google_${googleId}`) || null;
+    const cached = this.playersCache.get(`google_${googleId}`);
+    if (cached) return cached;
+
+    try {
+      const db = getDb();
+      const u = db.prepare('SELECT * FROM users WHERE google_id = ?').get(googleId) as any;
+      if (u) {
+        const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id) as any;
+        const record: StoredPlayerRecord = {
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          phone: u.phone || null,
+          password_hash: u.password_hash || null,
+          google_id: u.google_id || null,
+          email_verified: Boolean(u.is_email_verified ?? u.email_verified),
+          phone_verified: Boolean(u.is_phone_verified ?? u.phone_verified),
+          ff_uid: u.ff_uid || null,
+          ff_ign: u.ff_ign || null,
+          kyc_verified: Boolean(u.is_kyc_verified ?? u.kyc_verified),
+          role: u.role || 'player',
+          status: u.status || 'active',
+          created_at: u.created_at || new Date().toISOString(),
+          updated_at: u.updated_at || new Date().toISOString(),
+          profile: profile ? {
+            display_name: profile.display_name,
+            matches_played: profile.matches_played,
+            wins: profile.wins,
+            total_kills: profile.total_kills,
+            total_earnings: profile.total_earnings,
+          } : undefined,
+        };
+        this.cachePlayerRecord(record);
+        return record;
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   /**
@@ -138,24 +217,44 @@ export class GDriveAuthStore {
     if (!this.isInitialized) await this.initStore();
 
     record.updated_at = new Date().toISOString();
-    this.cachePlayerRecord(record);
 
     // Sync to local DB mirror
     try {
       const db = getDb();
       const dbRole = record.role === 'admin' ? 'admin' : (record.role === 'moderator' ? 'moderator' : 'user');
-      const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(record.id);
+      
+      // Look up existing user by ID OR by email OR by google_id to avoid UNIQUE constraint violations
+      let existing: any = null;
+      if (record.id) {
+        existing = db.prepare('SELECT id FROM users WHERE id = ?').get(record.id);
+      }
+      if (!existing && record.email) {
+        existing = db.prepare('SELECT id FROM users WHERE LOWER(email) = ?').get(record.email.toLowerCase().trim());
+      }
+      if (!existing && record.google_id) {
+        existing = db.prepare('SELECT id FROM users WHERE google_id = ?').get(record.google_id);
+      }
 
       if (existing) {
+        record.id = existing.id;
         db.prepare(`
           UPDATE users SET 
-            username = ?, email = ?, phone = ?, password_hash = ?, google_id = ?,
-            is_email_verified = ?, email_verified = ?, is_phone_verified = ?, kyc_verified = ?,
-            role = ?, status = ?, updated_at = ?
+            username = COALESCE(?, username),
+            email = ?,
+            phone = COALESCE(?, phone),
+            password_hash = COALESCE(?, password_hash),
+            google_id = COALESCE(?, google_id),
+            is_email_verified = ?,
+            email_verified = ?,
+            is_phone_verified = ?,
+            kyc_verified = ?,
+            role = ?,
+            status = ?,
+            updated_at = ?
           WHERE id = ?
         `).run(
           record.username,
-          record.email,
+          record.email.toLowerCase().trim(),
           record.phone || null,
           record.password_hash || null,
           record.google_id || null,
@@ -178,7 +277,7 @@ export class GDriveAuthStore {
         `).run(
           record.id,
           record.username,
-          record.email,
+          record.email.toLowerCase().trim(),
           record.phone || null,
           record.password_hash || null,
           record.google_id || null,
@@ -198,7 +297,9 @@ export class GDriveAuthStore {
       if (existingProf) {
         db.prepare(`
           UPDATE profiles SET 
-            display_name = ?, ff_uid = ?, ff_ign = ?,
+            display_name = COALESCE(?, display_name),
+            ff_uid = COALESCE(?, ff_uid),
+            ff_ign = COALESCE(?, ff_ign),
             matches_played = ?, wins = ?, total_kills = ?, total_earnings = ?, updated_at = ?
           WHERE user_id = ?
         `).run(
@@ -215,7 +316,8 @@ export class GDriveAuthStore {
       } else {
         db.prepare(`
           INSERT INTO profiles (
-            id, user_id, display_name, ff_uid, ff_ign, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at
+            id, user_id, display_name, ff_uid, ff_ign, ff_verification_status,
+            matches_played, wins, total_kills, total_earnings, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
           record.id,
@@ -235,6 +337,8 @@ export class GDriveAuthStore {
     } catch (err: any) {
       Logger.warn(`[GDRIVE AUTH] DB sync warning: ${err.message}`);
     }
+
+    this.cachePlayerRecord(record);
 
     // Push updated registry to Google Drive asynchronously
     this.flushPlayersToDrive().catch((err) => {

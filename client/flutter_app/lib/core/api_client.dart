@@ -13,7 +13,7 @@ class ApiClient {
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
-      resetOnError: false,
+      resetOnError: true,
     ),
   );
 
@@ -22,6 +22,8 @@ class ApiClient {
   static const String keyUserData = 'ff_user_data';
   static const String keyProfileData = 'ff_profile_data';
   static const String keyIsLoggedIn = 'ff_is_logged_in';
+
+  Future<bool>? _refreshFuture;
 
   ApiClient._internal() {
     dio = Dio(
@@ -49,8 +51,7 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) async {
-          if (error.response?.statusCode == 401 &&
-              error.response?.data?['code'] == 'TOKEN_EXPIRED') {
+          if (error.response?.statusCode == 401) {
             final refreshed = await attemptTokenRefresh();
             if (refreshed) {
               final token = await _storage.read(key: keyAccessToken);
@@ -71,6 +72,18 @@ class ApiClient {
   }
 
   Future<bool> attemptTokenRefresh() async {
+    if (_refreshFuture != null) {
+      return _refreshFuture!;
+    }
+    _refreshFuture = _executeTokenRefresh();
+    try {
+      return await _refreshFuture!;
+    } finally {
+      _refreshFuture = null;
+    }
+  }
+
+  Future<bool> _executeTokenRefresh() async {
     try {
       final refreshToken = await _storage.read(key: keyRefreshToken);
       if (refreshToken == null || refreshToken.isEmpty) return false;

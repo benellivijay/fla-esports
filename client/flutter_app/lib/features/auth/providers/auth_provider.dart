@@ -341,10 +341,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           scopes: ['email', 'profile'],
         );
 
-        // Always disconnect and signOut first so Google Play Services prompts the account selection dialog!
+        // Sign out previous session so account picker shows if desired
         try {
           await googleSignIn.signOut();
-          await googleSignIn.disconnect();
         } catch (_) {}
 
         GoogleSignInAccount? account;
@@ -576,7 +575,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
       await googleSignIn.signOut();
-      await googleSignIn.disconnect();
     } catch (_) {}
     await _apiClient.clearUserSession();
     state = const AuthState(status: AuthStatus.unauthenticated);
