@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 import http from 'http';
 import { createApp } from '../server';
 import { getDb, DatabaseManager } from '../database/db';

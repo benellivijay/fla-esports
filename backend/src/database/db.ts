@@ -62,6 +62,15 @@ export class DatabaseManager {
       try { this.instance.exec('ALTER TABLE audit_logs ADD COLUMN target_id TEXT;'); } catch (_) {}
       try {
         this.instance.exec(`
+          CREATE TABLE IF NOT EXISTS deleted_tournaments (
+            id TEXT PRIMARY KEY,
+            deleted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            deleted_by TEXT
+          );
+        `);
+      } catch (_) {}
+      try {
+        this.instance.exec(`
           CREATE TABLE IF NOT EXISTS device_tokens (
             id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,

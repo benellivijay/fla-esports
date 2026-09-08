@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 import { TournamentService } from '../modules/tournament/tournament.service';
 import { getDb } from '../database/db';
 import { v4 as uuidv4 } from 'uuid';

@@ -58,8 +58,10 @@ export interface StoredTournamentRecord {
 export class GDriveTournamentStore {
   public static readonly FOLDER_ID = '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
   public static readonly TOURNAMENTS_REGISTRY_FILENAME = 'tournaments_registry.json';
+  public static readonly DELETED_TOURNAMENTS_FILENAME = 'deleted_tournaments.json';
 
   private static tournamentsCache: Map<string, StoredTournamentRecord> = new Map();
+  private static deletedTournamentsSet: Set<string> = new Set();
   private static isInitialized = false;
 
   /**
@@ -71,11 +73,36 @@ export class GDriveTournamentStore {
 
     Logger.info('[GDRIVE TOURNAMENTS] Initializing Google Drive tournament store...');
 
-    // 1. Populate cache from local DB
+    // 0. Load deleted tournaments tombstone blacklist from SQLite & persistent storage
+    try {
+      const db = getDb();
+      const deletedRows = db.prepare('SELECT id FROM deleted_tournaments').all() as any[];
+      for (const r of deletedRows) {
+        if (r.id) this.deletedTournamentsSet.add(r.id);
+      }
+    } catch (_) {}
+
+    try {
+      const deletedContent = await this.readDriveFile(this.DELETED_TOURNAMENTS_FILENAME);
+      if (deletedContent) {
+        const parsed = JSON.parse(deletedContent);
+        const list: string[] = Array.isArray(parsed) ? parsed : (parsed.deleted_ids || []);
+        for (const id of list) {
+          if (id) this.deletedTournamentsSet.add(id);
+        }
+      }
+    } catch (_) {}
+
+    // 1. Populate cache from local DB (strictly filtering out deleted tournaments)
     try {
       const db = getDb();
       const dbTournaments = db.prepare('SELECT * FROM tournaments').all() as any[];
       for (const t of dbTournaments) {
+        if (this.deletedTournamentsSet.has(t.id)) {
+          try { db.prepare('DELETE FROM tournaments WHERE id = ?').run(t.id); } catch (_) {}
+          try { db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(t.id); } catch (_) {}
+          continue;
+        }
         const entries = db.prepare('SELECT * FROM tournament_entries WHERE tournament_id = ?').all(t.id) as any[];
         const record: StoredTournamentRecord = {
           ...t,
@@ -83,7 +110,7 @@ export class GDriveTournamentStore {
         };
         this.tournamentsCache.set(t.id, record);
       }
-      Logger.info(`[GDRIVE TOURNAMENTS] Loaded ${dbTournaments.length} tournaments from local database mirror.`);
+      Logger.info(`[GDRIVE TOURNAMENTS] Loaded ${this.tournamentsCache.size} tournaments from local database mirror.`);
     } catch (err: any) {
       Logger.warn(`[GDRIVE TOURNAMENTS] Local DB pre-load skipped: ${err.message}`);
     }
@@ -92,6 +119,10 @@ export class GDriveTournamentStore {
     this.restoreFromDrive().catch((err: any) => {
       Logger.warn(`[GDRIVE TOURNAMENTS] Initial drive restore warning: ${err.message}`);
     });
+  }
+
+  public static isTournamentDeleted(id: string): boolean {
+    return this.deletedTournamentsSet.has(id);
   }
 
   public static async getTournament(id: string): Promise<StoredTournamentRecord | null> {
@@ -109,6 +140,11 @@ export class GDriveTournamentStore {
    */
   public static async saveTournament(record: StoredTournamentRecord): Promise<StoredTournamentRecord> {
     if (!this.isInitialized) await this.initStore();
+
+    if (this.deletedTournamentsSet.has(record.id)) {
+      Logger.info(`[GDRIVE TOURNAMENTS] Skipping save for deleted tournament: ${record.id}`);
+      return record;
+    }
 
     record.updated_at = record.updated_at || new Date().toISOString();
     this.tournamentsCache.set(record.id, record);
@@ -247,6 +283,11 @@ export class GDriveTournamentStore {
       Logger.warn(`[GDRIVE TOURNAMENTS] DB sync warning: ${err.message}`);
     }
 
+    // In test mode, update in-memory / DB for test assertions but skip overwriting persistent storage
+    if (process.env.NODE_ENV === 'test') {
+      return record;
+    }
+
     // Flush to Google Drive asynchronously
     this.flushTournamentsToDrive().catch((err) => {
       Logger.error(`[GDRIVE TOURNAMENTS] Background sync to Google Drive failed: ${err.message}`);
@@ -278,19 +319,56 @@ export class GDriveTournamentStore {
   /**
    * Explicitly delete tournament from cache and Google Drive ONLY on admin command
    */
-  public static async deleteTournament(tournamentId: string): Promise<void> {
+  public static async deleteTournament(tournamentId: string, adminId?: string): Promise<void> {
     if (!this.isInitialized) await this.initStore();
+    this.deletedTournamentsSet.add(tournamentId);
     this.tournamentsCache.delete(tournamentId);
+
+    // Save to SQLite deleted_tournaments table
+    try {
+      const db = getDb();
+      db.prepare('INSERT OR IGNORE INTO deleted_tournaments (id, deleted_at, deleted_by) VALUES (?, CURRENT_TIMESTAMP, ?)').run(tournamentId, adminId || null);
+    } catch (_) {}
+
+    if (process.env.NODE_ENV === 'test') {
+      return;
+    }
 
     this.flushTournamentsToDrive().catch((err) => {
       Logger.error(`[GDRIVE TOURNAMENTS] Delete sync to Google Drive failed: ${err.message}`);
     });
+    this.flushDeletedTournamentsToDrive().catch((err) => {
+      Logger.error(`[GDRIVE TOURNAMENTS] Tombstone sync failed: ${err.message}`);
+    });
+  }
+
+  /**
+   * Persists all tombstoned deleted tournament IDs to Google Drive as 'deleted_tournaments.json'
+   */
+  public static async flushDeletedTournamentsToDrive(): Promise<boolean> {
+    if (process.env.NODE_ENV === 'test') {
+      return true;
+    }
+    const list = Array.from(this.deletedTournamentsSet);
+    const payload = {
+      version: '1.0',
+      last_synced_at: new Date().toISOString(),
+      folder_id: this.FOLDER_ID,
+      count: list.length,
+      deleted_ids: list,
+    };
+
+    const jsonContent = JSON.stringify(payload, null, 2);
+    return await this.uploadOrUpdateDriveFile(this.DELETED_TOURNAMENTS_FILENAME, jsonContent);
   }
 
   /**
    * Persists all tournaments to Google Drive as 'tournaments_registry.json'
    */
   public static async flushTournamentsToDrive(): Promise<boolean> {
+    if (process.env.NODE_ENV === 'test') {
+      return true;
+    }
     const all = Array.from(this.tournamentsCache.values());
     const payload = {
       version: '1.0',
@@ -312,6 +390,18 @@ export class GDriveTournamentStore {
     let newCount = 0;
 
     try {
+      // 0. Refresh deleted tournaments tombstone list from file/Drive
+      try {
+        const deletedContent = await this.readDriveFile(this.DELETED_TOURNAMENTS_FILENAME);
+        if (deletedContent) {
+          const parsed = JSON.parse(deletedContent);
+          const list: string[] = Array.isArray(parsed) ? parsed : (parsed.deleted_ids || []);
+          for (const id of list) {
+            if (id) this.deletedTournamentsSet.add(id);
+          }
+        }
+      } catch (_) {}
+
       const content = await this.readDriveFile(this.TOURNAMENTS_REGISTRY_FILENAME);
       if (!content) {
         Logger.info('[GDRIVE TOURNAMENTS] No tournaments_registry.json found in Google Drive. Starting fresh.');
@@ -324,6 +414,15 @@ export class GDriveTournamentStore {
 
       for (const t of list) {
         if (!t.id || !t.title) continue;
+
+        // Strictly ignore tournaments that have been permanently deleted by an admin
+        if (this.deletedTournamentsSet.has(t.id)) {
+          this.tournamentsCache.delete(t.id);
+          try { db.prepare('DELETE FROM tournaments WHERE id = ?').run(t.id); } catch (_) {}
+          try { db.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(t.id); } catch (_) {}
+          continue;
+        }
+
         restoredCount++;
 
         if (!this.tournamentsCache.has(t.id)) {

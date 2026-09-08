@@ -129,6 +129,12 @@ CREATE TABLE IF NOT EXISTS tournaments (
     FOREIGN KEY(payout_executed_by) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS deleted_tournaments (
+    id TEXT PRIMARY KEY,
+    deleted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_by TEXT
+);
+
 CREATE TABLE IF NOT EXISTS tournament_entries (
     id TEXT PRIMARY KEY,
     tournament_id TEXT NOT NULL,

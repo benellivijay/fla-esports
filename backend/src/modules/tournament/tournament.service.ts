@@ -400,8 +400,8 @@ export class TournamentService {
 
     db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
 
-    // Explicitly delete from Google Drive persistent cloud storage
-    GDriveTournamentStore.deleteTournament(tournamentId).catch(() => {});
+    // Explicitly delete from Google Drive persistent cloud storage and record tombstone
+    GDriveTournamentStore.deleteTournament(tournamentId, adminId).catch(() => {});
 
     Logger.audit({
       actorId: adminId,

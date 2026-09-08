@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 import { AuthService } from '../modules/auth/auth.service';
 import { GDriveAuthStore } from '../services/gdrive_auth_store.service';
 import { getDb } from '../database/db';
