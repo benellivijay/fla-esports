@@ -244,42 +244,36 @@ export class AdminService {
       }
     }
 
-    // APK & Device usage metrics
+    // APK & Device usage metrics - 100% real-time from device telemetry
     let totalApkInstalls = 0;
     let activeApkUsersToday = 0;
     let activeApkUsersWeek = 0;
     let platformBreakdown: { platform: string; count: number }[] = [];
 
     try {
-      let pushTokensCount = 0;
-      try {
-        const pushRow = db.prepare("SELECT COUNT(DISTINCT token) as count FROM push_tokens WHERE platform = 'android'").get() as any;
-        pushTokensCount = pushRow?.count || 0;
-      } catch (_) {}
-
       const installRow = db.prepare("SELECT COUNT(DISTINCT device_id) as count FROM app_installs WHERE platform = 'android'").get() as any;
-      totalApkInstalls = Math.max(pushTokensCount, installRow?.count || 0, usersCount?.count || 0);
+      totalApkInstalls = installRow?.count ? Number(installRow.count) : 0;
 
       const activeTodayRow = db.prepare(`
         SELECT COUNT(DISTINCT COALESCE(user_id, device_id)) as count 
         FROM app_installs 
         WHERE datetime(last_active_at) >= datetime('now', '-24 hours')
       `).get() as any;
-      activeApkUsersToday = activeTodayRow?.count || Math.min(totalApkInstalls, Math.max(1, Math.ceil(totalApkInstalls * 0.45)));
+      activeApkUsersToday = activeTodayRow?.count ? Number(activeTodayRow.count) : 0;
 
       const activeWeekRow = db.prepare(`
         SELECT COUNT(DISTINCT COALESCE(user_id, device_id)) as count 
         FROM app_installs 
         WHERE datetime(last_active_at) >= datetime('now', '-7 days')
       `).get() as any;
-      activeApkUsersWeek = activeWeekRow?.count || Math.min(totalApkInstalls, Math.max(activeApkUsersToday, Math.ceil(totalApkInstalls * 0.8)));
+      activeApkUsersWeek = activeWeekRow?.count ? Number(activeWeekRow.count) : 0;
 
       const platforms = db.prepare(`
-        SELECT platform, COUNT(*) as count 
+        SELECT platform, COUNT(DISTINCT device_id) as count 
         FROM app_installs 
         GROUP BY platform
       `).all() as any[];
-      platformBreakdown = platforms.length > 0 ? platforms : [{ platform: 'android', count: totalApkInstalls }];
+      platformBreakdown = platforms;
     } catch (_) {}
 
     return {
@@ -362,47 +356,35 @@ export class AdminService {
     
     let totalInstallsCount = 0;
     try {
-      const totalInstallsRow = db.prepare("SELECT COUNT(*) as count FROM app_installs WHERE platform = 'android'").get() as any;
-      totalInstallsCount = totalInstallsRow?.count || 0;
+      const totalInstallsRow = db.prepare("SELECT COUNT(DISTINCT device_id) as count FROM app_installs WHERE platform = 'android'").get() as any;
+      totalInstallsCount = totalInstallsRow?.count ? Number(totalInstallsRow.count) : 0;
     } catch (_) {}
 
-    let pushCount = 0;
-    try {
-      const fcmAndroidRow = db.prepare("SELECT COUNT(*) as count FROM push_tokens WHERE platform = 'android'").get() as any;
-      pushCount = fcmAndroidRow?.count || 0;
-    } catch (_) {}
-
-    let usersTotal = 0;
-    try {
-      const totalUsersRow = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'user'").get() as any;
-      usersTotal = totalUsersRow?.count || 0;
-    } catch (_) {}
-    
-    const totalApkInstalls = Math.max(totalInstallsCount, pushCount, usersTotal);
+    const totalApkInstalls = totalInstallsCount;
 
     const activeTodayRow = db.prepare(`
       SELECT COUNT(DISTINCT COALESCE(user_id, device_id)) as count 
       FROM app_installs 
       WHERE datetime(last_active_at) >= datetime('now', '-24 hours')
     `).get() as any;
-    const activeToday = activeTodayRow?.count || Math.min(totalApkInstalls, Math.max(1, Math.ceil(totalApkInstalls * 0.45)));
+    const activeToday = activeTodayRow?.count ? Number(activeTodayRow.count) : 0;
 
     const activeWeekRow = db.prepare(`
       SELECT COUNT(DISTINCT COALESCE(user_id, device_id)) as count 
       FROM app_installs 
       WHERE datetime(last_active_at) >= datetime('now', '-7 days')
     `).get() as any;
-    const activeThisWeek = activeWeekRow?.count || Math.min(totalApkInstalls, Math.max(activeToday, Math.ceil(totalApkInstalls * 0.8)));
+    const activeThisWeek = activeWeekRow?.count ? Number(activeWeekRow.count) : 0;
 
     const regUsersRow = db.prepare(`
       SELECT COUNT(DISTINCT user_id) as count 
       FROM app_installs 
       WHERE user_id IS NOT NULL
     `).get() as any;
-    const totalRegisteredUsersWithApk = regUsersRow?.count || usersTotal || 0;
+    const totalRegisteredUsersWithApk = regUsersRow?.count ? Number(regUsersRow.count) : 0;
 
     const platforms = db.prepare(`
-      SELECT platform, COUNT(*) as count 
+      SELECT platform, COUNT(DISTINCT device_id) as count 
       FROM app_installs 
       GROUP BY platform
     `).all() as any[];

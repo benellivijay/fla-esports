@@ -8,6 +8,8 @@ dist/
 
 # Databases & local uploads
 *.db
+!backend/data/seed_ff_esports.db
+!data/seed_ff_esports.db
 *.db-wal
 *.db-shm
 backend/uploads/*

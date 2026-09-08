@@ -34,3 +34,12 @@ if (fs.existsSync(gdriveSrc)) {
   console.log('Mirrored backend/gdrive_storage to root /gdrive_storage successfully!');
 }
 
+const seedSrc = path.join(__dirname, 'backend', 'data', 'seed_ff_esports.db');
+const seedDst = path.join(__dirname, 'data', 'seed_ff_esports.db');
+if (fs.existsSync(seedSrc)) {
+  const seedDstDir = path.dirname(seedDst);
+  if (!fs.existsSync(seedDstDir)) fs.mkdirSync(seedDstDir, { recursive: true });
+  fs.copyFileSync(seedSrc, seedDst);
+  console.log('Mirrored backend/data/seed_ff_esports.db to root /data/seed_ff_esports.db successfully!');
+}
+
