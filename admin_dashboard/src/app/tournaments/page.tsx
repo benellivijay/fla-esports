@@ -151,10 +151,11 @@ export default function TournamentsPage() {
         actions={
           <Link
             href="/tournaments/create"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-slate-950 text-xs font-bold rounded-full transition-colors shadow-xs"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-slate-950 text-xs font-bold rounded-full transition-colors shadow-xs shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Create tournament</span>
+            <span className="hidden sm:inline">Create tournament</span>
+            <span className="sm:hidden">Create</span>
           </Link>
         }
       />

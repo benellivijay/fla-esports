@@ -16,6 +16,23 @@ export class DatabaseManager {
         fs.mkdirSync(dbDir, { recursive: true });
       }
 
+      if (!fs.existsSync(config.db.filename)) {
+        const seedCandidates = [
+          path.resolve(__dirname, '../../data/seed_ff_esports.db'),
+          path.resolve(__dirname, '../../../data/seed_ff_esports.db'),
+          path.resolve(process.cwd(), 'backend', 'data', 'seed_ff_esports.db'),
+          path.resolve(process.cwd(), 'data', 'seed_ff_esports.db'),
+        ];
+        for (const s of seedCandidates) {
+          if (fs.existsSync(s)) {
+            try {
+              fs.copyFileSync(s, config.db.filename);
+              break;
+            } catch (_) {}
+          }
+        }
+      }
+
       this.instance = new DatabaseSync(config.db.filename);
       this.instance.exec('PRAGMA journal_mode = WAL;');
       this.instance.exec('PRAGMA foreign_keys = ON;');

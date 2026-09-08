@@ -521,13 +521,30 @@ export class GDriveTournamentStore {
     return { restoredCount, newCount };
   }
 
+  public static getStorageDir(): string {
+    const candidates = [
+      path.resolve(process.cwd(), 'backend', 'gdrive_storage'),
+      path.resolve(process.cwd(), 'gdrive_storage'),
+      path.resolve(__dirname, '../../gdrive_storage'),
+      path.resolve(__dirname, '../../../gdrive_storage'),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) return p;
+    }
+    const fallback = fs.existsSync(path.resolve(process.cwd(), 'backend'))
+      ? path.resolve(process.cwd(), 'backend', 'gdrive_storage')
+      : path.resolve(process.cwd(), 'gdrive_storage');
+    if (!fs.existsSync(fallback)) fs.mkdirSync(fallback, { recursive: true });
+    return fallback;
+  }
+
   /**
    * Drive File Read / Write Helpers
    */
   private static async uploadOrUpdateDriveFile(fileName: string, content: string): Promise<boolean> {
     // 1. Always persist to local gdrive_storage mirror
     try {
-      const backupDir = path.resolve(process.cwd(), 'gdrive_storage');
+      const backupDir = this.getStorageDir();
       if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
       fs.writeFileSync(path.join(backupDir, fileName), content, 'utf8');
     } catch (err: any) {
@@ -661,7 +678,8 @@ export class GDriveTournamentStore {
     }
 
     // 3. Fallback: Local storage mirror
-    const backupPath = path.resolve(process.cwd(), 'gdrive_storage', fileName);
+    const backupDir = this.getStorageDir();
+    const backupPath = path.join(backupDir, fileName);
     if (fs.existsSync(backupPath)) {
       return fs.readFileSync(backupPath, 'utf8');
     }

@@ -27,3 +27,10 @@ if (fs.existsSync(src)) {
   console.log('Copied admin build to /public, /dist, and /backend/public successfully!');
 }
 
+const gdriveSrc = path.join(__dirname, 'backend', 'gdrive_storage');
+const gdriveDst = path.join(__dirname, 'gdrive_storage');
+if (fs.existsSync(gdriveSrc)) {
+  copyFolderSync(gdriveSrc, gdriveDst);
+  console.log('Mirrored backend/gdrive_storage to root /gdrive_storage successfully!');
+}
+

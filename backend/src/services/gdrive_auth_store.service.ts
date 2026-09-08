@@ -3,6 +3,7 @@ import path from 'path';
 import { google } from 'googleapis';
 import { Logger } from '../utils/logger';
 import { getDb } from '../database/db';
+import { v4 as uuidv4 } from 'uuid';
 import { User, Profile } from '../types';
 
 export interface StoredPlayerRecord {
@@ -385,6 +386,22 @@ export class GDriveAuthStore {
               p.created_at, p.updated_at
             );
             imported++;
+
+            if (p.profile) {
+              const profExists = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(p.id);
+              if (!profExists) {
+                db.prepare(`
+                  INSERT INTO profiles (
+                    id, user_id, display_name, matches_played, wins, total_kills, total_earnings, created_at, updated_at
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).run(
+                  uuidv4(), p.id, p.profile.display_name || 'Player',
+                  p.profile.matches_played || 0, p.profile.wins || 0,
+                  p.profile.total_kills || 0, p.profile.total_earnings || 0,
+                  p.created_at || new Date().toISOString(), p.updated_at || new Date().toISOString()
+                );
+              }
+            }
           }
         } catch (_) {}
       }
@@ -397,13 +414,30 @@ export class GDriveAuthStore {
     }
   }
 
+  public static getStorageDir(): string {
+    const candidates = [
+      path.resolve(process.cwd(), 'backend', 'gdrive_storage'),
+      path.resolve(process.cwd(), 'gdrive_storage'),
+      path.resolve(__dirname, '../../gdrive_storage'),
+      path.resolve(__dirname, '../../../gdrive_storage'),
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) return p;
+    }
+    const fallback = fs.existsSync(path.resolve(process.cwd(), 'backend'))
+      ? path.resolve(process.cwd(), 'backend', 'gdrive_storage')
+      : path.resolve(process.cwd(), 'gdrive_storage');
+    if (!fs.existsSync(fallback)) fs.mkdirSync(fallback, { recursive: true });
+    return fallback;
+  }
+
   /**
    * Drive File Read / Write Helpers
    */
   private static async uploadOrUpdateDriveFile(fileName: string, content: string): Promise<boolean> {
     // 1. Always persist to local gdrive_storage mirror
     try {
-      const backupDir = path.resolve(process.cwd(), 'gdrive_storage');
+      const backupDir = this.getStorageDir();
       if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
       fs.writeFileSync(path.join(backupDir, fileName), content, 'utf8');
     } catch (err: any) {
@@ -538,7 +572,8 @@ export class GDriveAuthStore {
     }
 
     // 3. Fallback: Local storage mirror
-    const backupPath = path.resolve(process.cwd(), 'gdrive_storage', fileName);
+    const backupDir = this.getStorageDir();
+    const backupPath = path.join(backupDir, fileName);
     if (fs.existsSync(backupPath)) {
       return fs.readFileSync(backupPath, 'utf8');
     }
