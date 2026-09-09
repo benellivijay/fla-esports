@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_theme.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/home/screens/home_screen.dart';
@@ -7,9 +8,16 @@ import 'features/home/screens/game_modes_screen.dart';
 import 'features/match_slot/screens/my_matches_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Initialize Firebase (graceful — app still works without google-services.json)
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('[Firebase] Init skipped (google-services.json not found): $e');
+  }
+
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
     debugPrint('FLUTTER RUNTIME ERROR: ${details.exception}');
@@ -21,6 +29,7 @@ void main() {
     ),
   );
 }
+
 
 class FlaEsportsApp extends ConsumerWidget {
   const FlaEsportsApp({super.key});

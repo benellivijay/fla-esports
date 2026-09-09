@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class InAppNotificationModel {
   final String id;
   final String userId;
@@ -20,15 +22,25 @@ class InAppNotificationModel {
   });
 
   factory InAppNotificationModel.fromJson(Map<String, dynamic> json) {
+    // data may come as a JSON string (from SQLite) or already decoded Map
+    Map<String, dynamic>? parsedData;
+    final raw = json['data'];
+    if (raw is Map<String, dynamic>) {
+      parsedData = raw;
+    } else if (raw is String && raw.isNotEmpty) {
+      try { parsedData = jsonDecode(raw) as Map<String, dynamic>?; } catch (_) {}
+    }
+
     return InAppNotificationModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
       title: json['title'] as String,
       body: json['body'] as String,
       type: json['type'] as String? ?? 'SYSTEM',
-      data: json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : null,
+      data: parsedData,
       isRead: json['is_read'] == true || json['is_read'] == 1,
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
     );
   }
 }
+

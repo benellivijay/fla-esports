@@ -4,10 +4,12 @@ import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/api_client.dart';
 import '../../../core/constants/api_endpoints.dart';
+import '../../../core/services/fcm_notification_service.dart';
 import '../models/auth_state.dart';
 import '../models/user_model.dart';
 import '../screens/google_web_auth_screen.dart';
 import '../../profile/models/profile_model.dart';
+
 
 class GoogleAccountDetails {
   final String? idToken;
@@ -178,6 +180,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: user,
           profile: profile,
         );
+        // Register FCM push token with backend (fire-and-forget)
+        FcmNotificationService.initializeFCM(null).catchError((_) {});
         return true;
       }
       return false;
@@ -441,6 +445,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
               user: user,
               profile: profile,
             );
+            // Register FCM push token with backend (fire-and-forget)
+            FcmNotificationService.initializeFCM(null).catchError((_) {});
             return GoogleAuthResult(success: true, isNewUser: false);
           }
         }
@@ -480,6 +486,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: user,
           profile: profile,
         );
+        // Register FCM push token with backend (fire-and-forget)
+        FcmNotificationService.initializeFCM(null).catchError((_) {});
         return GoogleAuthResult(success: true, isNewUser: false);
       }
       state = state.copyWith(status: AuthStatus.error, errorMessage: 'Google sign-in could not be completed.');
@@ -566,6 +574,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Unregister FCM push token before logging out
+    try { await FcmNotificationService.unregisterPushToken(); } catch (_) {}
     try {
       final refresh = await _apiClient.getAccessToken();
       if (refresh != null) {

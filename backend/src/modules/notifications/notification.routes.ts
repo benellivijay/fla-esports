@@ -13,8 +13,10 @@ router.post('/device-token', authenticateToken, NotificationController.registerD
 router.delete('/device-token', authenticateToken, NotificationController.unregisterDeviceToken);
 router.get('/inbox', authenticateToken, NotificationController.getInbox);
 router.get('/unread-count', authenticateToken, NotificationController.getUnreadCount);
-router.patch('/:id/read', authenticateToken, NotificationController.markAsRead);
+// IMPORTANT: mark-all-read MUST come before /:id/read — otherwise Express matches "mark-all-read" as id param
 router.patch('/mark-all-read', authenticateToken, NotificationController.markAllAsRead);
+router.patch('/:id/read', authenticateToken, NotificationController.markAsRead);
+
 
 // Admin broadcast & messaging routes
 adminRouter.post('/broadcast', authenticateToken, requireAdminOrModerator, NotificationController.broadcastNotification);

@@ -3,6 +3,94 @@ import { getDb } from '../../database/db';
 import { Logger } from '../../utils/logger';
 import { InAppNotification, NotificationType, PlatformType } from '../../types';
 
+// ─── Firebase Admin / FCM ────────────────────────────────────────────────────
+let _firebaseApp: any = null;
+
+function getFirebaseMessaging(): any | null {
+  if (_firebaseApp) {
+    try {
+      const admin = require('firebase-admin');
+      return admin.messaging(_firebaseApp);
+    } catch (_) { return null; }
+  }
+
+  const credJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.GDRIVE_SERVICE_ACCOUNT_JSON;
+  if (!credJson) return null;
+
+  try {
+    const admin = require('firebase-admin');
+    if (admin.apps.length > 0) {
+      _firebaseApp = admin.apps[0];
+    } else {
+      const credentials = JSON.parse(credJson);
+      _firebaseApp = admin.initializeApp({
+        credential: admin.credential.cert(credentials),
+      });
+    }
+    Logger.info('[FCM] Firebase Admin SDK initialized successfully.');
+    return admin.messaging(_firebaseApp);
+  } catch (err: any) {
+    Logger.warn(`[FCM] Firebase Admin SDK init failed (push notifications disabled): ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Sends FCM push to a list of device tokens. Prunes stale tokens automatically.
+ */
+async function dispatchFCMPush(
+  tokens: string[],
+  title: string,
+  body: string,
+  data?: Record<string, string>
+): Promise<void> {
+  if (tokens.length === 0) return;
+
+  const messaging = getFirebaseMessaging();
+  if (!messaging) return; // Firebase not configured — silently skip
+
+  try {
+    const message = {
+      tokens,
+      notification: { title, body },
+      data: data || {},
+      android: {
+        priority: 'high' as const,
+        notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' },
+      },
+      apns: {
+        payload: { aps: { sound: 'default', badge: 1 } },
+      },
+    };
+
+    const batchResponse = await messaging.sendEachForMulticast(message);
+
+    // Prune stale / invalid tokens
+    if (batchResponse.failureCount > 0) {
+      const db = getDb();
+      batchResponse.responses.forEach((resp: any, idx: number) => {
+        if (!resp.success) {
+          const errorCode = resp.error?.code || '';
+          if (
+            errorCode === 'messaging/registration-token-not-registered' ||
+            errorCode === 'messaging/invalid-registration-token'
+          ) {
+            try { db.prepare('DELETE FROM device_tokens WHERE token = ?').run(tokens[idx]); } catch (_) {}
+          }
+          Logger.warn(`[FCM] Failed for token[${idx}]: ${resp.error?.message}`);
+        }
+      });
+    }
+
+    Logger.info(`[FCM] Push sent: ${batchResponse.successCount} ok, ${batchResponse.failureCount} failed (of ${tokens.length} devices).`);
+  } catch (err: any) {
+    Logger.warn(`[FCM] Dispatch error: ${err.message}`);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 export interface PushNotificationPayload {
   title: string;
   body: string;
@@ -69,10 +157,26 @@ export class NotificationService {
       tokens = db.prepare('SELECT token, platform FROM device_tokens WHERE user_id = ?').all(userId) as any[];
     } catch (_) {}
 
-    // 3. Dispatch push notification
+    // 3. Dispatch real FCM push notification (fire-and-forget — non-blocking)
     Logger.info(
       `[PUSH DISPATCH] To User: ${userId} (${tokens.length} devices) | Type: [${payload.type}] | Title: "${payload.title}" | Body: "${payload.body}"`
     );
+
+    if (tokens.length > 0) {
+      const tokenStrings = tokens.map((t) => t.token as string);
+      // FCM data values must all be strings
+      const fcmData: Record<string, string> = {
+        type: payload.type,
+        notificationId: id,
+        ...(payload.data
+          ? Object.fromEntries(
+              Object.entries(payload.data).map(([k, v]) => [k, String(v)])
+            )
+          : {}),
+      };
+      dispatchFCMPush(tokenStrings, payload.title, payload.body, fcmData).catch(() => {});
+    }
+
 
     let record: any = null;
     try {
