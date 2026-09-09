@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "216626536481",
+    "project_id": "fla-esport",
+    "storage_bucket": "fla-esport.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:216626536481:android:c1e30df9743ffef70bc360",
+        "android_client_info": {
+          "package_name": "com.flaesports.tournament"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-rFIS73VSFiP75yUY9TK9fV3RgTSg2MU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
