@@ -8,6 +8,8 @@ import { config } from '../../config/env';
 import { User, Profile, Tournament } from '../../types';
 import { FileCleanupUtil } from '../../utils/file_cleanup.util';
 import { GDriveTournamentStore } from '../../services/gdrive_tournament_store.service';
+import { GDriveAuthStore } from '../../services/gdrive_auth_store.service';
+
 
 export class AdminService {
   /**
@@ -217,9 +219,37 @@ export class AdminService {
 
     const pendingResults = db.prepare("SELECT COUNT(*) as count FROM match_results WHERE status = 'pending_review'").get() as any;
     const disputedResults = db.prepare("SELECT COUNT(*) as count FROM match_results WHERE status = 'disputed'").get() as any;
-    const tournamentsToday = db.prepare("SELECT COUNT(*) as count FROM tournaments WHERE date(start_time) = date('now') AND status != 'cancelled'").get() as any;
-    const totalTourneys = db.prepare('SELECT COUNT(*) as count FROM tournaments').get() as any;
-    const usersCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'user'").get() as any;
+    
+    // Live / scheduled tournaments today or currently in upcoming/open/ongoing states
+    const tournamentsToday = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM tournaments 
+      WHERE (date(start_time) = date('now') OR status IN ('upcoming', 'open', 'ongoing')) 
+        AND status != 'cancelled'
+    `).get() as any;
+
+    // Total tournaments (SQLite + GDrive cache fallback)
+    const totalTourneysDb = db.prepare("SELECT COUNT(*) as count FROM tournaments WHERE status != 'cancelled'").get() as any;
+    let totalTourneysGdrive = 0;
+    try {
+      const gTourneys = await GDriveTournamentStore.getAllTournaments();
+      totalTourneysGdrive = gTourneys.filter((t: any) => t.status !== 'cancelled').length;
+    } catch (_) {}
+    const totalTournaments = Math.max(totalTourneysDb?.count || 0, totalTourneysGdrive);
+
+    // Total registered users (role 'player' or 'user', excluding admin/moderator)
+    const usersCountDb = db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM users 
+      WHERE role IN ('player', 'user') 
+         OR (role NOT IN ('admin', 'moderator') AND role IS NOT NULL)
+    `).get() as any;
+    let gdrivePlayersCount = 0;
+    try {
+      gdrivePlayersCount = await GDriveAuthStore.getPlayersCount();
+    } catch (_) {}
+    const totalUsers = Math.max(usersCountDb?.count || 0, gdrivePlayersCount);
+
     const pendingWithdrawals = db.prepare("SELECT COUNT(*) as count FROM withdrawal_requests WHERE status = 'pending'").get() as any;
 
     // Calculate total net wallet liability
@@ -244,36 +274,47 @@ export class AdminService {
       }
     }
 
-    // APK & Device usage metrics - 100% real-time from device telemetry
+    // APK & Device usage metrics - 100% real-time from device telemetry + push tokens
     let totalApkInstalls = 0;
     let activeApkUsersToday = 0;
     let activeApkUsersWeek = 0;
     let platformBreakdown: { platform: string; count: number }[] = [];
 
     try {
-      const installRow = db.prepare("SELECT COUNT(DISTINCT device_id) as count FROM app_installs WHERE platform = 'android'").get() as any;
-      totalApkInstalls = installRow?.count ? Number(installRow.count) : 0;
+      const installRow = db.prepare("SELECT COUNT(DISTINCT device_id) as count FROM app_installs").get() as any;
+      const tokensRow = db.prepare("SELECT COUNT(DISTINCT token) as count FROM device_tokens").get() as any;
+      totalApkInstalls = Math.max(installRow?.count ? Number(installRow.count) : 0, tokensRow?.count ? Number(tokensRow.count) : 0);
 
       const activeTodayRow = db.prepare(`
         SELECT COUNT(DISTINCT COALESCE(user_id, device_id)) as count 
         FROM app_installs 
         WHERE datetime(last_active_at) >= datetime('now', '-24 hours')
       `).get() as any;
-      activeApkUsersToday = activeTodayRow?.count ? Number(activeTodayRow.count) : 0;
+      const tokensTodayRow = db.prepare(`
+        SELECT COUNT(DISTINCT user_id) as count 
+        FROM device_tokens 
+        WHERE datetime(updated_at) >= datetime('now', '-24 hours')
+      `).get() as any;
+      activeApkUsersToday = Math.max(activeTodayRow?.count ? Number(activeTodayRow.count) : 0, tokensTodayRow?.count ? Number(tokensTodayRow.count) : 0);
 
       const activeWeekRow = db.prepare(`
         SELECT COUNT(DISTINCT COALESCE(user_id, device_id)) as count 
         FROM app_installs 
         WHERE datetime(last_active_at) >= datetime('now', '-7 days')
       `).get() as any;
-      activeApkUsersWeek = activeWeekRow?.count ? Number(activeWeekRow.count) : 0;
+      const tokensWeekRow = db.prepare(`
+        SELECT COUNT(DISTINCT user_id) as count 
+        FROM device_tokens 
+        WHERE datetime(updated_at) >= datetime('now', '-7 days')
+      `).get() as any;
+      activeApkUsersWeek = Math.max(activeWeekRow?.count ? Number(activeWeekRow.count) : 0, tokensWeekRow?.count ? Number(tokensWeekRow.count) : 0, activeApkUsersToday);
 
       const platforms = db.prepare(`
         SELECT platform, COUNT(DISTINCT device_id) as count 
         FROM app_installs 
         GROUP BY platform
       `).all() as any[];
-      platformBreakdown = platforms;
+      platformBreakdown = platforms.length > 0 ? platforms : [{ platform: 'android', count: totalApkInstalls }];
     } catch (_) {}
 
     return {
@@ -281,8 +322,9 @@ export class AdminService {
       tournamentsLiveToday: tournamentsToday?.count || 0,
       totalPlatformBalance: totalBalance,
       disputedResultsCount: disputedResults?.count || 0,
-      totalUsers: usersCount?.count || 0,
-      totalTournaments: totalTourneys?.count || 0,
+      totalUsers,
+      totalTournaments,
+
       pendingWithdrawalsCount: pendingWithdrawals?.count || 0,
       totalApkInstalls,
       activeApkUsersToday,
@@ -726,16 +768,21 @@ export class AdminService {
           `Tournament Prize Winnings: ${tournament.title} (Rank #${player.rank}, ${player.kills} Kills)`
         );
 
-        // Update profile career stats
+        // Update profile career earnings and sync to GDriveAuthStore
         db.prepare(`
           UPDATE profiles 
           SET total_earnings = total_earnings + ?,
-              total_kills = total_kills + ?,
-              wins = wins + ?,
-              matches_played = matches_played + 1,
               updated_at = CURRENT_TIMESTAMP
           WHERE user_id = ?
-        `).run(player.totalPayout, player.kills, player.rank === 1 ? 1 : 0, player.userId);
+        `).run(player.totalPayout, player.userId);
+
+        GDriveAuthStore.getPlayer(player.userId).then((cached) => {
+          if (cached && cached.profile) {
+            cached.profile.total_earnings = (cached.profile.total_earnings || 0) + player.totalPayout;
+            GDriveAuthStore.savePlayer(cached).catch(() => {});
+          }
+        }).catch(() => {});
+
 
         // Create notification
         db.prepare(`

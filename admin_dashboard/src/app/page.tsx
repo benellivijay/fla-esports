@@ -87,25 +87,25 @@ export default function DashboardHomePage() {
         {/* Core Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Total APK installs"
-            value={stats?.totalApkInstalls ?? 0}
-            subtitle="Registered Android device instances"
-            icon={Smartphone}
-          />
-          <StatCard
-            title="Active APK users today"
-            value={stats?.activeApkUsersToday ?? 0}
-            subtitle="Device heartbeats in last 24h"
+            title="Total Registered Players"
+            value={stats?.totalUsers ?? 0}
+            subtitle="Verified accounts on platform"
             icon={Users}
           />
           <StatCard
-            title="Active APK users (7d)"
-            value={stats?.activeApkUsersWeek ?? 0}
-            subtitle="Active players this week"
+            title="Total Tournaments"
+            value={stats?.totalTournaments ?? 0}
+            subtitle="All scheduled & active lobbies"
             icon={Trophy}
           />
           <StatCard
-            title="Total wallet balance"
+            title="Live / Upcoming Today"
+            value={stats?.tournamentsLiveToday ?? 0}
+            subtitle="Active esports matches"
+            icon={Clock}
+          />
+          <StatCard
+            title="Total Platform Balance"
             value={`₹${(stats?.totalPlatformBalance ?? 0).toLocaleString('en-IN', {
               minimumFractionDigits: 2,
             })}`}
@@ -115,26 +115,33 @@ export default function DashboardHomePage() {
         </div>
 
         {/* Secondary Operational Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Pending result reviews"
+            title="Pending Result Reviews"
             value={stats?.pendingResultReviews ?? 0}
-            subtitle="Uploaded match scoreboards"
+            subtitle="Awaiting score verification"
             icon={CheckSquare}
           />
           <StatCard
-            title="Tournaments live today"
-            value={stats?.tournamentsLiveToday ?? 0}
-            subtitle="Scheduled esports lobbies"
-            icon={Trophy}
+            title="Pending Withdrawals"
+            value={stats?.pendingWithdrawalsCount ?? 0}
+            subtitle="Awaiting payout clearance"
+            icon={Wallet}
           />
           <StatCard
-            title="Disputed results"
+            title="Disputed Results"
             value={stats?.disputedResultsCount ?? 0}
             subtitle="Requiring staff arbitration"
             icon={AlertTriangle}
           />
+          <StatCard
+            title="Total App Installs"
+            value={stats?.totalApkInstalls ?? 0}
+            subtitle="Active Android player devices"
+            icon={Smartphone}
+          />
         </div>
+
 
         {/* 2-Column Section: Active Tournaments & Recent Audit Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

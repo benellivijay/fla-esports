@@ -45,10 +45,57 @@ export class ProfileService {
       throw new AppError('Profile not found', 404);
     }
 
+    // Compute dynamic, real-time career statistics from actual tournament entries, verified results, and prize credits
+    try {
+      const matchesRow = db.prepare('SELECT COUNT(DISTINCT tournament_id) as count FROM tournament_entries WHERE user_id = ?').get(userId) as any;
+      const actualMatches = matchesRow?.count || 0;
+
+      const resultsRow = db.prepare(`
+        SELECT 
+          COUNT(CASE WHEN (admin_confirmed_rank = 1 OR (admin_confirmed_rank IS NULL AND claimed_rank = 1)) THEN 1 END) as wins,
+          COALESCE(SUM(COALESCE(admin_confirmed_kills, claimed_kills)), 0) as kills
+        FROM match_results 
+        WHERE user_id = ? AND status = 'approved'
+      `).get(userId) as any;
+      const actualWins = resultsRow?.wins || 0;
+      const actualKills = resultsRow?.kills || 0;
+
+      const earningsRow = db.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as total 
+        FROM wallet_ledger 
+        WHERE user_id = ? AND type = 'prize_credit'
+      `).get(userId) as any;
+      const actualEarnings = earningsRow?.total || 0;
+
+      const computedMatches = Math.max(profile.matches_played || 0, actualMatches);
+      const computedWins = Math.max(profile.wins || 0, actualWins);
+      const computedKills = Math.max(profile.total_kills || 0, actualKills);
+      const computedEarnings = Math.max(profile.total_earnings || 0, actualEarnings);
+
+      if (
+        computedMatches !== profile.matches_played ||
+        computedWins !== profile.wins ||
+        computedKills !== profile.total_kills ||
+        computedEarnings !== profile.total_earnings
+      ) {
+        db.prepare(`
+          UPDATE profiles 
+          SET matches_played = ?, wins = ?, total_kills = ?, total_earnings = ?, updated_at = CURRENT_TIMESTAMP 
+          WHERE user_id = ?
+        `).run(computedMatches, computedWins, computedKills, computedEarnings, userId);
+        profile.matches_played = computedMatches;
+        profile.wins = computedWins;
+        profile.total_kills = computedKills;
+        profile.total_earnings = computedEarnings;
+      }
+    } catch (statsErr: any) {
+      Logger.warn(`[PROFILE] Error aggregating career statistics for ${userId}: ${statsErr.message}`);
+    }
 
     const isPhoneVerified = user.is_phone_verified === 1;
     const isEmailVerified = user.is_email_verified === 1;
     const kycStatus = (isPhoneVerified && isEmailVerified) ? 'verified' : 'unverified';
+
 
     return {
       profile,

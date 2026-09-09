@@ -1,4 +1,8 @@
 {
+  "version": "1.0",
+  "last_synced_at": "2026-09-08T17:42:35.074Z",
+  "folder_id": "1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO",
+  "count": 7,
   "players": [
     {
       "id": "1216b1c2-4671-40fd-b81f-84522d21cabc",
@@ -93,7 +97,7 @@
       "username": "flaadmin40",
       "email": "flaadmin40@gmail.com",
       "phone": "+919342235510",
-      "password_hash": "$2a$10$dJFBMiDC8jH/6Rtzccl7rOML7RHryZob3lHvWh/.ciMa5Nur3TVQS",
+      "password_hash": "$2a$10$0tqv4h0w3T4xBgQIJVMkCOQ8Im.n5BjQ0oWL8nFLSZaySUxGtGz1W",
       "google_id": null,
       "email_verified": true,
       "phone_verified": true,
@@ -101,7 +105,7 @@
       "role": "admin",
       "status": "active",
       "created_at": "2026-09-01 21:04:32",
-      "updated_at": "2026-09-08 15:49:31",
+      "updated_at": "2026-09-08 17:40:41",
       "profile": {
         "display_name": "Super Admin (FLA)",
         "matches_played": 0,
@@ -115,7 +119,7 @@
       "username": "flaadmin01",
       "email": "flaadmin01@gmail.com",
       "phone": "+919342235511",
-      "password_hash": "$2a$10$8c/owh2c0kMibv3vyQmEwuiuPPjWzM5VR1z5KqMAxttgzQk7R69VO",
+      "password_hash": "$2a$10$cFGGovPB5ybsLGXFkqnOT./fbSHHHPJs/r75/mxUEAQp5MgDmET2O",
       "google_id": null,
       "email_verified": true,
       "phone_verified": true,
@@ -123,7 +127,7 @@
       "role": "admin",
       "status": "active",
       "created_at": "2026-09-03 18:23:13",
-      "updated_at": "2026-09-08 15:49:31",
+      "updated_at": "2026-09-08 17:40:41",
       "profile": {
         "display_name": "FLA Super Admin 01",
         "matches_played": 0,
@@ -131,7 +135,28 @@
         "total_kills": 0,
         "total_earnings": 0
       }
+    },
+    {
+      "id": "be9d9c68-41b6-4d66-948b-9b665d9f84ab",
+      "username": null,
+      "email": "moderator@ffesports.com",
+      "phone": "+919999999992",
+      "password_hash": "$2a$10$4bL4lyUp5d6BAngxT5XR0.NuGcedyi0zPKS5zBkHyXk/0kMOAtJRa",
+      "google_id": null,
+      "email_verified": true,
+      "phone_verified": true,
+      "kyc_verified": false,
+      "role": "moderator",
+      "status": "active",
+      "created_at": "2026-09-08 16:40:51",
+      "updated_at": "2026-09-08 16:40:51",
+      "profile": {
+        "display_name": "Match Moderator",
+        "matches_played": 0,
+        "wins": 0,
+        "total_kills": 0,
+        "total_earnings": 0
+      }
     }
-  ],
-  "last_synced_at": "2026-09-08T16:38:08.426Z"
+  ]
 }

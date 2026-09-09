@@ -5,6 +5,8 @@ import { AppError } from '../../middleware/error.middleware';
 import { MatchResult, AdminResultQueueItem, ResultStatus } from '../../types';
 import { NotificationService } from '../scheduler/notification.service';
 import { FileCleanupUtil } from '../../utils/file_cleanup.util';
+import { GDriveAuthStore } from '../../services/gdrive_auth_store.service';
+
 
 export interface SubmitResultInput {
   tournamentId: string;
@@ -218,6 +220,16 @@ export class ResultsService {
               updated_at = CURRENT_TIMESTAMP
           WHERE user_id = ?
         `).run(isWin, killsToConfirm, result.user_id);
+
+        GDriveAuthStore.getPlayer(result.user_id).then((cached) => {
+          if (cached && cached.profile) {
+            cached.profile.matches_played = (cached.profile.matches_played || 0) + 1;
+            cached.profile.wins = (cached.profile.wins || 0) + isWin;
+            cached.profile.total_kills = (cached.profile.total_kills || 0) + killsToConfirm;
+            GDriveAuthStore.savePlayer(cached).catch(() => {});
+          }
+        }).catch(() => {});
+
       } else {
         db.prepare(`
           UPDATE match_results 

@@ -115,6 +115,28 @@ export class GDriveAuthStore {
   }
 
   /**
+   * Get all unique players from cache/registry
+   */
+  public static async getAllPlayers(): Promise<StoredPlayerRecord[]> {
+    if (!this.isInitialized) await this.initStore();
+    const mapById = new Map<string, StoredPlayerRecord>();
+    for (const record of this.playersCache.values()) {
+      if (record && record.id) {
+        mapById.set(record.id, record);
+      }
+    }
+    return Array.from(mapById.values());
+  }
+
+  /**
+   * Get count of all unique players (excluding admin/moderator)
+   */
+  public static async getPlayersCount(): Promise<number> {
+    const players = await this.getAllPlayers();
+    return players.filter((p) => p.role !== 'admin' && p.role !== 'moderator').length;
+  }
+
+  /**
    * Look up a player by email, username, google_id, or user id
    */
   public static async getPlayer(identifier: string): Promise<StoredPlayerRecord | null> {
