@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.roomRoutes = void 0;
+const express_1 = require("express");
+const room_controller_1 = require("./room.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const router = (0, express_1.Router)();
+router.get('/:id/room', auth_middleware_1.authenticateToken, room_controller_1.RoomController.getRoomDetails);
+router.post('/:id/reveal-now', auth_middleware_1.authenticateToken, auth_middleware_1.requireAdminOrModerator, room_controller_1.RoomController.revealRoomNow);
+router.post('/worker/trigger-reveal-check', auth_middleware_1.authenticateToken, auth_middleware_1.requireAdminOrModerator, room_controller_1.RoomController.triggerWorkerCycle);
+exports.roomRoutes = router;

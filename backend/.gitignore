@@ -1,5 +1,4 @@
 node_modules/
-dist/
 .env
 data/*.db
 !data/seed_ff_esports.db

@@ -1,0 +1,586 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GDriveAuthStore = void 0;
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const googleapis_1 = require("googleapis");
+const logger_1 = require("../utils/logger");
+const db_1 = require("../database/db");
+const uuid_1 = require("uuid");
+class GDriveAuthStore {
+    static FOLDER_ID = '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
+    static PLAYERS_REGISTRY_FILENAME = 'players_registry.json';
+    static PENDING_REGISTRATIONS_FILENAME = 'pending_registrations.json';
+    static playersCache = new Map(); // Keyed by lowercase email and username
+    static pendingCache = new Map(); // Keyed by lowercase email
+    static isInitialized = false;
+    /**
+     * Initializes the Google Drive Auth Store on backend startup.
+     */
+    static async initStore() {
+        if (this.isInitialized)
+            return;
+        this.isInitialized = true;
+        logger_1.Logger.info('[GDRIVE AUTH] Initializing Google Drive player auth store...');
+        // 1. First populate cache from local mirror / DB
+        try {
+            const db = (0, db_1.getDb)();
+            const dbUsers = db.prepare('SELECT * FROM users').all();
+            for (const u of dbUsers) {
+                const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id);
+                const record = {
+                    id: u.id,
+                    username: u.username,
+                    email: u.email,
+                    phone: u.phone,
+                    password_hash: u.password_hash,
+                    google_id: u.google_id,
+                    email_verified: Boolean(u.is_email_verified ?? u.email_verified),
+                    phone_verified: Boolean(u.is_phone_verified ?? u.phone_verified),
+                    ff_uid: u.ff_uid,
+                    ff_ign: u.ff_ign,
+                    kyc_verified: Boolean(u.is_kyc_verified ?? u.kyc_verified),
+                    role: u.role || 'player',
+                    status: u.status || 'active',
+                    created_at: u.created_at || new Date().toISOString(),
+                    updated_at: u.updated_at || new Date().toISOString(),
+                    profile: profile ? {
+                        display_name: profile.display_name,
+                        matches_played: profile.matches_played,
+                        wins: profile.wins,
+                        total_kills: profile.total_kills,
+                        total_earnings: profile.total_earnings,
+                    } : undefined,
+                };
+                this.cachePlayerRecord(record);
+            }
+            logger_1.Logger.info(`[GDRIVE AUTH] Loaded ${dbUsers.length} players from local database mirror.`);
+        }
+        catch (err) {
+            logger_1.Logger.warn(`[GDRIVE AUTH] Local DB pre-load skipped: ${err.message}`);
+        }
+        // 2. Pull & Sync latest records from Google Drive in background
+        this.restoreFromDrive().catch((err) => {
+            logger_1.Logger.warn(`[GDRIVE AUTH] Initial drive restore warning: ${err.message}`);
+        });
+    }
+    /**
+     * Cache helper for multi-key lookup (ID, lowercase email, and lowercase username)
+     */
+    static cachePlayerRecord(record) {
+        if (record.id)
+            this.playersCache.set(record.id, record);
+        if (record.email)
+            this.playersCache.set(record.email.toLowerCase().trim(), record);
+        if (record.username)
+            this.playersCache.set(record.username.toLowerCase().trim(), record);
+        if (record.google_id)
+            this.playersCache.set(`google_${record.google_id}`, record);
+    }
+    /**
+     * Get all unique players from cache/registry
+     */
+    static async getAllPlayers() {
+        if (!this.isInitialized)
+            await this.initStore();
+        const mapById = new Map();
+        for (const record of this.playersCache.values()) {
+            if (record && record.id) {
+                mapById.set(record.id, record);
+            }
+        }
+        return Array.from(mapById.values());
+    }
+    /**
+     * Get count of all unique players (excluding admin/moderator)
+     */
+    static async getPlayersCount() {
+        const players = await this.getAllPlayers();
+        return players.filter((p) => p.role !== 'admin' && p.role !== 'moderator').length;
+    }
+    /**
+     * Look up a player by email, username, google_id, or user id
+     */
+    static async getPlayer(identifier) {
+        if (!this.isInitialized)
+            await this.initStore();
+        const clean = identifier.toLowerCase().trim();
+        const cached = this.playersCache.get(clean) || this.playersCache.get(identifier);
+        if (cached)
+            return cached;
+        // Fallback: Check SQLite users table
+        try {
+            const db = (0, db_1.getDb)();
+            const u = db.prepare(`
+        SELECT * FROM users 
+        WHERE LOWER(email) = ? OR LOWER(username) = ? OR phone = ? OR id = ? OR google_id = ?
+      `).get(clean, clean, identifier, identifier, identifier);
+            if (u) {
+                const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id);
+                const record = {
+                    id: u.id,
+                    username: u.username,
+                    email: u.email,
+                    phone: u.phone || null,
+                    password_hash: u.password_hash || null,
+                    google_id: u.google_id || null,
+                    email_verified: Boolean(u.is_email_verified ?? u.email_verified),
+                    phone_verified: Boolean(u.is_phone_verified ?? u.phone_verified),
+                    ff_uid: u.ff_uid || null,
+                    ff_ign: u.ff_ign || null,
+                    kyc_verified: Boolean(u.is_kyc_verified ?? u.kyc_verified),
+                    role: u.role || 'player',
+                    status: u.status || 'active',
+                    created_at: u.created_at || new Date().toISOString(),
+                    updated_at: u.updated_at || new Date().toISOString(),
+                    profile: profile ? {
+                        display_name: profile.display_name,
+                        matches_played: profile.matches_played,
+                        wins: profile.wins,
+                        total_kills: profile.total_kills,
+                        total_earnings: profile.total_earnings,
+                    } : undefined,
+                };
+                this.cachePlayerRecord(record);
+                return record;
+            }
+        }
+        catch (_) { }
+        return null;
+    }
+    /**
+     * Look up player by Google OAuth ID
+     */
+    static async getPlayerByGoogleId(googleId) {
+        if (!this.isInitialized)
+            await this.initStore();
+        const cached = this.playersCache.get(`google_${googleId}`);
+        if (cached)
+            return cached;
+        try {
+            const db = (0, db_1.getDb)();
+            const u = db.prepare('SELECT * FROM users WHERE google_id = ?').get(googleId);
+            if (u) {
+                const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(u.id);
+                const record = {
+                    id: u.id,
+                    username: u.username,
+                    email: u.email,
+                    phone: u.phone || null,
+                    password_hash: u.password_hash || null,
+                    google_id: u.google_id || null,
+                    email_verified: Boolean(u.is_email_verified ?? u.email_verified),
+                    phone_verified: Boolean(u.is_phone_verified ?? u.phone_verified),
+                    ff_uid: u.ff_uid || null,
+                    ff_ign: u.ff_ign || null,
+                    kyc_verified: Boolean(u.is_kyc_verified ?? u.kyc_verified),
+                    role: u.role || 'player',
+                    status: u.status || 'active',
+                    created_at: u.created_at || new Date().toISOString(),
+                    updated_at: u.updated_at || new Date().toISOString(),
+                    profile: profile ? {
+                        display_name: profile.display_name,
+                        matches_played: profile.matches_played,
+                        wins: profile.wins,
+                        total_kills: profile.total_kills,
+                        total_earnings: profile.total_earnings,
+                    } : undefined,
+                };
+                this.cachePlayerRecord(record);
+                return record;
+            }
+        }
+        catch (_) { }
+        return null;
+    }
+    /**
+     * Saves or updates a player in Google Drive and local cache
+     */
+    static async savePlayer(record) {
+        if (!this.isInitialized)
+            await this.initStore();
+        record.updated_at = new Date().toISOString();
+        // Sync to local DB mirror
+        try {
+            const db = (0, db_1.getDb)();
+            const dbRole = record.role === 'admin' ? 'admin' : (record.role === 'moderator' ? 'moderator' : 'user');
+            // Look up existing user by ID OR by email OR by google_id to avoid UNIQUE constraint violations
+            let existing = null;
+            if (record.id) {
+                existing = db.prepare('SELECT id FROM users WHERE id = ?').get(record.id);
+            }
+            if (!existing && record.email) {
+                existing = db.prepare('SELECT id FROM users WHERE LOWER(email) = ?').get(record.email.toLowerCase().trim());
+            }
+            if (!existing && record.google_id) {
+                existing = db.prepare('SELECT id FROM users WHERE google_id = ?').get(record.google_id);
+            }
+            if (existing) {
+                record.id = existing.id;
+                db.prepare(`
+          UPDATE users SET 
+            username = COALESCE(?, username),
+            email = ?,
+            phone = COALESCE(?, phone),
+            password_hash = COALESCE(?, password_hash),
+            google_id = COALESCE(?, google_id),
+            is_email_verified = ?,
+            email_verified = ?,
+            is_phone_verified = ?,
+            kyc_verified = ?,
+            role = ?,
+            status = ?,
+            updated_at = ?
+          WHERE id = ?
+        `).run(record.username, record.email.toLowerCase().trim(), record.phone || null, record.password_hash || null, record.google_id || null, record.email_verified ? 1 : 0, record.email_verified ? 1 : 0, record.phone_verified ? 1 : 0, record.kyc_verified ? 1 : 0, dbRole, record.status || 'active', record.updated_at, record.id);
+            }
+            else {
+                db.prepare(`
+          INSERT INTO users (
+            id, username, email, phone, password_hash, google_id,
+            is_email_verified, email_verified, is_phone_verified, kyc_verified,
+            role, status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(record.id, record.username, record.email.toLowerCase().trim(), record.phone || null, record.password_hash || null, record.google_id || null, record.email_verified ? 1 : 0, record.email_verified ? 1 : 0, record.phone_verified ? 1 : 0, record.kyc_verified ? 1 : 0, dbRole, record.status || 'active', record.created_at || new Date().toISOString(), record.updated_at);
+            }
+            // Upsert profile in DB
+            const existingProf = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(record.id);
+            if (existingProf) {
+                db.prepare(`
+          UPDATE profiles SET 
+            display_name = COALESCE(?, display_name),
+            ff_uid = COALESCE(?, ff_uid),
+            ff_ign = COALESCE(?, ff_ign),
+            matches_played = ?, wins = ?, total_kills = ?, total_earnings = ?, updated_at = ?
+          WHERE user_id = ?
+        `).run(record.profile?.display_name || record.username, record.ff_uid || null, record.ff_ign || null, record.profile?.matches_played || 0, record.profile?.wins || 0, record.profile?.total_kills || 0, record.profile?.total_earnings || 0, record.updated_at, record.id);
+            }
+            else {
+                db.prepare(`
+          INSERT INTO profiles (
+            id, user_id, display_name, ff_uid, ff_ign, ff_verification_status,
+            matches_played, wins, total_kills, total_earnings, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(record.id, record.id, record.profile?.display_name || record.username, record.ff_uid || null, record.ff_ign || null, record.ff_uid ? 'verified' : 'unverified', record.profile?.matches_played || 0, record.profile?.wins || 0, record.profile?.total_kills || 0, record.profile?.total_earnings || 0, record.created_at, record.updated_at);
+            }
+        }
+        catch (err) {
+            logger_1.Logger.warn(`[GDRIVE AUTH] DB sync warning: ${err.message}`);
+        }
+        this.cachePlayerRecord(record);
+        // Push updated registry to Google Drive asynchronously
+        this.flushPlayersToDrive().catch((err) => {
+            logger_1.Logger.error(`[GDRIVE AUTH] Background sync to Google Drive failed: ${err.message}`);
+        });
+        return record;
+    }
+    /**
+     * Pending Registration Handlers
+     */
+    static async savePendingRegistration(pending) {
+        if (!this.isInitialized)
+            await this.initStore();
+        const key = pending.email.toLowerCase().trim();
+        this.pendingCache.set(key, pending);
+        // Save to local DB pending table mirror
+        try {
+            const db = (0, db_1.getDb)();
+            db.prepare(`
+        INSERT INTO pending_registrations (email, username, password_hash, otp_hash, expires_at, send_count, last_sent_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET
+          username = excluded.username,
+          password_hash = excluded.password_hash,
+          otp_hash = excluded.otp_hash,
+          expires_at = excluded.expires_at,
+          send_count = excluded.send_count,
+          last_sent_at = excluded.last_sent_at
+      `).run(pending.email.toLowerCase().trim(), pending.username.trim(), pending.password_hash, pending.otp_hash, pending.expires_at, pending.send_count, pending.last_sent_at);
+        }
+        catch (_) { }
+        this.flushPendingToDrive().catch((err) => {
+            logger_1.Logger.error(`[GDRIVE AUTH] Pending sync to Google Drive failed: ${err.message}`);
+        });
+    }
+    static async getPendingRegistration(email) {
+        if (!this.isInitialized)
+            await this.initStore();
+        const key = email.toLowerCase().trim();
+        if (this.pendingCache.has(key)) {
+            return this.pendingCache.get(key);
+        }
+        // Fallback to local DB
+        try {
+            const db = (0, db_1.getDb)();
+            const row = db.prepare('SELECT * FROM pending_registrations WHERE LOWER(email) = ?').get(key);
+            if (row) {
+                const item = {
+                    email: row.email,
+                    username: row.username,
+                    password_hash: row.password_hash,
+                    otp_hash: row.otp_hash,
+                    expires_at: row.expires_at,
+                    send_count: row.send_count || 1,
+                    last_sent_at: row.last_sent_at,
+                    created_at: row.created_at || new Date().toISOString(),
+                };
+                this.pendingCache.set(key, item);
+                return item;
+            }
+        }
+        catch (_) { }
+        return null;
+    }
+    static async deletePendingRegistration(email) {
+        const key = email.toLowerCase().trim();
+        this.pendingCache.delete(key);
+        try {
+            const db = (0, db_1.getDb)();
+            db.prepare('DELETE FROM pending_registrations WHERE LOWER(email) = ?').run(key);
+        }
+        catch (_) { }
+        this.flushPendingToDrive().catch((err) => logger_1.Logger.error(`[GDRIVE AUTH] Flush pending failed: ${err.message}`));
+    }
+    /**
+     * Persists all registered players to Google Drive as 'players_registry.json'
+     */
+    static async flushPlayersToDrive() {
+        const uniquePlayers = Array.from(new Set(this.playersCache.values()));
+        const payload = {
+            version: '1.0',
+            last_synced_at: new Date().toISOString(),
+            folder_id: this.FOLDER_ID,
+            count: uniquePlayers.length,
+            players: uniquePlayers,
+        };
+        const jsonContent = JSON.stringify(payload, null, 2);
+        return await this.uploadOrUpdateDriveFile(this.PLAYERS_REGISTRY_FILENAME, jsonContent);
+    }
+    /**
+     * Persists pending registrations to Google Drive
+     */
+    static async flushPendingToDrive() {
+        const pendingList = Array.from(this.pendingCache.values());
+        const payload = {
+            last_synced_at: new Date().toISOString(),
+            count: pendingList.length,
+            pending: pendingList,
+        };
+        const jsonContent = JSON.stringify(payload, null, 2);
+        return await this.uploadOrUpdateDriveFile(this.PENDING_REGISTRATIONS_FILENAME, jsonContent);
+    }
+    /**
+     * Pulls and restores players from Google Drive
+     */
+    static async restoreFromDrive() {
+        try {
+            const driveContent = await this.readDriveFile(this.PLAYERS_REGISTRY_FILENAME);
+            if (!driveContent) {
+                logger_1.Logger.info('[GDRIVE AUTH] No existing players_registry.json found in Google Drive. Starting fresh store.');
+                return 0;
+            }
+            const parsed = JSON.parse(driveContent);
+            const players = parsed.players || [];
+            let imported = 0;
+            for (const p of players) {
+                this.cachePlayerRecord(p);
+                // Sync into DB mirror if missing
+                try {
+                    const db = (0, db_1.getDb)();
+                    const exists = db.prepare('SELECT id FROM users WHERE id = ?').get(p.id);
+                    if (!exists) {
+                        db.prepare(`
+              INSERT INTO users (
+                id, username, email, phone, password_hash, google_id,
+                is_email_verified, is_phone_verified, is_kyc_verified,
+                ff_uid, ff_ign, role, status, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(p.id, p.username, p.email, p.phone || null, p.password_hash || null, p.google_id || null, p.email_verified ? 1 : 0, p.phone_verified ? 1 : 0, p.kyc_verified ? 1 : 0, p.ff_uid || null, p.ff_ign || null, p.role || 'player', p.status || 'active', p.created_at, p.updated_at);
+                        imported++;
+                        if (p.profile) {
+                            const profExists = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(p.id);
+                            if (!profExists) {
+                                db.prepare(`
+                  INSERT INTO profiles (
+                    id, user_id, display_name, matches_played, wins, total_kills, total_earnings, created_at, updated_at
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).run((0, uuid_1.v4)(), p.id, p.profile.display_name || 'Player', p.profile.matches_played || 0, p.profile.wins || 0, p.profile.total_kills || 0, p.profile.total_earnings || 0, p.created_at || new Date().toISOString(), p.updated_at || new Date().toISOString());
+                            }
+                        }
+                    }
+                }
+                catch (_) { }
+            }
+            logger_1.Logger.info(`[GDRIVE AUTH] Restored ${players.length} players (${imported} new) from Google Drive.`);
+            return players.length;
+        }
+        catch (err) {
+            logger_1.Logger.warn(`[GDRIVE AUTH] Could not restore players from Google Drive: ${err.message}`);
+            return 0;
+        }
+    }
+    static getStorageDir() {
+        const candidates = [
+            path_1.default.resolve(process.cwd(), 'backend', 'gdrive_storage'),
+            path_1.default.resolve(process.cwd(), 'gdrive_storage'),
+            path_1.default.resolve(__dirname, '../../gdrive_storage'),
+            path_1.default.resolve(__dirname, '../../../gdrive_storage'),
+        ];
+        for (const p of candidates) {
+            if (fs_1.default.existsSync(p))
+                return p;
+        }
+        const fallback = fs_1.default.existsSync(path_1.default.resolve(process.cwd(), 'backend'))
+            ? path_1.default.resolve(process.cwd(), 'backend', 'gdrive_storage')
+            : path_1.default.resolve(process.cwd(), 'gdrive_storage');
+        if (!fs_1.default.existsSync(fallback))
+            fs_1.default.mkdirSync(fallback, { recursive: true });
+        return fallback;
+    }
+    /**
+     * Drive File Read / Write Helpers
+     */
+    static async uploadOrUpdateDriveFile(fileName, content) {
+        // 1. Always persist to local gdrive_storage mirror
+        try {
+            const backupDir = this.getStorageDir();
+            if (!fs_1.default.existsSync(backupDir))
+                fs_1.default.mkdirSync(backupDir, { recursive: true });
+            fs_1.default.writeFileSync(path_1.default.join(backupDir, fileName), content, 'utf8');
+        }
+        catch (err) {
+            logger_1.Logger.warn(`[GDRIVE AUTH] Local mirror write warning: ${err.message}`);
+        }
+        // 2. Google Drive API Service Account Cloud Upload
+        const keyFilePath = path_1.default.resolve(process.cwd(), 'gdrive-service-account.json');
+        const hasKeyFile = fs_1.default.existsSync(keyFilePath);
+        const hasEnv = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GDRIVE_SERVICE_ACCOUNT_JSON);
+        if (hasKeyFile || hasEnv) {
+            try {
+                const auth = new googleapis_1.google.auth.GoogleAuth({
+                    keyFile: hasKeyFile ? keyFilePath : undefined,
+                    credentials: process.env.GDRIVE_SERVICE_ACCOUNT_JSON ? JSON.parse(process.env.GDRIVE_SERVICE_ACCOUNT_JSON) : undefined,
+                    scopes: ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive'],
+                });
+                const drive = googleapis_1.google.drive({ version: 'v3', auth });
+                // Search for existing file in target folder
+                const listRes = await drive.files.list({
+                    q: `'${this.FOLDER_ID}' in parents and name = '${fileName}' and trashed = false`,
+                    fields: 'files(id, name)',
+                });
+                const existingFile = listRes.data.files && listRes.data.files[0];
+                const media = {
+                    mimeType: 'application/json',
+                    body: content,
+                };
+                if (existingFile && existingFile.id) {
+                    await drive.files.update({
+                        fileId: existingFile.id,
+                        media: media,
+                    });
+                }
+                else {
+                    await drive.files.create({
+                        requestBody: {
+                            name: fileName,
+                            parents: [this.FOLDER_ID],
+                        },
+                        media: media,
+                    });
+                }
+                return true;
+            }
+            catch (err) {
+                logger_1.Logger.warn(`[GDRIVE API] Cloud sync info: ${err.message}`);
+            }
+        }
+        // 3. Google Apps Script Webhook
+        const webhookUrl = process.env.GDRIVE_WEBHOOK_URL;
+        if (webhookUrl) {
+            try {
+                const res = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    redirect: 'follow',
+                    signal: AbortSignal.timeout(5000),
+                    body: JSON.stringify({
+                        action: 'save_file',
+                        folderId: this.FOLDER_ID,
+                        fileName: fileName,
+                        fileData: Buffer.from(content).toString('base64'),
+                        mimeType: 'application/json',
+                    }),
+                });
+                return res.ok;
+            }
+            catch (err) {
+                logger_1.Logger.warn(`[GDRIVE Webhook] Cloud sync info: ${err.message}`);
+            }
+        }
+        return true;
+    }
+    static async readDriveFile(fileName) {
+        // 1. Check Google Drive API Service Account
+        const keyFilePath = path_1.default.resolve(process.cwd(), 'gdrive-service-account.json');
+        const hasKeyFile = fs_1.default.existsSync(keyFilePath);
+        const hasEnv = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GDRIVE_SERVICE_ACCOUNT_JSON);
+        if (hasKeyFile || hasEnv) {
+            try {
+                const auth = new googleapis_1.google.auth.GoogleAuth({
+                    keyFile: hasKeyFile ? keyFilePath : undefined,
+                    credentials: process.env.GDRIVE_SERVICE_ACCOUNT_JSON ? JSON.parse(process.env.GDRIVE_SERVICE_ACCOUNT_JSON) : undefined,
+                    scopes: ['https://www.googleapis.com/auth/drive.readonly', 'https://www.googleapis.com/auth/drive'],
+                });
+                const drive = googleapis_1.google.drive({ version: 'v3', auth });
+                const listRes = await drive.files.list({
+                    q: `'${this.FOLDER_ID}' in parents and name = '${fileName}' and trashed = false`,
+                    fields: 'files(id, name)',
+                });
+                const file = listRes.data.files && listRes.data.files[0];
+                if (file && file.id) {
+                    const res = await drive.files.get({ fileId: file.id, alt: 'media' }, { responseType: 'text' });
+                    return typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+                }
+            }
+            catch (err) {
+                logger_1.Logger.warn(`[GDRIVE API] Could not read from Google Drive API: ${err.message}`);
+            }
+        }
+        // 2. Check Google Apps Script Webhook
+        const webhookUrl = process.env.GDRIVE_WEBHOOK_URL;
+        if (webhookUrl) {
+            try {
+                const res = await fetch(`${webhookUrl}?action=read_file&folderId=${this.FOLDER_ID}&fileName=${fileName}`, {
+                    method: 'GET',
+                    redirect: 'follow',
+                    signal: AbortSignal.timeout(5000),
+                });
+                if (res.ok) {
+                    const text = await res.text();
+                    let data = {};
+                    try {
+                        data = JSON.parse(text);
+                    }
+                    catch (_) { }
+                    if (data.fileContent) {
+                        return Buffer.from(data.fileContent, 'base64').toString('utf8');
+                    }
+                }
+            }
+            catch (err) {
+                logger_1.Logger.warn(`[GDRIVE Webhook] Could not read from Webhook: ${err.message}`);
+            }
+        }
+        // 3. Fallback: Local storage mirror
+        const backupDir = this.getStorageDir();
+        const backupPath = path_1.default.join(backupDir, fileName);
+        if (fs_1.default.existsSync(backupPath)) {
+            return fs_1.default.readFileSync(backupPath, 'utf8');
+        }
+        return null;
+    }
+}
+exports.GDriveAuthStore = GDriveAuthStore;

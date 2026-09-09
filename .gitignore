@@ -1,6 +1,7 @@
 # Node
 node_modules/
 dist/
+!backend/dist/
 .next/
 .env
 .env.local

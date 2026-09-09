@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.kycRoutes = void 0;
+const express_1 = require("express");
+const kyc_controller_1 = require("./kyc.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const upload_middleware_1 = require("../../middleware/upload.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authenticateToken);
+router.get('/status', kyc_controller_1.KYCController.getKYCStatus);
+router.post('/submit', upload_middleware_1.uploadMiddleware.single('document'), kyc_controller_1.KYCController.submitKYC);
+exports.kycRoutes = router;

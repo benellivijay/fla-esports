@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.profileRoutes = void 0;
+const express_1 = require("express");
+const profile_controller_1 = require("./profile.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const upload_middleware_1 = require("../../middleware/upload.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authenticateToken);
+router.get('/me', profile_controller_1.ProfileController.getProfile);
+router.put('/me', profile_controller_1.ProfileController.updateProfile);
+router.post('/ff-uid/initiate', profile_controller_1.ProfileController.initiateFFVerification);
+router.post('/ff-uid/submit-proof', upload_middleware_1.uploadMiddleware.single('proofImage'), profile_controller_1.ProfileController.submitFFProof);
+exports.profileRoutes = router;

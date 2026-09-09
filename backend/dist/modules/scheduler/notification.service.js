@@ -1,0 +1,385 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NotificationService = void 0;
+const uuid_1 = require("uuid");
+const db_1 = require("../../database/db");
+const logger_1 = require("../../utils/logger");
+// ─── Firebase Admin / FCM ────────────────────────────────────────────────────
+let _firebaseApp = null;
+function getFirebaseMessaging() {
+    if (_firebaseApp) {
+        try {
+            const admin = require('firebase-admin');
+            return admin.messaging(_firebaseApp);
+        }
+        catch (_) {
+            return null;
+        }
+    }
+    const credJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.GDRIVE_SERVICE_ACCOUNT_JSON;
+    if (!credJson)
+        return null;
+    try {
+        const admin = require('firebase-admin');
+        if (admin.apps.length > 0) {
+            _firebaseApp = admin.apps[0];
+        }
+        else {
+            const credentials = JSON.parse(credJson);
+            _firebaseApp = admin.initializeApp({
+                credential: admin.credential.cert(credentials),
+            });
+        }
+        logger_1.Logger.info('[FCM] Firebase Admin SDK initialized successfully.');
+        return admin.messaging(_firebaseApp);
+    }
+    catch (err) {
+        logger_1.Logger.warn(`[FCM] Firebase Admin SDK init failed (push notifications disabled): ${err.message}`);
+        return null;
+    }
+}
+/**
+ * Sends FCM push to a list of device tokens. Prunes stale tokens automatically.
+ */
+async function dispatchFCMPush(tokens, title, body, data) {
+    if (tokens.length === 0)
+        return;
+    const messaging = getFirebaseMessaging();
+    if (!messaging)
+        return; // Firebase not configured — silently skip
+    try {
+        const message = {
+            tokens,
+            notification: { title, body },
+            data: data || {},
+            android: {
+                priority: 'high',
+                notification: { sound: 'default', clickAction: 'FLUTTER_NOTIFICATION_CLICK' },
+            },
+            apns: {
+                payload: { aps: { sound: 'default', badge: 1 } },
+            },
+        };
+        const batchResponse = await messaging.sendEachForMulticast(message);
+        // Prune stale / invalid tokens
+        if (batchResponse.failureCount > 0) {
+            const db = (0, db_1.getDb)();
+            batchResponse.responses.forEach((resp, idx) => {
+                if (!resp.success) {
+                    const errorCode = resp.error?.code || '';
+                    if (errorCode === 'messaging/registration-token-not-registered' ||
+                        errorCode === 'messaging/invalid-registration-token') {
+                        try {
+                            db.prepare('DELETE FROM device_tokens WHERE token = ?').run(tokens[idx]);
+                        }
+                        catch (_) { }
+                    }
+                    logger_1.Logger.warn(`[FCM] Failed for token[${idx}]: ${resp.error?.message}`);
+                }
+            });
+        }
+        logger_1.Logger.info(`[FCM] Push sent: ${batchResponse.successCount} ok, ${batchResponse.failureCount} failed (of ${tokens.length} devices).`);
+    }
+    catch (err) {
+        logger_1.Logger.warn(`[FCM] Dispatch error: ${err.message}`);
+    }
+}
+class NotificationService {
+    /**
+     * Register or update user device FCM push token
+     */
+    static async registerDeviceToken(userId, token, platform = 'android', deviceInfo) {
+        const db = (0, db_1.getDb)();
+        const existing = db.prepare('SELECT id FROM device_tokens WHERE token = ?').get(token);
+        if (existing) {
+            db.prepare(`
+        UPDATE device_tokens 
+        SET user_id = ?, platform = ?, device_info = ?, last_active_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE token = ?
+      `).run(userId, platform, deviceInfo || null, token);
+        }
+        else {
+            const id = (0, uuid_1.v4)();
+            db.prepare(`
+        INSERT INTO device_tokens (id, user_id, token, platform, device_info, last_active_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).run(id, userId, token, platform, deviceInfo || null);
+        }
+    }
+    /**
+     * Unregister device FCM push token (e.g. on logout)
+     */
+    static async unregisterDeviceToken(userId, token) {
+        const db = (0, db_1.getDb)();
+        db.prepare('DELETE FROM device_tokens WHERE user_id = ? AND token = ?').run(userId, token);
+    }
+    /**
+     * Dispatches push notification to user and records persistent in-app notification
+     */
+    static async sendNotificationToUser(userId, payload) {
+        const db = (0, db_1.getDb)();
+        const id = (0, uuid_1.v4)();
+        const dataJson = payload.data ? JSON.stringify(payload.data) : null;
+        // 1. Record persistent in-app notification
+        db.prepare(`
+      INSERT INTO notifications (id, user_id, title, body, type, data, is_read, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+    `).run(id, userId, payload.title, payload.body, payload.type, dataJson);
+        // 2. Fetch device tokens for FCM dispatch safely
+        let tokens = [];
+        try {
+            tokens = db.prepare('SELECT token, platform FROM device_tokens WHERE user_id = ?').all(userId);
+        }
+        catch (_) { }
+        // 3. Dispatch real FCM push notification (fire-and-forget — non-blocking)
+        logger_1.Logger.info(`[PUSH DISPATCH] To User: ${userId} (${tokens.length} devices) | Type: [${payload.type}] | Title: "${payload.title}" | Body: "${payload.body}"`);
+        if (tokens.length > 0) {
+            const tokenStrings = tokens.map((t) => t.token);
+            // FCM data values must all be strings
+            const fcmData = {
+                type: payload.type,
+                notificationId: id,
+                ...(payload.data
+                    ? Object.fromEntries(Object.entries(payload.data).map(([k, v]) => [k, String(v)]))
+                    : {}),
+            };
+            dispatchFCMPush(tokenStrings, payload.title, payload.body, fcmData).catch(() => { });
+        }
+        let record = null;
+        try {
+            record = db.prepare('SELECT * FROM notifications WHERE id = ?').get(id);
+        }
+        catch (_) { }
+        return {
+            id,
+            user_id: userId,
+            title: payload.title,
+            body: payload.body,
+            type: payload.type,
+            data: payload.data || (record?.data ? JSON.parse(record.data) : null),
+            is_read: record ? Boolean(record.is_read) : false,
+            created_at: record?.created_at || new Date().toISOString(),
+        };
+    }
+    /**
+     * Dispatches batch push notification to multiple users (e.g. room reveal broadcast)
+     */
+    static async sendNotificationToUsers(userIds, payload) {
+        for (const userId of userIds) {
+            await this.sendNotificationToUser(userId, payload);
+        }
+    }
+    /**
+     * Broadcasts new tournament announcement notification to all registered players
+     */
+    static async broadcastNewTournamentNotification(tournament) {
+        const db = (0, db_1.getDb)();
+        const entryFeeText = tournament.entry_type === 'paid' && tournament.entry_fee > 0 ? `₹${tournament.entry_fee}` : 'FREE';
+        const title = `🏆 New Tournament: ${tournament.title}`;
+        const body = `New ${tournament.mode.toUpperCase()} match on ${tournament.map} (Prize: ₹${tournament.prize_pool}, Entry: ${entryFeeText}) is now open for registration! Book your slot now.`;
+        const dataJson = JSON.stringify({
+            tournamentId: tournament.id,
+            title: tournament.title,
+            mode: tournament.mode,
+            map: tournament.map,
+            prizePool: tournament.prize_pool,
+            entryFee: tournament.entry_fee,
+            entryType: tournament.entry_type,
+        });
+        // 1. Fetch all active player user IDs
+        const users = db.prepare("SELECT id FROM users WHERE status = 'active'").all();
+        if (users.length === 0)
+            return;
+        // 2. Batch insert in-app notifications
+        const insertStmt = db.prepare(`
+      INSERT INTO notifications (id, user_id, title, body, type, data, is_read, created_at)
+      VALUES (?, ?, ?, ?, 'TOURNAMENT_CREATED', ?, 0, CURRENT_TIMESTAMP)
+    `);
+        db.exec('BEGIN TRANSACTION;');
+        try {
+            for (const user of users) {
+                insertStmt.run((0, uuid_1.v4)(), user.id, title, body, dataJson);
+            }
+            db.exec('COMMIT;');
+        }
+        catch (err) {
+            try {
+                db.exec('ROLLBACK;');
+            }
+            catch (_) { }
+            logger_1.Logger.error('Failed to batch insert tournament created notifications', err);
+        }
+        // 3. Log FCM push broadcast
+        logger_1.Logger.info(`[PUSH BROADCAST] Broadcasted "New Tournament: ${tournament.title}" notification to ${users.length} registered players.`);
+    }
+    /**
+     * Fetch paginated notification inbox for user
+     */
+    static async getUserNotifications(userId, page = 1, limit = 20) {
+        const db = (0, db_1.getDb)();
+        const offset = (page - 1) * limit;
+        const rows = db.prepare(`
+      SELECT * FROM notifications 
+      WHERE user_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT ? OFFSET ?
+    `).all(userId, limit, offset);
+        const totalRow = db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ?').get(userId);
+        const unreadRow = db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0').get(userId);
+        const notifications = rows.map((r) => ({
+            ...r,
+            data: r.data ? JSON.parse(r.data) : null,
+            is_read: Boolean(r.is_read),
+        }));
+        return {
+            notifications,
+            total: totalRow?.count || 0,
+            unreadCount: unreadRow?.count || 0,
+        };
+    }
+    /**
+     * Get unread notifications count for live UI badge
+     */
+    static async getUnreadCount(userId) {
+        const db = (0, db_1.getDb)();
+        const row = db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0').get(userId);
+        return row?.count || 0;
+    }
+    /**
+     * Mark single notification as read
+     */
+    static async markAsRead(userId, notificationId) {
+        const db = (0, db_1.getDb)();
+        db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?').run(notificationId, userId);
+    }
+    /**
+     * Mark all user notifications as read
+     */
+    static async markAllAsRead(userId) {
+        const db = (0, db_1.getDb)();
+        db.prepare('UPDATE notifications SET is_read = 1 WHERE user_id = ?').run(userId);
+    }
+    /**
+     * Admin broadcast system notification to all players
+     */
+    static async broadcastNotification(adminUserId, title, body, data) {
+        const db = (0, db_1.getDb)();
+        const users = db.prepare("SELECT id FROM users WHERE status = 'active'").all();
+        let sentCount = 0;
+        for (const u of users) {
+            try {
+                await this.sendNotificationToUser(u.id, {
+                    title,
+                    body,
+                    type: 'BROADCAST',
+                    data,
+                });
+                sentCount++;
+            }
+            catch (err) {
+                logger_1.Logger.error(`Failed to send broadcast notification to user ${u.id}:`, err);
+            }
+        }
+        try {
+            logger_1.Logger.audit({
+                actorId: adminUserId,
+                action: 'NOTIFICATION_BROADCAST',
+                targetResource: 'notifications',
+                details: { title, body, userCount: sentCount },
+            });
+        }
+        catch (_) { }
+        return { sentCount: sentCount || users.length };
+    }
+    /**
+     * Admin dispatches notification to all participants of a specific tournament
+     */
+    static async notifyTournamentParticipants(adminUserId, tournamentId, title, body, data) {
+        const db = (0, db_1.getDb)();
+        const participants = db.prepare(`
+      SELECT DISTINCT user_id 
+      FROM tournament_entries 
+      WHERE tournament_id = ? AND status = 'confirmed'
+    `).all(tournamentId);
+        let sentCount = 0;
+        for (const p of participants) {
+            try {
+                await this.sendNotificationToUser(p.user_id, {
+                    title,
+                    body,
+                    type: 'TOURNAMENT_ALERT',
+                    data: { ...data, tournamentId },
+                });
+                sentCount++;
+            }
+            catch (err) {
+                logger_1.Logger.error(`Failed to send tournament notification to user ${p.user_id}:`, err);
+            }
+        }
+        try {
+            logger_1.Logger.audit({
+                actorId: adminUserId,
+                action: 'TOURNAMENT_NOTIFICATION_BROADCAST',
+                targetResource: `tournaments/${tournamentId}`,
+                details: { title, body, userCount: sentCount },
+            });
+        }
+        catch (_) { }
+        return { sentCount: sentCount || participants.length };
+    }
+    /**
+     * Fetch recent announcements and admin messages for Home Screen banner
+     */
+    static async getPublicAnnouncements(limit = 5, userId) {
+        const db = (0, db_1.getDb)();
+        // 1. Fetch recent broadcast announcements
+        const broadcasts = db.prepare(`
+      SELECT MIN(id) as id, title, body, type, data, MAX(created_at) as created_at
+      FROM notifications
+      WHERE type IN ('SYSTEM', 'BROADCAST')
+      GROUP BY title, body
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(limit);
+        // 2. If authenticated user, also fetch recent direct admin messages for this user
+        let userDirectMessages = [];
+        if (userId) {
+            userDirectMessages = db.prepare(`
+        SELECT id, title, body, type, data, created_at
+        FROM notifications
+        WHERE user_id = ? AND type IN ('ADMIN_MESSAGE', 'TOURNAMENT_ALERT')
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).all(userId, limit);
+        }
+        const merged = [...userDirectMessages, ...broadcasts];
+        merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        return merged.slice(0, limit).map((r) => ({
+            id: r.id,
+            title: r.title,
+            body: r.body,
+            type: r.type,
+            data: r.data ? (typeof r.data === 'string' ? JSON.parse(r.data) : r.data) : null,
+            createdAt: r.created_at,
+        }));
+    }
+    /**
+     * Helper: Dispatches room revealed notification to all confirmed participants
+     */
+    static async notifyRoomRevealed(tournament, participants) {
+        for (const p of participants) {
+            await this.sendNotificationToUser(p.userId, {
+                title: '🔥 Room Credentials Live!',
+                body: `Room ID: ${tournament.roomId || 'SET_SOON'} | Pass: ${tournament.roomPassword || 'None'} | Slot: #${p.slotNumber}`,
+                type: 'ROOM_REVEALED',
+                data: {
+                    tournamentId: tournament.id,
+                    roomId: tournament.roomId,
+                    password: tournament.roomPassword,
+                    slotNumber: p.slotNumber,
+                },
+            });
+        }
+    }
+}
+exports.NotificationService = NotificationService;

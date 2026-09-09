@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.walletRoutes = void 0;
+const express_1 = require("express");
+const wallet_controller_1 = require("./wallet.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const upload_middleware_1 = require("../../middleware/upload.middleware");
+const router = (0, express_1.Router)();
+router.get('/summary', auth_middleware_1.authenticateToken, wallet_controller_1.WalletController.getSummary);
+router.post('/deposit/create-order', auth_middleware_1.authenticateToken, wallet_controller_1.WalletController.createOrder);
+router.post('/deposit/verify', auth_middleware_1.authenticateToken, wallet_controller_1.WalletController.verifyDeposit);
+router.post('/deposit/upi-qr', auth_middleware_1.authenticateToken, upload_middleware_1.uploadMiddleware.single('screenshot'), wallet_controller_1.WalletController.submitQrDeposit);
+router.get('/transactions', auth_middleware_1.authenticateToken, wallet_controller_1.WalletController.getTransactions);
+exports.walletRoutes = router;

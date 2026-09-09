@@ -1,0 +1,346 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+process.env.NODE_ENV = 'test';
+const http_1 = __importDefault(require("http"));
+const server_1 = require("../server");
+const db_1 = require("../database/db");
+const booking_service_1 = require("../modules/booking/booking.service");
+const uuid_1 = require("uuid");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const env_1 = require("../config/env");
+function makeRequest(server, options) {
+    return new Promise((resolve, reject) => {
+        const port = server.address().port;
+        const postData = options.body ? JSON.stringify(options.body) : '';
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (postData) {
+            headers['Content-Length'] = Buffer.byteLength(postData);
+        }
+        if (options.token) {
+            headers['Authorization'] = `Bearer ${options.token}`;
+        }
+        const req = http_1.default.request({
+            hostname: '127.0.0.1',
+            port,
+            path: options.path,
+            method: options.method,
+            headers,
+        }, (res) => {
+            let rawData = '';
+            res.on('data', (chunk) => { rawData += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(rawData);
+                    resolve({ status: res.statusCode || 500, data: parsed });
+                }
+                catch {
+                    resolve({ status: res.statusCode || 500, data: rawData });
+                }
+            });
+        });
+        req.on('error', reject);
+        if (postData) {
+            req.write(postData);
+        }
+        req.end();
+    });
+}
+async function runBookingTests() {
+    console.log('🧪 Starting Step 3: Slot Booking & Concurrency Automated Tests...\n');
+    let passedCount = 0;
+    let failedCount = 0;
+    function assert(condition, testName, detail) {
+        if (condition) {
+            console.log(`  ✅ PASS: ${testName}`);
+            passedCount++;
+        }
+        else {
+            console.error(`  ❌ FAIL: ${testName}`);
+            if (detail)
+                console.error('     Detail:', detail);
+            failedCount++;
+        }
+    }
+    const app = (0, server_1.createApp)();
+    const server = http_1.default.createServer(app);
+    await new Promise((resolve) => {
+        server.listen(0, '127.0.0.1', () => resolve());
+    });
+    const rand = Math.floor(100000 + Math.random() * 900000);
+    const db = (0, db_1.getDb)();
+    // Helper to create verified user with profile
+    function createUser(phoneSuffix, ign, withFfUid = true) {
+        const uId = (0, uuid_1.v4)();
+        const phone = `97${rand}${phoneSuffix}`;
+        db.prepare(`
+      INSERT INTO users (id, phone, role, status, is_phone_verified, is_email_verified, created_at, updated_at)
+      VALUES (?, ?, 'user', 'active', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run(uId, phone);
+        const ffUid = withFfUid ? `FF_${rand}_${phoneSuffix}` : null;
+        db.prepare(`
+      INSERT INTO profiles (id, user_id, display_name, ff_uid, ff_ign, ff_verification_status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, 'verified', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run((0, uuid_1.v4)(), uId, ign, ffUid, withFfUid ? ign : null);
+        const token = jsonwebtoken_1.default.sign({ userId: uId, role: 'user', phone }, env_1.config.jwt.accessSecret, { expiresIn: '1h' });
+        return { userId: uId, token, phone, ffUid };
+    }
+    const user1 = createUser('01', 'SniperGod');
+    const user2 = createUser('02', 'ShadowKing');
+    const user3 = createUser('03', 'ProPlayer');
+    const userNoFF = createUser('04', 'NoobPlayer', false);
+    const startPaid = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+    const startFree = new Date(Date.now() + 3 * 3600 * 1000).toISOString();
+    // Create Paid Tournament
+    const paidTournamentId = (0, uuid_1.v4)();
+    db.prepare(`
+    INSERT INTO tournaments (
+      id, title, game, mode, map, entry_type, entry_fee, prize_pool, prize_distribution, 
+      max_slots, filled_slots, start_time, room_reveal_time_minutes, status, created_at, updated_at
+    ) VALUES (
+      ?, 'Championship Paid Solo', 'Free Fire', 'solo', 'Bermuda', 'paid', 50.0, 2000.0, '[]', 
+      48, 0, ?, 15, 'upcoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    )
+  `).run(paidTournamentId, startPaid);
+    // Create Free Tournament
+    const freeTournamentId = (0, uuid_1.v4)();
+    db.prepare(`
+    INSERT INTO tournaments (
+      id, title, game, mode, map, entry_type, entry_fee, prize_pool, prize_distribution, 
+      max_slots, filled_slots, start_time, room_reveal_time_minutes, status, created_at, updated_at
+    ) VALUES (
+      ?, 'Free Community Cup', 'Free Fire', 'solo', 'Purgatory', 'free', 0.0, 500.0, '[]', 
+      48, 0, ?, 15, 'upcoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+    )
+  `).run(freeTournamentId, startFree);
+    try {
+        // 1. User without FF UID linked is rejected
+        const noFfRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${paidTournamentId}/book`,
+            token: userNoFF.token,
+            body: { slotNumber: 1 },
+        });
+        assert(noFfRes.status === 400 && noFfRes.data.code === 'FF_UID_REQUIRED', 'User without Free Fire UID rejected from booking');
+        // 2. Paid match with 0 balance is rejected
+        const zeroBalanceRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${paidTournamentId}/book`,
+            token: user1.token,
+            body: { slotNumber: 5 },
+        });
+        assert(zeroBalanceRes.status === 400 && zeroBalanceRes.data.code === 'INSUFFICIENT_WALLET_BALANCE', 'Booking paid match with zero balance rejected');
+        // 3. User 1 deposits ₹200 into wallet ledger
+        booking_service_1.BookingService.recordDeposit(user1.userId, 200.0, `TEST_DEP_${rand}`);
+        const balUser1 = booking_service_1.BookingService.getUserWalletBalance(user1.userId);
+        assert(balUser1 === 200.0, 'User 1 wallet balance reflects ₹200.00 deposit');
+        // 4. User 1 successfully books Slot #5 in Paid Tournament (₹50 fee debited)
+        const bookRes1 = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${paidTournamentId}/book`,
+            token: user1.token,
+            body: { slotNumber: 5 },
+        });
+        assert(bookRes1.status === 201 && bookRes1.data.data.slot_number === 5, 'User 1 successfully books Slot #5');
+        const balAfterBook1 = booking_service_1.BookingService.getUserWalletBalance(user1.userId);
+        assert(balAfterBook1 === 150.0, 'User 1 wallet atomically debited ₹50 (Balance: ₹150.00)');
+        // 5. CONCURRENCY & DOUBLE BOOKING PREVENTION TEST: User 2 attempts to book the SAME Slot #5
+        booking_service_1.BookingService.recordDeposit(user2.userId, 100.0);
+        const doubleBookRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${paidTournamentId}/book`,
+            token: user2.token,
+            body: { slotNumber: 5 },
+        });
+        assert(doubleBookRes.status === 409 && doubleBookRes.data.code === 'SLOT_ALREADY_TAKEN', 'CONCURRENCY: Double booking same Slot #5 rejected with 409 Conflict');
+        // 6. User 2 books available Slot #6
+        const bookRes2 = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${paidTournamentId}/book`,
+            token: user2.token,
+            body: { slotNumber: 6 },
+        });
+        assert(bookRes2.status === 201 && bookRes2.data.data.slot_number === 6, 'User 2 successfully books available Slot #6');
+        // 7. DUPLICATE REGISTRATION TEST: User 1 attempts to book another slot in same tournament
+        const duplicateRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${paidTournamentId}/book`,
+            token: user1.token,
+            body: { slotNumber: 7 },
+        });
+        assert(duplicateRes.status === 409 && duplicateRes.data.code === 'ALREADY_REGISTERED', 'Same user duplicate booking in same match rejected');
+        // 8. User 3 joins Free Tournament (0 entry fee)
+        const freeBookRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${freeTournamentId}/book`,
+            token: user3.token,
+            body: { slotNumber: 12 },
+        });
+        assert(freeBookRes.status === 201 && freeBookRes.data.data.entry_fee_paid === 0, 'User 3 joins Free Tournament with 0 wallet fee');
+        // 9. Inspect interactive slot grid
+        const gridRes = await makeRequest(server, {
+            method: 'GET',
+            path: `/api/v1/tournaments/${paidTournamentId}/slots`,
+            token: user1.token,
+        });
+        assert(gridRes.status === 200 &&
+            gridRes.data.data.filledSlots === 2 &&
+            gridRes.data.data.currentUserBookedSlot === 5 &&
+            gridRes.data.data.slots.find((s) => s.slotNumber === 5).status === 'booked' &&
+            gridRes.data.data.slots.find((s) => s.slotNumber === 7).status === 'available', 'Slot grid accurately reflects booked vs available slots');
+        // 10. User retrieves "My Matches"
+        const myMatchesRes = await makeRequest(server, {
+            method: 'GET',
+            path: '/api/v1/tournaments/user/my-bookings',
+            token: user1.token,
+        });
+        assert(myMatchesRes.status === 200 && myMatchesRes.data.count >= 1, 'User retrieves list of joined tournament matches');
+        // 11. User 1 cancels booking for Paid Tournament -> Slot released & ₹50 refunded
+        const cancelRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${paidTournamentId}/cancel-booking`,
+            token: user1.token,
+        });
+        assert(cancelRes.status === 200 && cancelRes.data.data.refundedAmount === 50, 'Booking cancelled and ₹50 refunded');
+        const balAfterRefund = booking_service_1.BookingService.getUserWalletBalance(user1.userId);
+        assert(balAfterRefund === 200.0, 'User 1 wallet balance restored to ₹200.00 after cancellation');
+        // 12. Slot #5 is now available again for other players
+        booking_service_1.BookingService.recordDeposit(user3.userId, 100.0);
+        const bookFreedSlotRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${paidTournamentId}/book`,
+            token: user3.token,
+            body: { slotNumber: 5 },
+        });
+        assert(bookFreedSlotRes.status === 201 && bookFreedSlotRes.data.data.slot_number === 5, 'Freed Slot #5 can now be booked by another player');
+        // 13. SQUAD MULTI-SLOT TEST (4 slots): User 1 books Team 1 (slots 1, 2, 3, 4)
+        const squadTournamentId = (0, uuid_1.v4)();
+        db.prepare(`
+      INSERT INTO tournaments (
+        id, title, game, mode, map, entry_type, entry_fee, prize_pool, prize_distribution, 
+        max_slots, filled_slots, start_time, room_reveal_time_minutes, status, created_at, updated_at
+      ) VALUES (
+        ?, 'Squad Championship Pro', 'Free Fire', 'squad', 'Bermuda', 'free', 0.0, 5000.0, '[]', 
+        12, 0, ?, 15, 'upcoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).run(squadTournamentId, startFree);
+        const squadBookRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${squadTournamentId}/book`,
+            token: user1.token,
+            body: { slotNumbers: [1, 2, 3, 4], teamName: 'Team Alpha' },
+        });
+        assert(squadBookRes.status === 201 && squadBookRes.data.success === true, 'User 1 successfully books all 4 Squad slots (Team 1)');
+        const squadGridRes = await makeRequest(server, {
+            method: 'GET',
+            path: `/api/v1/tournaments/${squadTournamentId}/slots`,
+            token: user1.token,
+        });
+        assert(squadGridRes.status === 200 &&
+            Array.isArray(squadGridRes.data.data.currentUserBookedSlots) &&
+            squadGridRes.data.data.currentUserBookedSlots.length === 4 &&
+            squadGridRes.data.data.filledSlots === 4, 'Squad Slot Grid returns 4 booked slots for current user in Team 1');
+        // Another player cannot steal slot 2 from Team 1
+        const conflictSquadRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${squadTournamentId}/book`,
+            token: user2.token,
+            body: { slotNumbers: [1, 2, 3, 4] },
+        });
+        assert(conflictSquadRes.status === 409, 'Double booking Team 1 squad slots correctly rejected with 409 Conflict');
+        // 14. DUO MULTI-SLOT TEST (2 slots): User 2 books Team 1 (slots 1, 2)
+        const duoTournamentId = (0, uuid_1.v4)();
+        db.prepare(`
+      INSERT INTO tournaments (
+        id, title, game, mode, map, entry_type, entry_fee, prize_pool, prize_distribution, 
+        max_slots, filled_slots, start_time, room_reveal_time_minutes, status, created_at, updated_at
+      ) VALUES (
+        ?, 'Duo Battle Showdown', 'Free Fire', 'duo', 'Purgatory', 'free', 0.0, 3000.0, '[]', 
+        24, 0, ?, 15, 'upcoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).run(duoTournamentId, startFree);
+        const duoBookRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${duoTournamentId}/book`,
+            token: user2.token,
+            body: { slotNumbers: [1, 2], teamName: 'Duo Power' },
+        });
+        assert(duoBookRes.status === 201 && duoBookRes.data.success === true, 'User 2 successfully books both 2 Duo slots (Team 1)');
+        const duoGridRes = await makeRequest(server, {
+            method: 'GET',
+            path: `/api/v1/tournaments/${duoTournamentId}/slots`,
+            token: user2.token,
+        });
+        assert(duoGridRes.status === 200 &&
+            Array.isArray(duoGridRes.data.data.currentUserBookedSlots) &&
+            duoGridRes.data.data.currentUserBookedSlots.length === 2 &&
+            duoGridRes.data.data.filledSlots === 2, 'Duo Slot Grid returns 2 booked slots for current user in Team 1');
+        // --- TEST 14: SQUAD BOOKING WITH DISTINCT PLAYER NAMES AND UIDS ---
+        const squadCustomTourneyId = (0, uuid_1.v4)();
+        db.prepare(`
+      INSERT INTO tournaments (
+        id, title, game, mode, map, entry_type, entry_fee, prize_pool, prize_distribution, 
+        max_slots, filled_slots, start_time, room_reveal_time_minutes, status, created_at, updated_at
+      ) VALUES (
+        ?, 'Squad Custom Roster Cup', 'Free Fire', 'squad', 'Bermuda', 'free', 0.0, 5000.0, '[]', 
+        12, 0, ?, 15, 'upcoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+    `).run(squadCustomTourneyId, startFree);
+        const customTeammates = [
+            { ffUid: '10000001', ffIgn: 'Leader_Alpha' },
+            { ffUid: '10000002', ffIgn: 'Sniper_Beta' },
+            { ffUid: '10000003', ffIgn: 'Rusher_Gamma' },
+            { ffUid: '10000004', ffIgn: 'Support_Delta' },
+        ];
+        const customBookRes = await makeRequest(server, {
+            method: 'POST',
+            path: `/api/v1/tournaments/${squadCustomTourneyId}/book`,
+            token: user3.token,
+            body: {
+                slotNumbers: [5, 6, 7, 8],
+                teamName: 'Team Alpha Clan',
+                teammates: customTeammates,
+            },
+        });
+        assert(customBookRes.status === 201 && customBookRes.data.success === true, 'User 3 books Team 2 squad with distinct player names and UIDs');
+        const entriesInDb = db.prepare(`
+      SELECT slot_number, player_ff_uid, player_ff_ign 
+      FROM tournament_entries 
+      WHERE tournament_id = ? 
+      ORDER BY slot_number ASC
+    `).all(squadCustomTourneyId);
+        assert(entriesInDb.length === 4 &&
+            entriesInDb[0].player_ff_uid === '10000001' && entriesInDb[0].player_ff_ign === 'Leader_Alpha' &&
+            entriesInDb[1].player_ff_uid === '10000002' && entriesInDb[1].player_ff_ign === 'Sniper_Beta' &&
+            entriesInDb[2].player_ff_uid === '10000003' && entriesInDb[2].player_ff_ign === 'Rusher_Gamma' &&
+            entriesInDb[3].player_ff_uid === '10000004' && entriesInDb[3].player_ff_ign === 'Support_Delta', 'Database accurately stored distinct Free Fire UID and IGN for each selected slot');
+        const myBookingsRes = await makeRequest(server, {
+            method: 'GET',
+            path: '/api/v1/tournaments/user/my-bookings',
+            token: user3.token,
+        });
+        const myMatch = myBookingsRes.data.data.find((m) => m.tournament_id === squadCustomTourneyId);
+        assert(myMatch && Array.isArray(myMatch.teammates) && myMatch.teammates.length === 4 &&
+            myMatch.teammates[1].ffIgn === 'Sniper_Beta', 'My Bookings returns parsed teammates array for squad match');
+    }
+    catch (err) {
+        console.error('Unexpected test error:', err);
+        failedCount++;
+    }
+    finally {
+        server.close();
+        db_1.DatabaseManager.close();
+    }
+    console.log(`\n================================`);
+    console.log(`Total Passed: ${passedCount}`);
+    console.log(`Total Failed: ${failedCount}`);
+    console.log(`================================\n`);
+    if (failedCount > 0) {
+        process.exit(1);
+    }
+}
+runBookingTests();
