@@ -59,7 +59,15 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       if (profileRes.statusCode == 200 && profileRes.data['success'] == true) {
         final data = profileRes.data['data'];
-        final profile = ProfileModel.fromJson(data['profile']);
+        final rawProfile = data?['profile'];
+        if (rawProfile == null) {
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: 'Profile not set up yet. Please complete your profile.',
+          );
+          return;
+        }
+        final profile = ProfileModel.fromJson(rawProfile as Map<String, dynamic>);
         final kyc = KycModel.fromJson(data);
 
         state = state.copyWith(

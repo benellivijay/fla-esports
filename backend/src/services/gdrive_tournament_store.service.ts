@@ -425,9 +425,19 @@ export class GDriveTournamentStore {
 
         restoredCount++;
 
-        if (!this.tournamentsCache.has(t.id)) {
+        // Only overwrite local cache if Drive version is strictly newer.
+        // This prevents a stale Drive entry from wiping out a locally-created tournament
+        // that hasn't been flushed to Drive yet.
+        const cachedEntry = this.tournamentsCache.get(t.id);
+        if (!cachedEntry) {
           this.tournamentsCache.set(t.id, t);
           newCount++;
+        } else {
+          const driveTime = new Date(t.updated_at || 0).getTime();
+          const cacheTime = new Date(cachedEntry.updated_at || 0).getTime();
+          if (driveTime > cacheTime) {
+            this.tournamentsCache.set(t.id, t);
+          }
         }
 
         // Restore into SQLite if not present
@@ -604,7 +614,7 @@ export class GDriveTournamentStore {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           redirect: 'follow',
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(15000),
           body: JSON.stringify({
             action: 'save_file',
             folderId: this.FOLDER_ID,
@@ -662,7 +672,7 @@ export class GDriveTournamentStore {
         const res = await fetch(`${webhookUrl}?action=read_file&folderId=${this.FOLDER_ID}&fileName=${fileName}`, {
           method: 'GET',
           redirect: 'follow',
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(15000),
         });
         if (res.ok) {
           const text = await res.text();

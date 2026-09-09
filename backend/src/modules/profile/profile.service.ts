@@ -25,7 +25,27 @@ export class ProfileService {
       throw new AppError('User not found', 404);
     }
 
-    const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId) as unknown as Profile;
+    let profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId) as unknown as Profile;
+
+    // Auto-create profile row if missing (e.g. Google-auth users)
+    if (!profile) {
+      try {
+        const username = (db.prepare('SELECT username FROM users WHERE id = ?').get(userId) as any)?.username || 'Player';
+        db.prepare(`
+          INSERT INTO profiles (id, user_id, display_name, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at)
+          VALUES (?, ?, ?, 'unverified', 0, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `).run(userId, userId, username);
+        profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId) as unknown as Profile;
+      } catch (createErr: any) {
+        Logger.warn(`[PROFILE] Could not auto-create profile for ${userId}: ${createErr.message}`);
+      }
+    }
+
+    if (!profile) {
+      throw new AppError('Profile not found', 404);
+    }
+
+
     const isPhoneVerified = user.is_phone_verified === 1;
     const isEmailVerified = user.is_email_verified === 1;
     const kycStatus = (isPhoneVerified && isEmailVerified) ? 'verified' : 'unverified';
