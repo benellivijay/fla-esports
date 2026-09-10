@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "build": "cd backend && npm install && npm run build && cd .. && node copy-build.js",
+    "build": "cd backend && npm install && npm run build",
     "start": "node backend/dist/server.js",
     "bot": "node index.js",
     "deploy": "node src/deploy-commands.js",

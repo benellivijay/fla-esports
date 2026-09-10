@@ -126,7 +126,13 @@ const createApp = () => {
             if (fs_1.default.existsSync(indexFile)) {
                 return res.sendFile(indexFile);
             }
-            return next();
+            return res.status(200).json({
+                success: true,
+                service: 'FLA ESPORTS Backend API',
+                status: 'online',
+                timestamp: new Date().toISOString(),
+                message: 'Backend API is operational. Admin Dashboard is hosted on Netlify.',
+            });
         }
         // Skip static assets with extensions (e.g. .js, .css, .png, .ico, .txt, .map)
         if (/\.[a-zA-Z0-9]+$/.test(cleanPath)) {
