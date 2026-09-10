@@ -16,14 +16,14 @@ const broadcastNotificationSchema = z.object({
 });
 
 const sendToUserSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.string().min(1),
   title: z.string().min(2).max(100),
   body: z.string().min(2).max(300),
   data: z.record(z.any()).optional(),
 });
 
 const sendToTournamentSchema = z.object({
-  tournamentId: z.string().uuid(),
+  tournamentId: z.string().min(1),
   title: z.string().min(2).max(100),
   body: z.string().min(2).max(300),
   data: z.record(z.any()).optional(),

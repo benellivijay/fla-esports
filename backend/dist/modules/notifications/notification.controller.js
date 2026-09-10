@@ -14,13 +14,13 @@ const broadcastNotificationSchema = zod_1.z.object({
     data: zod_1.z.record(zod_1.z.any()).optional(),
 });
 const sendToUserSchema = zod_1.z.object({
-    userId: zod_1.z.string().uuid(),
+    userId: zod_1.z.string().min(1),
     title: zod_1.z.string().min(2).max(100),
     body: zod_1.z.string().min(2).max(300),
     data: zod_1.z.record(zod_1.z.any()).optional(),
 });
 const sendToTournamentSchema = zod_1.z.object({
-    tournamentId: zod_1.z.string().uuid(),
+    tournamentId: zod_1.z.string().min(1),
     title: zod_1.z.string().min(2).max(100),
     body: zod_1.z.string().min(2).max(300),
     data: zod_1.z.record(zod_1.z.any()).optional(),
