@@ -1,0 +1,5 @@
+# Proxy API calls directly to Render backend
+/api/*  https://fla-esports-api.onrender.com/api/:splat  200!
+
+# SPA Routing Fallback
+/*      /index.html                                       200

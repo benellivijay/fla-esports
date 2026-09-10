@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-const API_BASE_URL = typeof window !== 'undefined' ? '/api/v1' : (process.env.NEXT_PUBLIC_API_URL || 'https://fla-esports-api.onrender.com/api/v1');
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+    ? '/api/v1'
+    : 'https://fla-esports-api.onrender.com/api/v1');
+
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
