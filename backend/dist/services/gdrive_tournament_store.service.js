@@ -34,6 +34,25 @@ class GDriveTournamentStore {
             }
         }
         catch (_) { }
+        // Immediate local disk mirror check for tombstone blacklist (0ms startup latency)
+        try {
+            const mirrorDirs = this.getStorageDirs();
+            for (const d of mirrorDirs) {
+                const delPath = path_1.default.join(d, this.DELETED_TOURNAMENTS_FILENAME);
+                if (fs_1.default.existsSync(delPath)) {
+                    try {
+                        const parsed = JSON.parse(fs_1.default.readFileSync(delPath, 'utf8'));
+                        const list = Array.isArray(parsed) ? parsed : (parsed.deleted_ids || []);
+                        for (const id of list) {
+                            if (id)
+                                this.deletedTournamentsSet.add(id);
+                        }
+                    }
+                    catch (_) { }
+                }
+            }
+        }
+        catch (_) { }
         try {
             const deletedContent = await this.readDriveFile(this.DELETED_TOURNAMENTS_FILENAME);
             if (deletedContent) {
@@ -204,15 +223,59 @@ class GDriveTournamentStore {
             db.prepare('INSERT OR IGNORE INTO deleted_tournaments (id, deleted_at, deleted_by) VALUES (?, CURRENT_TIMESTAMP, ?)').run(tournamentId, adminId || null);
         }
         catch (_) { }
+        // Immediately persist to all local storage mirrors synchronously
+        try {
+            this.persistLocalMirrorsSync();
+        }
+        catch (err) {
+            logger_1.Logger.warn(`[GDRIVE TOURNAMENTS] Local mirrors sync warning: ${err.message}`);
+        }
         if (process.env.NODE_ENV === 'test') {
             return;
         }
-        this.flushTournamentsToDrive().catch((err) => {
-            logger_1.Logger.error(`[GDRIVE TOURNAMENTS] Delete sync to Google Drive failed: ${err.message}`);
-        });
-        this.flushDeletedTournamentsToDrive().catch((err) => {
-            logger_1.Logger.error(`[GDRIVE TOURNAMENTS] Tombstone sync failed: ${err.message}`);
-        });
+        // Flush to cloud (Drive / Webhook) awaited
+        try {
+            await Promise.allSettled([
+                this.flushTournamentsToDrive(),
+                this.flushDeletedTournamentsToDrive(),
+            ]);
+        }
+        catch (err) {
+            logger_1.Logger.error(`[GDRIVE TOURNAMENTS] Cloud delete sync error: ${err.message}`);
+        }
+    }
+    /**
+     * Persists current tournament cache and tombstones to all local disk mirrors synchronously
+     */
+    static persistLocalMirrorsSync() {
+        const list = Array.from(this.deletedTournamentsSet);
+        const delPayload = {
+            version: '1.0',
+            last_synced_at: new Date().toISOString(),
+            folder_id: this.FOLDER_ID,
+            count: list.length,
+            deleted_ids: list,
+        };
+        const delJson = JSON.stringify(delPayload, null, 2);
+        const all = Array.from(this.tournamentsCache.values());
+        const regPayload = {
+            version: '1.0',
+            last_synced_at: new Date().toISOString(),
+            folder_id: this.FOLDER_ID,
+            count: all.length,
+            tournaments: all,
+        };
+        const regJson = JSON.stringify(regPayload, null, 2);
+        const mirrorDirs = this.getStorageDirs();
+        for (const d of mirrorDirs) {
+            try {
+                if (!fs_1.default.existsSync(d))
+                    fs_1.default.mkdirSync(d, { recursive: true });
+                fs_1.default.writeFileSync(path_1.default.join(d, this.DELETED_TOURNAMENTS_FILENAME), delJson, 'utf8');
+                fs_1.default.writeFileSync(path_1.default.join(d, this.TOURNAMENTS_REGISTRY_FILENAME), regJson, 'utf8');
+            }
+            catch (_) { }
+        }
     }
     /**
      * Persists all tombstoned deleted tournament IDs to Google Drive as 'deleted_tournaments.json'
@@ -259,6 +322,21 @@ class GDriveTournamentStore {
         try {
             // 0. Refresh deleted tournaments tombstone list from file/Drive
             try {
+                const mirrorDirs = this.getStorageDirs();
+                for (const d of mirrorDirs) {
+                    const delPath = path_1.default.join(d, this.DELETED_TOURNAMENTS_FILENAME);
+                    if (fs_1.default.existsSync(delPath)) {
+                        const parsed = JSON.parse(fs_1.default.readFileSync(delPath, 'utf8'));
+                        const list = Array.isArray(parsed) ? parsed : (parsed.deleted_ids || []);
+                        for (const id of list) {
+                            if (id)
+                                this.deletedTournamentsSet.add(id);
+                        }
+                    }
+                }
+            }
+            catch (_) { }
+            try {
                 const deletedContent = await this.readDriveFile(this.DELETED_TOURNAMENTS_FILENAME);
                 if (deletedContent) {
                     const parsed = JSON.parse(deletedContent);
@@ -282,7 +360,9 @@ class GDriveTournamentStore {
                 if (!t.id || !t.title)
                     continue;
                 // Strictly ignore tournaments that have been permanently deleted by an admin
-                if (this.deletedTournamentsSet.has(t.id)) {
+                const isDbDeleted = db.prepare('SELECT id FROM deleted_tournaments WHERE id = ?').get(t.id);
+                if (this.deletedTournamentsSet.has(t.id) || isDbDeleted) {
+                    this.deletedTournamentsSet.add(t.id);
                     this.tournamentsCache.delete(t.id);
                     try {
                         db.prepare('DELETE FROM tournaments WHERE id = ?').run(t.id);
@@ -353,23 +433,25 @@ class GDriveTournamentStore {
         }
         return { restoredCount, newCount };
     }
+    static getStorageDirs() {
+        const dirs = [];
+        const rootPath = process.cwd().endsWith('backend') ? path_1.default.resolve(process.cwd(), '..') : process.cwd();
+        const candidate1 = path_1.default.resolve(rootPath, 'backend', 'gdrive_storage');
+        const candidate2 = path_1.default.resolve(rootPath, 'gdrive_storage');
+        dirs.push(candidate1);
+        if (candidate2 !== candidate1)
+            dirs.push(candidate2);
+        return dirs;
+    }
     static getStorageDir() {
-        const candidates = [
-            path_1.default.resolve(process.cwd(), 'backend', 'gdrive_storage'),
-            path_1.default.resolve(process.cwd(), 'gdrive_storage'),
-            path_1.default.resolve(__dirname, '../../gdrive_storage'),
-            path_1.default.resolve(__dirname, '../../../gdrive_storage'),
-        ];
-        for (const p of candidates) {
-            if (fs_1.default.existsSync(p))
-                return p;
+        const dirs = this.getStorageDirs();
+        for (const d of dirs) {
+            if (fs_1.default.existsSync(d))
+                return d;
         }
-        const fallback = fs_1.default.existsSync(path_1.default.resolve(process.cwd(), 'backend'))
-            ? path_1.default.resolve(process.cwd(), 'backend', 'gdrive_storage')
-            : path_1.default.resolve(process.cwd(), 'gdrive_storage');
-        if (!fs_1.default.existsSync(fallback))
-            fs_1.default.mkdirSync(fallback, { recursive: true });
-        return fallback;
+        if (!fs_1.default.existsSync(dirs[0]))
+            fs_1.default.mkdirSync(dirs[0], { recursive: true });
+        return dirs[0];
     }
     /**
      * Drive File Read / Write Helpers

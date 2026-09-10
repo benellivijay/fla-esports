@@ -308,8 +308,13 @@ class TournamentService {
         }
         catch (_) { }
         db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
-        // Explicitly delete from Google Drive persistent cloud storage and record tombstone
-        gdrive_tournament_store_service_1.GDriveTournamentStore.deleteTournament(tournamentId, adminId).catch(() => { });
+        // Record tombstone in SQLite deleted_tournaments immediately
+        try {
+            db.prepare('INSERT OR IGNORE INTO deleted_tournaments (id, deleted_at, deleted_by) VALUES (?, CURRENT_TIMESTAMP, ?)').run(tournamentId, adminId || null);
+        }
+        catch (_) { }
+        // Explicitly delete from Google Drive persistent cloud storage and record tombstone (awaited)
+        await gdrive_tournament_store_service_1.GDriveTournamentStore.deleteTournament(tournamentId, adminId);
         logger_1.Logger.audit({
             actorId: adminId,
             action: 'TOURNAMENT_DELETED',
@@ -325,6 +330,8 @@ class TournamentService {
         const db = (0, db_1.getDb)();
         const whereClauses = [];
         const params = [];
+        // Strictly exclude any permanently deleted tournaments
+        whereClauses.push('id NOT IN (SELECT id FROM deleted_tournaments)');
         if (filters.game) {
             whereClauses.push('game = ?');
             params.push(filters.game);
@@ -399,7 +406,7 @@ class TournamentService {
              SUM(CASE WHEN status IN ('ongoing', 'open') THEN 1 ELSE 0 END) as live_count,
              COUNT(*) as total_count
       FROM tournaments 
-      WHERE status != 'cancelled'
+      WHERE status != 'cancelled' AND id NOT IN (SELECT id FROM deleted_tournaments)
       GROUP BY game_mode
     `).all();
         const stats = {
@@ -426,6 +433,10 @@ class TournamentService {
      */
     static async getTournamentById(tournamentId, userRole) {
         const db = (0, db_1.getDb)();
+        const isDeleted = db.prepare('SELECT id FROM deleted_tournaments WHERE id = ?').get(tournamentId);
+        if (isDeleted || gdrive_tournament_store_service_1.GDriveTournamentStore.isTournamentDeleted(tournamentId)) {
+            throw new error_middleware_1.AppError('Tournament not found.', 404);
+        }
         const row = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId);
         if (!row) {
             throw new error_middleware_1.AppError('Tournament not found.', 404);

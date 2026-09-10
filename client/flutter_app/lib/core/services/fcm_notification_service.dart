@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../api_client.dart';
 import '../../features/match_room/screens/match_room_screen.dart';
 import '../../features/wallet/screens/wallet_screen.dart';
+import '../../main.dart';
 
 /// Background message handler — must be top-level (not inside a class)
 @pragma('vm:entry-point')
@@ -71,17 +72,66 @@ class FcmNotificationService {
 
       // 7. Handle notification tap when app is in foreground
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('[FCM Foreground] ${message.notification?.title}');
-        // In-app banner is shown automatically on iOS.
-        // For Android foreground, show a SnackBar or local notification if needed.
+        debugPrint('[FCM Foreground] ${message.notification?.title}: ${message.notification?.body}');
+        final navCtx = appNavigatorKey.currentContext ?? context;
+        if (navCtx != null && navCtx.mounted) {
+          final title = message.notification?.title ?? 'Notification';
+          final body = message.notification?.body ?? '';
+          ScaffoldMessenger.maybeOf(navCtx)?.showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFF0F172A),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: const BorderSide(color: Color(0xFF334155), width: 1),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (body.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      body,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+              action: SnackBarAction(
+                label: 'VIEW',
+                textColor: const Color(0xFF38BDF8),
+                onPressed: () {
+                  handleNotificationClick(
+                    navCtx,
+                    message.data['type'] ?? '',
+                    message.data,
+                  );
+                },
+              ),
+            ),
+          );
+        }
       });
 
       // 8. Handle notification tap when app was in background
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
         debugPrint('[FCM Opened] ${message.data}');
-        if (context != null && context.mounted) {
+        final navCtx = (context != null && context.mounted) ? context : appNavigatorKey.currentContext;
+        if (navCtx != null && navCtx.mounted) {
           handleNotificationClick(
-            context,
+            navCtx,
             message.data['type'] ?? '',
             message.data,
           );
@@ -90,12 +140,15 @@ class FcmNotificationService {
 
       // 9. Handle notification tap when app was terminated
       final initialMessage = await messaging.getInitialMessage();
-      if (initialMessage != null && context != null && context.mounted) {
-        handleNotificationClick(
-          context,
-          initialMessage.data['type'] ?? '',
-          initialMessage.data,
-        );
+      if (initialMessage != null) {
+        final navCtx = (context != null && context.mounted) ? context : appNavigatorKey.currentContext;
+        if (navCtx != null && navCtx.mounted) {
+          handleNotificationClick(
+            navCtx,
+            initialMessage.data['type'] ?? '',
+            initialMessage.data,
+          );
+        }
       }
 
       _initialized = true;

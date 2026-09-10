@@ -400,8 +400,13 @@ export class TournamentService {
 
     db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
 
-    // Explicitly delete from Google Drive persistent cloud storage and record tombstone
-    GDriveTournamentStore.deleteTournament(tournamentId, adminId).catch(() => {});
+    // Record tombstone in SQLite deleted_tournaments immediately
+    try {
+      db.prepare('INSERT OR IGNORE INTO deleted_tournaments (id, deleted_at, deleted_by) VALUES (?, CURRENT_TIMESTAMP, ?)').run(tournamentId, adminId || null);
+    } catch (_) {}
+
+    // Explicitly delete from Google Drive persistent cloud storage and record tombstone (awaited)
+    await GDriveTournamentStore.deleteTournament(tournamentId, adminId);
 
     Logger.audit({
       actorId: adminId,
@@ -419,6 +424,9 @@ export class TournamentService {
     const db = getDb();
     const whereClauses: string[] = [];
     const params: any[] = [];
+
+    // Strictly exclude any permanently deleted tournaments
+    whereClauses.push('id NOT IN (SELECT id FROM deleted_tournaments)');
 
     if (filters.game) {
       whereClauses.push('game = ?');
@@ -507,7 +515,7 @@ export class TournamentService {
              SUM(CASE WHEN status IN ('ongoing', 'open') THEN 1 ELSE 0 END) as live_count,
              COUNT(*) as total_count
       FROM tournaments 
-      WHERE status != 'cancelled'
+      WHERE status != 'cancelled' AND id NOT IN (SELECT id FROM deleted_tournaments)
       GROUP BY game_mode
     `).all() as any[];
 
@@ -537,6 +545,11 @@ export class TournamentService {
    */
   public static async getTournamentById(tournamentId: string, userRole?: string): Promise<Tournament> {
     const db = getDb();
+    const isDeleted = db.prepare('SELECT id FROM deleted_tournaments WHERE id = ?').get(tournamentId) as any;
+    if (isDeleted || GDriveTournamentStore.isTournamentDeleted(tournamentId)) {
+      throw new AppError('Tournament not found.', 404);
+    }
+
     const row = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId) as any;
 
     if (!row) {

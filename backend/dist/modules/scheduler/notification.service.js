@@ -209,7 +209,18 @@ class NotificationService {
             catch (_) { }
             logger_1.Logger.error('Failed to batch insert tournament created notifications', err);
         }
-        // 3. Log FCM push broadcast
+        // 3. Dispatch real FCM push notifications to all registered player devices
+        try {
+            const deviceTokens = db.prepare('SELECT DISTINCT token FROM device_tokens').all();
+            if (deviceTokens.length > 0) {
+                const tokens = deviceTokens.map((t) => t.token);
+                dispatchFCMPush(tokens, title, body, {
+                    type: 'TOURNAMENT_CREATED',
+                    tournamentId: tournament.id,
+                }).catch(() => { });
+            }
+        }
+        catch (_) { }
         logger_1.Logger.info(`[PUSH BROADCAST] Broadcasted "New Tournament: ${tournament.title}" notification to ${users.length} registered players.`);
     }
     /**

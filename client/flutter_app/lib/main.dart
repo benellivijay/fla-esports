@@ -31,12 +31,15 @@ void main() async {
 }
 
 
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 class FlaEsportsApp extends ConsumerWidget {
   const FlaEsportsApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'FLA ESPORTS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
