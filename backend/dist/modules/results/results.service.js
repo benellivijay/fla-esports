@@ -166,10 +166,17 @@ class ResultsService {
           WHERE user_id = ?
         `).run(isWin, killsToConfirm, result.user_id);
                 gdrive_auth_store_service_1.GDriveAuthStore.getPlayer(result.user_id).then((cached) => {
-                    if (cached && cached.profile) {
-                        cached.profile.matches_played = (cached.profile.matches_played || 0) + 1;
-                        cached.profile.wins = (cached.profile.wins || 0) + isWin;
-                        cached.profile.total_kills = (cached.profile.total_kills || 0) + killsToConfirm;
+                    if (cached) {
+                        const p = db.prepare('SELECT display_name, matches_played, wins, total_kills, total_earnings FROM profiles WHERE user_id = ?').get(result.user_id);
+                        if (p) {
+                            cached.profile = {
+                                display_name: p.display_name || cached.username,
+                                matches_played: p.matches_played,
+                                wins: p.wins,
+                                total_kills: p.total_kills,
+                                total_earnings: p.total_earnings,
+                            };
+                        }
                         gdrive_auth_store_service_1.GDriveAuthStore.savePlayer(cached).catch(() => { });
                     }
                 }).catch(() => { });

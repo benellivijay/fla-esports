@@ -235,7 +235,7 @@ class GDriveAuthStore {
             status = ?,
             updated_at = ?
           WHERE id = ?
-        `).run(record.username, record.email.toLowerCase().trim(), record.phone || null, record.password_hash || null, record.google_id || null, record.email_verified ? 1 : 0, record.email_verified ? 1 : 0, record.phone_verified ? 1 : 0, record.kyc_verified ? 1 : 0, dbRole, record.status || 'active', record.updated_at, record.id);
+        `).run(record.username, record.email ? record.email.toLowerCase().trim() : null, record.phone || null, record.password_hash || null, record.google_id || null, record.email_verified ? 1 : 0, record.email_verified ? 1 : 0, record.phone_verified ? 1 : 0, record.kyc_verified ? 1 : 0, dbRole, record.status || 'active', record.updated_at, record.id);
             }
             else {
                 db.prepare(`
@@ -244,7 +244,7 @@ class GDriveAuthStore {
             is_email_verified, email_verified, is_phone_verified, kyc_verified,
             role, status, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(record.id, record.username, record.email.toLowerCase().trim(), record.phone || null, record.password_hash || null, record.google_id || null, record.email_verified ? 1 : 0, record.email_verified ? 1 : 0, record.phone_verified ? 1 : 0, record.kyc_verified ? 1 : 0, dbRole, record.status || 'active', record.created_at || new Date().toISOString(), record.updated_at);
+        `).run(record.id, record.username, record.email ? record.email.toLowerCase().trim() : null, record.phone || null, record.password_hash || null, record.google_id || null, record.email_verified ? 1 : 0, record.email_verified ? 1 : 0, record.phone_verified ? 1 : 0, record.kyc_verified ? 1 : 0, dbRole, record.status || 'active', record.created_at || new Date().toISOString(), record.updated_at);
             }
             // Upsert profile in DB
             const existingProf = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(record.id);
@@ -254,9 +254,13 @@ class GDriveAuthStore {
             display_name = COALESCE(?, display_name),
             ff_uid = COALESCE(?, ff_uid),
             ff_ign = COALESCE(?, ff_ign),
-            matches_played = ?, wins = ?, total_kills = ?, total_earnings = ?, updated_at = ?
+            matches_played = COALESCE(?, matches_played),
+            wins = COALESCE(?, wins),
+            total_kills = COALESCE(?, total_kills),
+            total_earnings = COALESCE(?, total_earnings),
+            updated_at = ?
           WHERE user_id = ?
-        `).run(record.profile?.display_name || record.username, record.ff_uid || null, record.ff_ign || null, record.profile?.matches_played || 0, record.profile?.wins || 0, record.profile?.total_kills || 0, record.profile?.total_earnings || 0, record.updated_at, record.id);
+        `).run(record.profile?.display_name || record.username, record.ff_uid || null, record.ff_ign || null, record.profile?.matches_played !== undefined ? record.profile.matches_played : null, record.profile?.wins !== undefined ? record.profile.wins : null, record.profile?.total_kills !== undefined ? record.profile.total_kills : null, record.profile?.total_earnings !== undefined ? record.profile.total_earnings : null, record.updated_at, record.id);
             }
             else {
                 db.prepare(`
