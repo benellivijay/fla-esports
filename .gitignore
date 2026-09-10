@@ -9,6 +9,8 @@ dist/
 
 # Databases & local uploads
 *.db
+*.sqlite
+*.sqlite3
 !backend/data/seed_ff_esports.db
 !data/seed_ff_esports.db
 *.db-wal
