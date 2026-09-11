@@ -20,7 +20,15 @@ export class ProfileService {
     userRole: string;
   }> {
     const db = getDb();
-    const user = db.prepare('SELECT id, phone, email, role, status, is_phone_verified, is_email_verified FROM users WHERE id = ?').get(userId) as any;
+    let user = db.prepare('SELECT id, phone, email, role, status, is_phone_verified, is_email_verified, kyc_verified FROM users WHERE id = ?').get(userId) as any;
+    let storedPlayer: any = null;
+    if (!user) {
+      storedPlayer = await GDriveAuthStore.getPlayer(userId);
+      if (storedPlayer) {
+        await GDriveAuthStore.savePlayer(storedPlayer);
+        user = db.prepare('SELECT id, phone, email, role, status, is_phone_verified, is_email_verified, kyc_verified FROM users WHERE id = ?').get(userId) as any;
+      }
+    }
     if (!user) {
       throw new AppError('User not found', 404);
     }
@@ -29,15 +37,37 @@ export class ProfileService {
 
     // Auto-create profile row if missing (e.g. Google-auth users)
     if (!profile) {
+      if (!storedPlayer) {
+        storedPlayer = await GDriveAuthStore.getPlayer(userId);
+      }
       try {
-        const username = (db.prepare('SELECT username FROM users WHERE id = ?').get(userId) as any)?.username || 'Player';
+        const usernameRow = db.prepare('SELECT username FROM users WHERE id = ?').get(userId) as any;
+        const displayName = storedPlayer?.profile?.display_name || usernameRow?.username || 'Player';
+        const ffUid = storedPlayer?.ff_uid || null;
+        const ffIgn = storedPlayer?.ff_ign || null;
         db.prepare(`
-          INSERT INTO profiles (id, user_id, display_name, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at)
-          VALUES (?, ?, ?, 'unverified', 0, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `).run(userId, userId, username);
+          INSERT INTO profiles (id, user_id, display_name, ff_uid, ff_ign, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `).run(userId, userId, displayName, ffUid, ffIgn, ffUid ? 'verified' : 'unverified');
         profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId) as unknown as Profile;
       } catch (createErr: any) {
         Logger.warn(`[PROFILE] Could not auto-create profile for ${userId}: ${createErr.message}`);
+      }
+    }
+
+    if (profile && (!profile.ff_uid || profile.ff_uid === '')) {
+      if (!storedPlayer) {
+        storedPlayer = await GDriveAuthStore.getPlayer(userId);
+      }
+      if (storedPlayer?.ff_uid || storedPlayer?.ff_ign) {
+        try {
+          db.prepare(`
+            UPDATE profiles 
+            SET ff_uid = COALESCE(?, ff_uid), ff_ign = COALESCE(?, ff_ign), ff_verification_status = 'verified', updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+          `).run(storedPlayer.ff_uid || null, storedPlayer.ff_ign || null, userId);
+          profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId) as unknown as Profile;
+        } catch (_) {}
       }
     }
 
@@ -93,8 +123,9 @@ export class ProfileService {
     }
 
     const isPhoneVerified = user.is_phone_verified === 1;
-    const isEmailVerified = user.is_email_verified === 1;
-    const kycStatus = (isPhoneVerified && isEmailVerified) ? 'verified' : 'unverified';
+    const isEmailVerified = user.is_email_verified === 1 || Boolean(user.email);
+    const isKycVerified = user.kyc_verified === 1 || Boolean(user.email);
+    const kycStatus = isKycVerified ? 'verified' : 'unverified';
 
 
     return {

@@ -474,7 +474,23 @@ export class TournamentService {
     const offset = filters.offset || 0;
 
     const countRow = db.prepare(`SELECT COUNT(*) as total FROM tournaments ${whereSql}`).get(...params) as any;
-    const total = countRow ? countRow.total : 0;
+    let total = countRow ? countRow.total : 0;
+
+    if (total === 0) {
+      try {
+        const allCached = await GDriveTournamentStore.getAllTournaments();
+        if (allCached.length > 0) {
+          for (const t of allCached) {
+            if (!GDriveTournamentStore.isTournamentDeleted(t.id)) {
+              await GDriveTournamentStore.saveTournament(t);
+            }
+          }
+          const recount = db.prepare(`SELECT COUNT(*) as total FROM tournaments ${whereSql}`).get(...params) as any;
+          total = recount ? recount.total : 0;
+        }
+      } catch (_) {}
+    }
+
     const isAdmin = userRole === 'admin' || userRole === 'moderator';
 
     const orderSql = isAdmin

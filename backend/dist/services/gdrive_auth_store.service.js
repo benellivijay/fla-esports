@@ -275,6 +275,13 @@ class GDriveAuthStore {
             logger_1.Logger.warn(`[GDRIVE AUTH] DB sync warning: ${err.message}`);
         }
         this.cachePlayerRecord(record);
+        // Immediately persist to local storage mirrors synchronously
+        try {
+            this.persistLocalMirrorsSync();
+        }
+        catch (err) {
+            logger_1.Logger.warn(`[GDRIVE AUTH] Local mirror sync warning: ${err.message}`);
+        }
         // Push updated registry to Google Drive asynchronously
         this.flushPlayersToDrive().catch((err) => {
             logger_1.Logger.error(`[GDRIVE AUTH] Background sync to Google Drive failed: ${err.message}`);
@@ -426,34 +433,61 @@ class GDriveAuthStore {
             return 0;
         }
     }
+    static getStorageDirs() {
+        const dirs = [];
+        const rootPath = process.cwd().endsWith('backend') ? path_1.default.resolve(process.cwd(), '..') : process.cwd();
+        const candidate1 = path_1.default.resolve(rootPath, 'backend', 'gdrive_storage');
+        const candidate2 = path_1.default.resolve(rootPath, 'gdrive_storage');
+        dirs.push(candidate1);
+        if (candidate2 !== candidate1)
+            dirs.push(candidate2);
+        return dirs;
+    }
     static getStorageDir() {
-        const candidates = [
-            path_1.default.resolve(process.cwd(), 'backend', 'gdrive_storage'),
-            path_1.default.resolve(process.cwd(), 'gdrive_storage'),
-            path_1.default.resolve(__dirname, '../../gdrive_storage'),
-            path_1.default.resolve(__dirname, '../../../gdrive_storage'),
-        ];
-        for (const p of candidates) {
-            if (fs_1.default.existsSync(p))
-                return p;
+        const dirs = this.getStorageDirs();
+        for (const d of dirs) {
+            if (fs_1.default.existsSync(d))
+                return d;
         }
-        const fallback = fs_1.default.existsSync(path_1.default.resolve(process.cwd(), 'backend'))
-            ? path_1.default.resolve(process.cwd(), 'backend', 'gdrive_storage')
-            : path_1.default.resolve(process.cwd(), 'gdrive_storage');
-        if (!fs_1.default.existsSync(fallback))
-            fs_1.default.mkdirSync(fallback, { recursive: true });
-        return fallback;
+        if (!fs_1.default.existsSync(dirs[0]))
+            fs_1.default.mkdirSync(dirs[0], { recursive: true });
+        return dirs[0];
+    }
+    /**
+     * Persists all registered players to local disk mirrors synchronously
+     */
+    static persistLocalMirrorsSync() {
+        const uniquePlayers = Array.from(new Set(this.playersCache.values()));
+        const payload = {
+            version: '1.0',
+            last_synced_at: new Date().toISOString(),
+            folder_id: this.FOLDER_ID,
+            count: uniquePlayers.length,
+            players: uniquePlayers,
+        };
+        const jsonContent = JSON.stringify(payload, null, 2);
+        const mirrorDirs = this.getStorageDirs();
+        for (const d of mirrorDirs) {
+            try {
+                if (!fs_1.default.existsSync(d))
+                    fs_1.default.mkdirSync(d, { recursive: true });
+                fs_1.default.writeFileSync(path_1.default.join(d, this.PLAYERS_REGISTRY_FILENAME), jsonContent, 'utf8');
+            }
+            catch (_) { }
+        }
     }
     /**
      * Drive File Read / Write Helpers
      */
     static async uploadOrUpdateDriveFile(fileName, content) {
-        // 1. Always persist to local gdrive_storage mirror
+        // 1. Always persist to all local gdrive_storage mirrors
         try {
-            const backupDir = this.getStorageDir();
-            if (!fs_1.default.existsSync(backupDir))
-                fs_1.default.mkdirSync(backupDir, { recursive: true });
-            fs_1.default.writeFileSync(path_1.default.join(backupDir, fileName), content, 'utf8');
+            const mirrorDirs = this.getStorageDirs();
+            for (const d of mirrorDirs) {
+                if (!fs_1.default.existsSync(d))
+                    fs_1.default.mkdirSync(d, { recursive: true });
+                fs_1.default.writeFileSync(path_1.default.join(d, fileName), content, 'utf8');
+            }
         }
         catch (err) {
             logger_1.Logger.warn(`[GDRIVE AUTH] Local mirror write warning: ${err.message}`);

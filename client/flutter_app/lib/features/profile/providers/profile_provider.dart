@@ -49,11 +49,44 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   final ApiClient _apiClient = ApiClient();
 
   ProfileNotifier() : super(const ProfileState()) {
+    _loadCachedProfile();
     fetchProfileAndKyc();
   }
 
+  /// Hydrate profile and KYC state immediately from local secure storage
+  Future<void> _loadCachedProfile() async {
+    try {
+      final cachedProfile = await _apiClient.getCachedProfile();
+      final cachedUser = await _apiClient.getCachedUser();
+
+      if (cachedProfile != null) {
+        final prof = ProfileModel.fromJson(cachedProfile);
+        KycModel? kyc;
+        if (cachedUser != null) {
+          final isPhone = cachedUser['is_phone_verified'] == 1 || cachedUser['is_phone_verified'] == true;
+          final isEmail = cachedUser['is_email_verified'] == 1 || cachedUser['is_email_verified'] == true || cachedUser['email_verified'] == 1 || cachedUser['email_verified'] == true;
+          kyc = KycModel(
+            isPhoneVerified: isPhone,
+            isEmailVerified: isEmail,
+            phone: cachedUser['phone'] as String?,
+            email: cachedUser['email'] as String?,
+            status: (isEmail) ? 'verified' : 'unverified',
+          );
+        }
+        state = state.copyWith(
+          profile: prof,
+          kyc: kyc ?? state.kyc,
+        );
+      }
+    } catch (_) {}
+  }
+
   Future<void> fetchProfileAndKyc() async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    // Only show full loading spinner if we don't already have a cached profile
+    state = state.copyWith(
+      isLoading: state.profile == null,
+      errorMessage: null,
+    );
     try {
       final profileRes = await _apiClient.dio.get(ApiEndpoints.profileMe);
 
@@ -70,21 +103,32 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         final profile = ProfileModel.fromJson(rawProfile as Map<String, dynamic>);
         final kyc = KycModel.fromJson(data);
 
+        // Cache latest profile
+        await _apiClient.saveCachedProfile(profile.toJson());
+
         state = state.copyWith(
           isLoading: false,
           profile: profile,
           kyc: kyc,
+          errorMessage: null,
         );
       } else {
         state = state.copyWith(isLoading: false);
       }
     } catch (e) {
       final msg = (e as dynamic).response?.data?['message'] ?? 'Failed to load profile details.';
+      // Do not wipe out existing cached profile on network error
       state = state.copyWith(isLoading: false, errorMessage: msg);
     }
   }
 
   Future<void> fetchProfile() async => await fetchProfileAndKyc();
+
+  Future<void> refresh() async => await fetchProfileAndKyc();
+
+  void reset() {
+    state = const ProfileState();
+  }
 
   Future<bool> updateDisplayName(String name) async {
     state = state.copyWith(isLoading: true, errorMessage: null);

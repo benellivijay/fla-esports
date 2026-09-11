@@ -371,7 +371,22 @@ class TournamentService {
         const limit = filters.limit || 50;
         const offset = filters.offset || 0;
         const countRow = db.prepare(`SELECT COUNT(*) as total FROM tournaments ${whereSql}`).get(...params);
-        const total = countRow ? countRow.total : 0;
+        let total = countRow ? countRow.total : 0;
+        if (total === 0) {
+            try {
+                const allCached = await gdrive_tournament_store_service_1.GDriveTournamentStore.getAllTournaments();
+                if (allCached.length > 0) {
+                    for (const t of allCached) {
+                        if (!gdrive_tournament_store_service_1.GDriveTournamentStore.isTournamentDeleted(t.id)) {
+                            await gdrive_tournament_store_service_1.GDriveTournamentStore.saveTournament(t);
+                        }
+                    }
+                    const recount = db.prepare(`SELECT COUNT(*) as total FROM tournaments ${whereSql}`).get(...params);
+                    total = recount ? recount.total : 0;
+                }
+            }
+            catch (_) { }
+        }
         const isAdmin = userRole === 'admin' || userRole === 'moderator';
         const orderSql = isAdmin
             ? 'ORDER BY created_at DESC'

@@ -299,6 +299,27 @@ class AuthService {
                     player.google_id = verifiedGoogleId;
                 }
                 player.email_verified = true;
+                player.kyc_verified = true;
+                await gdrive_auth_store_service_1.GDriveAuthStore.savePlayer(player);
+            }
+        }
+        // Ensure returning user always has a valid username and KYC flag
+        if (player) {
+            let playerUpdated = false;
+            if (!player.username || player.username.trim() === '' || player.username === 'null') {
+                let baseUsername = (player.profile?.display_name || verifiedName || verifiedEmail.split('@')[0])
+                    .replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase().slice(0, 20);
+                if (baseUsername.length < 3)
+                    baseUsername = `player_${baseUsername}`;
+                player.username = baseUsername;
+                playerUpdated = true;
+            }
+            if (!player.email_verified || !player.kyc_verified) {
+                player.email_verified = true;
+                player.kyc_verified = true;
+                playerUpdated = true;
+            }
+            if (playerUpdated) {
                 await gdrive_auth_store_service_1.GDriveAuthStore.savePlayer(player);
             }
         }
@@ -354,7 +375,7 @@ class AuthService {
                 google_id: verifiedGoogleId || null,
                 email_verified: true,
                 phone_verified: false,
-                kyc_verified: false,
+                kyc_verified: true,
                 role: 'player',
                 status: 'active',
                 created_at: now,
@@ -410,7 +431,7 @@ class AuthService {
             google_id: player.google_id || undefined,
             is_email_verified: true,
             is_phone_verified: Boolean(player.phone_verified),
-            kyc_verified: Boolean(player.kyc_verified),
+            kyc_verified: true,
             ff_uid: player.ff_uid || undefined,
             ff_ign: player.ff_ign || undefined,
             role: player.role,
@@ -421,8 +442,8 @@ class AuthService {
         const profile = {
             id: player.id,
             user_id: player.id,
-            display_name: player.profile?.display_name || player.username || 'Player',
-            avatar_url: verifiedPicture || undefined,
+            display_name: player.profile?.display_name || verifiedName || player.username || 'Player',
+            avatar_url: verifiedPicture || player.profile?.avatar_url || undefined,
             ff_verification_status: player.ff_uid ? 'verified' : 'unverified',
             matches_played: player.profile?.matches_played || 0,
             wins: player.profile?.wins || 0,

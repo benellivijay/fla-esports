@@ -12,23 +12,53 @@ class ProfileService {
      */
     static async getProfile(userId) {
         const db = (0, db_1.getDb)();
-        const user = db.prepare('SELECT id, phone, email, role, status, is_phone_verified, is_email_verified FROM users WHERE id = ?').get(userId);
+        let user = db.prepare('SELECT id, phone, email, role, status, is_phone_verified, is_email_verified, kyc_verified FROM users WHERE id = ?').get(userId);
+        let storedPlayer = null;
+        if (!user) {
+            storedPlayer = await gdrive_auth_store_service_1.GDriveAuthStore.getPlayer(userId);
+            if (storedPlayer) {
+                await gdrive_auth_store_service_1.GDriveAuthStore.savePlayer(storedPlayer);
+                user = db.prepare('SELECT id, phone, email, role, status, is_phone_verified, is_email_verified, kyc_verified FROM users WHERE id = ?').get(userId);
+            }
+        }
         if (!user) {
             throw new error_middleware_1.AppError('User not found', 404);
         }
         let profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId);
         // Auto-create profile row if missing (e.g. Google-auth users)
         if (!profile) {
+            if (!storedPlayer) {
+                storedPlayer = await gdrive_auth_store_service_1.GDriveAuthStore.getPlayer(userId);
+            }
             try {
-                const username = db.prepare('SELECT username FROM users WHERE id = ?').get(userId)?.username || 'Player';
+                const usernameRow = db.prepare('SELECT username FROM users WHERE id = ?').get(userId);
+                const displayName = storedPlayer?.profile?.display_name || usernameRow?.username || 'Player';
+                const ffUid = storedPlayer?.ff_uid || null;
+                const ffIgn = storedPlayer?.ff_ign || null;
                 db.prepare(`
-          INSERT INTO profiles (id, user_id, display_name, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at)
-          VALUES (?, ?, ?, 'unverified', 0, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `).run(userId, userId, username);
+          INSERT INTO profiles (id, user_id, display_name, ff_uid, ff_ign, ff_verification_status, matches_played, wins, total_kills, total_earnings, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `).run(userId, userId, displayName, ffUid, ffIgn, ffUid ? 'verified' : 'unverified');
                 profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId);
             }
             catch (createErr) {
                 logger_1.Logger.warn(`[PROFILE] Could not auto-create profile for ${userId}: ${createErr.message}`);
+            }
+        }
+        if (profile && (!profile.ff_uid || profile.ff_uid === '')) {
+            if (!storedPlayer) {
+                storedPlayer = await gdrive_auth_store_service_1.GDriveAuthStore.getPlayer(userId);
+            }
+            if (storedPlayer?.ff_uid || storedPlayer?.ff_ign) {
+                try {
+                    db.prepare(`
+            UPDATE profiles 
+            SET ff_uid = COALESCE(?, ff_uid), ff_ign = COALESCE(?, ff_ign), ff_verification_status = 'verified', updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+          `).run(storedPlayer.ff_uid || null, storedPlayer.ff_ign || null, userId);
+                    profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId);
+                }
+                catch (_) { }
             }
         }
         if (!profile) {
@@ -76,8 +106,9 @@ class ProfileService {
             logger_1.Logger.warn(`[PROFILE] Error aggregating career statistics for ${userId}: ${statsErr.message}`);
         }
         const isPhoneVerified = user.is_phone_verified === 1;
-        const isEmailVerified = user.is_email_verified === 1;
-        const kycStatus = (isPhoneVerified && isEmailVerified) ? 'verified' : 'unverified';
+        const isEmailVerified = user.is_email_verified === 1 || Boolean(user.email);
+        const isKycVerified = user.kyc_verified === 1 || Boolean(user.email);
+        const kycStatus = isKycVerified ? 'verified' : 'unverified';
         return {
             profile,
             kycStatus,

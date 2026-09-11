@@ -9,6 +9,7 @@ const path_1 = __importDefault(require("path"));
 const googleapis_1 = require("googleapis");
 const logger_1 = require("../utils/logger");
 const db_1 = require("../database/db");
+const node_sqlite_1 = require("node:sqlite");
 class GDriveTournamentStore {
     static FOLDER_ID = '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
     static TOURNAMENTS_REGISTRY_FILENAME = 'tournaments_registry.json';
@@ -179,6 +180,14 @@ class GDriveTournamentStore {
         catch (err) {
             logger_1.Logger.warn(`[GDRIVE TOURNAMENTS] DB sync warning: ${err.message}`);
         }
+        // Immediately persist to all local storage mirrors and seed DB synchronously
+        try {
+            this.persistLocalMirrorsSync();
+            this.syncToSeedDb(record);
+        }
+        catch (err) {
+            logger_1.Logger.warn(`[GDRIVE TOURNAMENTS] Local mirrors sync warning: ${err.message}`);
+        }
         // In test mode, update in-memory / DB for test assertions but skip overwriting persistent storage
         if (process.env.NODE_ENV === 'test') {
             return record;
@@ -226,6 +235,7 @@ class GDriveTournamentStore {
         // Immediately persist to all local storage mirrors synchronously
         try {
             this.persistLocalMirrorsSync();
+            this.removeFromSeedDb(tournamentId);
         }
         catch (err) {
             logger_1.Logger.warn(`[GDRIVE TOURNAMENTS] Local mirrors sync warning: ${err.message}`);
@@ -275,6 +285,93 @@ class GDriveTournamentStore {
                 fs_1.default.writeFileSync(path_1.default.join(d, this.TOURNAMENTS_REGISTRY_FILENAME), regJson, 'utf8');
             }
             catch (_) { }
+        }
+    }
+    /**
+     * Synchronizes a tournament record to persistent seed SQLite databases if present
+     */
+    static syncToSeedDb(record) {
+        const seedCandidates = [
+            path_1.default.resolve(process.cwd(), 'backend', 'data', 'seed_ff_esports.db'),
+            path_1.default.resolve(process.cwd(), 'data', 'seed_ff_esports.db'),
+            path_1.default.resolve(__dirname, '../../data/seed_ff_esports.db'),
+            path_1.default.resolve(__dirname, '../../../data/seed_ff_esports.db'),
+        ];
+        const seen = new Set();
+        for (const seedPath of seedCandidates) {
+            if (seen.has(seedPath))
+                continue;
+            seen.add(seedPath);
+            if (fs_1.default.existsSync(seedPath)) {
+                try {
+                    const seedDb = new node_sqlite_1.DatabaseSync(seedPath);
+                    const prizeDistStr = typeof record.prize_distribution === 'string'
+                        ? record.prize_distribution
+                        : JSON.stringify(record.prize_distribution || []);
+                    seedDb.prepare(`
+            INSERT INTO tournaments (
+              id, title, description, game, game_mode, mode, map, entry_type, entry_fee,
+              prize_pool, prize_distribution, per_kill_prize, max_slots, filled_slots,
+              start_time, registration_closes_at, room_reveal_time_minutes, room_id,
+              room_password, room_revealed, room_revealed_at, room_updated_at,
+              room_updated_by, status, payout_status, payout_executed_at,
+              payout_executed_by, banner_url, rules, created_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              title = excluded.title,
+              description = excluded.description,
+              game = excluded.game,
+              game_mode = excluded.game_mode,
+              mode = excluded.mode,
+              map = excluded.map,
+              entry_type = excluded.entry_type,
+              entry_fee = excluded.entry_fee,
+              prize_pool = excluded.prize_pool,
+              prize_distribution = excluded.prize_distribution,
+              per_kill_prize = excluded.per_kill_prize,
+              max_slots = excluded.max_slots,
+              filled_slots = excluded.filled_slots,
+              start_time = excluded.start_time,
+              registration_closes_at = excluded.registration_closes_at,
+              room_reveal_time_minutes = excluded.room_reveal_time_minutes,
+              room_id = excluded.room_id,
+              room_password = excluded.room_password,
+              room_revealed = excluded.room_revealed,
+              status = excluded.status,
+              banner_url = excluded.banner_url,
+              rules = excluded.rules,
+              updated_at = excluded.updated_at
+          `).run(record.id, record.title, record.description || null, record.game || 'Free Fire', record.game_mode || 'survival', record.mode, record.map, record.entry_type, record.entry_fee || 0, record.prize_pool || 0, prizeDistStr, record.per_kill_prize || 0, record.max_slots, record.filled_slots || 0, record.start_time, record.registration_closes_at || null, record.room_reveal_time_minutes || 15, record.room_id || null, record.room_password || null, record.room_revealed ? 1 : 0, record.room_revealed_at || null, record.room_updated_at || null, record.room_updated_by || null, record.status || 'upcoming', record.payout_status || 'unpaid', record.payout_executed_at || null, record.payout_executed_by || null, record.banner_url || null, record.rules || null, record.created_by || null, record.created_at || new Date().toISOString(), record.updated_at);
+                    seedDb.close();
+                }
+                catch (_) { }
+            }
+        }
+    }
+    /**
+     * Removes a deleted tournament from seed SQLite databases
+     */
+    static removeFromSeedDb(tournamentId) {
+        const seedCandidates = [
+            path_1.default.resolve(process.cwd(), 'backend', 'data', 'seed_ff_esports.db'),
+            path_1.default.resolve(process.cwd(), 'data', 'seed_ff_esports.db'),
+            path_1.default.resolve(__dirname, '../../data/seed_ff_esports.db'),
+            path_1.default.resolve(__dirname, '../../../data/seed_ff_esports.db'),
+        ];
+        const seen = new Set();
+        for (const seedPath of seedCandidates) {
+            if (seen.has(seedPath))
+                continue;
+            seen.add(seedPath);
+            if (fs_1.default.existsSync(seedPath)) {
+                try {
+                    const seedDb = new node_sqlite_1.DatabaseSync(seedPath);
+                    seedDb.prepare('DELETE FROM tournaments WHERE id = ?').run(tournamentId);
+                    seedDb.prepare('DELETE FROM tournament_entries WHERE tournament_id = ?').run(tournamentId);
+                    seedDb.close();
+                }
+                catch (_) { }
+            }
         }
     }
     /**
@@ -457,12 +554,14 @@ class GDriveTournamentStore {
      * Drive File Read / Write Helpers
      */
     static async uploadOrUpdateDriveFile(fileName, content) {
-        // 1. Always persist to local gdrive_storage mirror
+        // 1. Always persist to all local gdrive_storage mirrors
         try {
-            const backupDir = this.getStorageDir();
-            if (!fs_1.default.existsSync(backupDir))
-                fs_1.default.mkdirSync(backupDir, { recursive: true });
-            fs_1.default.writeFileSync(path_1.default.join(backupDir, fileName), content, 'utf8');
+            const mirrorDirs = this.getStorageDirs();
+            for (const d of mirrorDirs) {
+                if (!fs_1.default.existsSync(d))
+                    fs_1.default.mkdirSync(d, { recursive: true });
+                fs_1.default.writeFileSync(path_1.default.join(d, fileName), content, 'utf8');
+            }
         }
         catch (err) {
             logger_1.Logger.warn(`[GDRIVE TOURNAMENTS] Local mirror write warning: ${err.message}`);

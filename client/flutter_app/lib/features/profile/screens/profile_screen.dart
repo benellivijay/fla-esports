@@ -239,9 +239,30 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileState = ref.watch(profileProvider);
-    final profile = profileState.profile;
+    final authState = ref.watch(authProvider);
+
+    // If profile is not loaded yet and not currently loading, trigger background fetch
+    if (profileState.profile == null && !profileState.isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(profileProvider.notifier).fetchProfileAndKyc();
+      });
+    }
+
+    // Fall back to AuthProvider user and profile if profileProvider hasn't returned yet
+    final profile = profileState.profile ?? authState.profile;
+    final authUser = authState.user;
     final kyc = profileState.kyc;
-    final isKycVerified = kyc?.isKycVerified ?? false;
+
+    // Fully resolve verification and identifier flags
+    final email = kyc?.email ?? authUser?.email;
+    final isEmailVerified = kyc?.isEmailVerified == true || authUser?.isEmailVerified == true;
+    final isKycVerified = kyc?.isKycVerified == true || authUser?.kycVerified == true || isEmailVerified;
+
+    final displayName = (profile?.displayName != null && profile!.displayName.isNotEmpty && profile.displayName != 'Player')
+        ? profile.displayName
+        : (authUser?.username != null && authUser!.username!.isNotEmpty ? authUser.username! : (profile?.displayName ?? 'Player'));
+
+    final isFfVerified = profile?.isFfVerified == true || (profile?.ffUid != null && profile!.ffUid!.isNotEmpty);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -255,7 +276,7 @@ class ProfileScreen extends ConsumerWidget {
           )
         ],
       ),
-      body: profileState.isLoading
+      body: (profileState.isLoading && profile == null)
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
           : RefreshIndicator(
               onRefresh: () => ref.read(profileProvider.notifier).fetchProfileAndKyc(),
@@ -287,7 +308,7 @@ class ProfileScreen extends ConsumerWidget {
                                     Row(
                                       children: [
                                         Text(
-                                          profile?.displayName ?? 'Player',
+                                          displayName,
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w700,
@@ -302,7 +323,7 @@ class ProfileScreen extends ConsumerWidget {
                                           onTap: () => _showEditNameDialog(
                                             context,
                                             ref,
-                                            profile?.displayName ?? '',
+                                            displayName,
                                           ),
                                           borderRadius: BorderRadius.circular(999),
                                           child: Container(
@@ -323,7 +344,11 @@ class ProfileScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      profile?.ffIgn != null ? '${profile!.ffIgn} (${profile.ffUid})' : 'Free Fire UID not linked',
+                                      profile?.ffIgn != null && profile!.ffIgn!.isNotEmpty
+                                          ? '${profile.ffIgn} (${profile.ffUid ?? ''})'
+                                          : (profile?.ffUid != null && profile!.ffUid!.isNotEmpty
+                                              ? 'UID: ${profile.ffUid}'
+                                              : 'Free Fire UID not linked'),
                                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                                     ),
                                   ],
@@ -341,12 +366,12 @@ class ProfileScreen extends ConsumerWidget {
                             children: [
                               _buildVerificationBadge(
                                 label: 'Email',
-                                isVerified: kyc?.isEmailVerified ?? false,
+                                isVerified: isEmailVerified,
                                 verifiedIcon: Icons.email_outlined,
                               ),
                               _buildVerificationBadge(
                                 label: 'Free Fire',
-                                isVerified: profile?.ffVerificationStatus == 'verified',
+                                isVerified: isFfVerified,
                                 verifiedIcon: Icons.sports_esports_outlined,
                               ),
                               _buildVerificationBadge(
@@ -424,17 +449,17 @@ class ProfileScreen extends ConsumerWidget {
                             child: Row(
                               children: [
                                 Icon(
-                                  kyc?.isEmailVerified == true ? Icons.check_circle : Icons.radio_button_unchecked,
-                                  color: kyc?.isEmailVerified == true ? AppColors.success : AppColors.textMuted,
+                                  isEmailVerified ? Icons.check_circle : Icons.radio_button_unchecked,
+                                  color: isEmailVerified ? AppColors.success : AppColors.textMuted,
                                   size: 16,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Email: ${kyc?.email ?? 'Not linked'}',
+                                  'Email: ${email ?? 'Not linked'}',
                                   style: const TextStyle(color: AppColors.textPrimary, fontSize: 12),
                                 ),
                                 const Spacer(),
-                                if (kyc?.isEmailVerified != true)
+                                if (!isEmailVerified)
                                   TextButton(
                                     onPressed: () => _showVerifyIdentifierDialog(context, ref, type: 'email'),
                                     child: const Text('Verify email', style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),

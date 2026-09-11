@@ -24,6 +24,7 @@ export interface StoredPlayerRecord {
   updated_at: string;
   profile?: {
     display_name?: string;
+    avatar_url?: string;
     matches_played?: number;
     wins?: number;
     total_kills?: number;
@@ -366,6 +367,13 @@ export class GDriveAuthStore {
 
     this.cachePlayerRecord(record);
 
+    // Immediately persist to local storage mirrors synchronously
+    try {
+      this.persistLocalMirrorsSync();
+    } catch (err: any) {
+      Logger.warn(`[GDRIVE AUTH] Local mirror sync warning: ${err.message}`);
+    }
+
     // Push updated registry to Google Drive asynchronously
     this.flushPlayersToDrive().catch((err) => {
       Logger.error(`[GDRIVE AUTH] Background sync to Google Drive failed: ${err.message}`);
@@ -544,32 +552,58 @@ export class GDriveAuthStore {
     }
   }
 
+  public static getStorageDirs(): string[] {
+    const dirs: string[] = [];
+    const rootPath = process.cwd().endsWith('backend') ? path.resolve(process.cwd(), '..') : process.cwd();
+    const candidate1 = path.resolve(rootPath, 'backend', 'gdrive_storage');
+    const candidate2 = path.resolve(rootPath, 'gdrive_storage');
+    dirs.push(candidate1);
+    if (candidate2 !== candidate1) dirs.push(candidate2);
+    return dirs;
+  }
+
   public static getStorageDir(): string {
-    const candidates = [
-      path.resolve(process.cwd(), 'backend', 'gdrive_storage'),
-      path.resolve(process.cwd(), 'gdrive_storage'),
-      path.resolve(__dirname, '../../gdrive_storage'),
-      path.resolve(__dirname, '../../../gdrive_storage'),
-    ];
-    for (const p of candidates) {
-      if (fs.existsSync(p)) return p;
+    const dirs = this.getStorageDirs();
+    for (const d of dirs) {
+      if (fs.existsSync(d)) return d;
     }
-    const fallback = fs.existsSync(path.resolve(process.cwd(), 'backend'))
-      ? path.resolve(process.cwd(), 'backend', 'gdrive_storage')
-      : path.resolve(process.cwd(), 'gdrive_storage');
-    if (!fs.existsSync(fallback)) fs.mkdirSync(fallback, { recursive: true });
-    return fallback;
+    if (!fs.existsSync(dirs[0])) fs.mkdirSync(dirs[0], { recursive: true });
+    return dirs[0];
+  }
+
+  /**
+   * Persists all registered players to local disk mirrors synchronously
+   */
+  public static persistLocalMirrorsSync(): void {
+    const uniquePlayers = Array.from(new Set(this.playersCache.values()));
+    const payload = {
+      version: '1.0',
+      last_synced_at: new Date().toISOString(),
+      folder_id: this.FOLDER_ID,
+      count: uniquePlayers.length,
+      players: uniquePlayers,
+    };
+    const jsonContent = JSON.stringify(payload, null, 2);
+    const mirrorDirs = this.getStorageDirs();
+    for (const d of mirrorDirs) {
+      try {
+        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+        fs.writeFileSync(path.join(d, this.PLAYERS_REGISTRY_FILENAME), jsonContent, 'utf8');
+      } catch (_) {}
+    }
   }
 
   /**
    * Drive File Read / Write Helpers
    */
   private static async uploadOrUpdateDriveFile(fileName: string, content: string): Promise<boolean> {
-    // 1. Always persist to local gdrive_storage mirror
+    // 1. Always persist to all local gdrive_storage mirrors
     try {
-      const backupDir = this.getStorageDir();
-      if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-      fs.writeFileSync(path.join(backupDir, fileName), content, 'utf8');
+      const mirrorDirs = this.getStorageDirs();
+      for (const d of mirrorDirs) {
+        if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+        fs.writeFileSync(path.join(d, fileName), content, 'utf8');
+      }
     } catch (err: any) {
       Logger.warn(`[GDRIVE AUTH] Local mirror write warning: ${err.message}`);
     }

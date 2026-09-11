@@ -9,6 +9,7 @@ import '../models/auth_state.dart';
 import '../models/user_model.dart';
 import '../screens/google_web_auth_screen.dart';
 import '../../profile/models/profile_model.dart';
+import '../../profile/providers/profile_provider.dart';
 
 
 class GoogleAccountDetails {
@@ -48,13 +49,14 @@ class GoogleAuthResult {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref);
 });
 
 class AuthNotifier extends StateNotifier<AuthState> {
+  final Ref? _ref;
   final ApiClient _apiClient = ApiClient();
 
-  AuthNotifier() : super(const AuthState()) {
+  AuthNotifier([this._ref]) : super(const AuthState()) {
     checkInitialAuth();
   }
 
@@ -182,6 +184,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         // Register FCM push token with backend (fire-and-forget)
         FcmNotificationService.initializeFCM(null).catchError((_) {});
+        _ref?.read(profileProvider.notifier).fetchProfileAndKyc();
         return true;
       }
       return false;
@@ -256,6 +259,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: user,
           profile: profile,
         );
+        _ref?.read(profileProvider.notifier).fetchProfileAndKyc();
         return true;
       }
       return false;
@@ -447,6 +451,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
             );
             // Register FCM push token with backend (fire-and-forget)
             FcmNotificationService.initializeFCM(null).catchError((_) {});
+            _ref?.read(profileProvider.notifier).fetchProfileAndKyc();
             return GoogleAuthResult(success: true, isNewUser: false);
           }
         }
@@ -488,6 +493,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
         // Register FCM push token with backend (fire-and-forget)
         FcmNotificationService.initializeFCM(null).catchError((_) {});
+        _ref?.read(profileProvider.notifier).fetchProfileAndKyc();
         return GoogleAuthResult(success: true, isNewUser: false);
       }
       state = state.copyWith(status: AuthStatus.error, errorMessage: 'Google sign-in could not be completed.');
@@ -563,6 +569,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           user: user,
           profile: profile,
         );
+        _ref?.read(profileProvider.notifier).fetchProfileAndKyc();
         return true;
       }
       return false;
@@ -587,6 +594,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await googleSignIn.signOut();
     } catch (_) {}
     await _apiClient.clearUserSession();
+    _ref?.read(profileProvider.notifier).reset();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }
 }

@@ -1,34 +1,36 @@
 {
   "version": "1.0",
-  "last_synced_at": "2026-09-10T17:31:30.663Z",
+  "last_synced_at": "2026-09-11T14:59:44.416Z",
   "folder_id": "1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO",
   "count": 44,
   "players": [
     {
       "id": "1216b1c2-4671-40fd-b81f-84522d21cabc",
-      "username": null,
+      "username": "vijay_5510",
       "email": "vijaysphari@gmail.com",
       "phone": "9342235510",
       "password_hash": null,
       "google_id": null,
       "email_verified": true,
       "phone_verified": true,
-      "kyc_verified": false,
+      "kyc_verified": true,
       "role": "user",
       "status": "active",
       "created_at": "2026-09-01 14:33:05",
       "updated_at": "2026-09-01 14:33:50",
       "profile": {
-        "display_name": "Player_5510",
-        "matches_played": 0,
-        "wins": 0,
-        "total_kills": 0,
-        "total_earnings": 0
-      }
+        "display_name": "Vijay Hari",
+        "matches_played": 12,
+        "wins": 4,
+        "total_kills": 38,
+        "total_earnings": 250
+      },
+      "ff_uid": "5510934223",
+      "ff_ign": "VIJAY亗FF"
     },
     {
       "id": "7f843b65-0aef-4b21-a0a1-03ceaf5b2b52",
-      "username": null,
+      "username": "admin",
       "email": "admin@ffesports.com",
       "phone": "+919999999991",
       "password_hash": "$2a$10$lJSh1H1USN1bw0hs8dqJV.Ll.myrqRaE7WI7B19i/vgHtZDD5omVy",
@@ -50,7 +52,7 @@
     },
     {
       "id": "9db46580-ae31-4324-934d-57fe0c272e47",
-      "username": null,
+      "username": "player_3210",
       "email": null,
       "phone": "+919876543210",
       "password_hash": null,
@@ -72,7 +74,7 @@
     },
     {
       "id": "a1b33fb6-8d2e-45dc-9784-53c2f4e4bc41",
-      "username": null,
+      "username": "player_7373",
       "email": null,
       "phone": "777737377373",
       "password_hash": null,
@@ -138,7 +140,7 @@
     },
     {
       "id": "be9d9c68-41b6-4d66-948b-9b665d9f84ab",
-      "username": null,
+      "username": "moderator",
       "email": "moderator@ffesports.com",
       "phone": "+919999999992",
       "password_hash": "$2a$10$4bL4lyUp5d6BAngxT5XR0.NuGcedyi0zPKS5zBkHyXk/0kMOAtJRa",
@@ -241,7 +243,7 @@
     },
     {
       "id": "cf884e96-9ef2-41dd-bfad-0306d7fee2ac",
-      "username": null,
+      "username": "admin_537047",
       "email": "admin_537047@ffesports.com",
       "phone": null,
       "password_hash": null,
@@ -256,7 +258,7 @@
     },
     {
       "id": "9d12781e-9962-4b5b-a85b-bea5bc13f0ce",
-      "username": null,
+      "username": "admin_901391",
       "email": "admin_901391@ffesports.com",
       "phone": null,
       "password_hash": null,
@@ -271,7 +273,7 @@
     },
     {
       "id": "f18efff4-5761-4833-a1a5-26bc2fd726d5",
-      "username": null,
+      "username": "player_1301",
       "email": null,
       "phone": "9882081301",
       "password_hash": null,
@@ -286,7 +288,7 @@
     },
     {
       "id": "37f9c763-a141-455b-a7fe-237cb0e1a0ff",
-      "username": null,
+      "username": "admin_tourney_820813",
       "email": "admin_tourney_820813@ffesports.com",
       "phone": null,
       "password_hash": null,
@@ -301,7 +303,7 @@
     },
     {
       "id": "908e29a8-8235-4951-8e50-5f6190e3e12b",
-      "username": null,
+      "username": "player_3801",
       "email": null,
       "phone": "9319583801",
       "password_hash": null,
@@ -323,7 +325,7 @@
     },
     {
       "id": "a76d75b2-16ab-4a09-b319-2740298c2eac",
-      "username": null,
+      "username": "player_3802",
       "email": null,
       "phone": "9319583802",
       "password_hash": null,
@@ -345,7 +347,7 @@
     },
     {
       "id": "9cd9dea4-c715-4bb6-9b5a-7a3bd017be4e",
-      "username": null,
+      "username": "player_3899",
       "email": null,
       "phone": "9319583899",
       "password_hash": null,
@@ -367,7 +369,7 @@
     },
     {
       "id": "d8937bcc-7423-426d-b173-6e5daa73fcbb",
-      "username": null,
+      "username": "player_4401",
       "email": null,
       "phone": "9716114401",
       "password_hash": null,
@@ -389,7 +391,7 @@
     },
     {
       "id": "1f770457-4298-4f4e-a71e-c3131c1602e0",
-      "username": null,
+      "username": "player_4402",
       "email": null,
       "phone": "9716114402",
       "password_hash": null,
@@ -411,7 +413,7 @@
     },
     {
       "id": "b508a4e1-60a8-4e3b-b821-0e7ff29c0de5",
-      "username": null,
+      "username": "player_4403",
       "email": null,
       "phone": "9716114403",
       "password_hash": null,
@@ -433,7 +435,7 @@
     },
     {
       "id": "93383285-59ff-494b-8410-3f4a250ca0da",
-      "username": null,
+      "username": "player_4404",
       "email": null,
       "phone": "9716114404",
       "password_hash": null,
@@ -455,7 +457,7 @@
     },
     {
       "id": "432fb148-c9e2-47e7-a0f6-24763f02bb98",
-      "username": null,
+      "username": "player_2488",
       "email": null,
       "phone": "9153772488",
       "password_hash": null,
@@ -477,7 +479,7 @@
     },
     {
       "id": "cb0ea9da-cad6-4b20-bd28-fd7086a4fed2",
-      "username": null,
+      "username": "player_1501",
       "email": null,
       "phone": "9463331501",
       "password_hash": null,
@@ -499,7 +501,7 @@
     },
     {
       "id": "0bc54ed9-e8be-42e4-9805-f755fcc02ee2",
-      "username": null,
+      "username": "player_1502",
       "email": null,
       "phone": "9463331502",
       "password_hash": null,
@@ -521,7 +523,7 @@
     },
     {
       "id": "09b2d326-4561-4576-ab15-74ba9202b158",
-      "username": null,
+      "username": "player_1599",
       "email": null,
       "phone": "9463331599",
       "password_hash": null,
@@ -543,7 +545,7 @@
     },
     {
       "id": "d6ed2fa9-8e1e-4a2f-bfae-1914b18ccef0",
-      "username": null,
+      "username": "player_6788",
       "email": null,
       "phone": "+917761466788",
       "password_hash": null,
