@@ -11,7 +11,7 @@ const logger_1 = require("../utils/logger");
 const db_1 = require("../database/db");
 const uuid_1 = require("uuid");
 class GDriveAuthStore {
-    static FOLDER_ID = '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
+    static FOLDER_ID = process.env.GDRIVE_FOLDER_ID || '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
     static PLAYERS_REGISTRY_FILENAME = 'players_registry.json';
     static PENDING_REGISTRATIONS_FILENAME = 'pending_registrations.json';
     static playersCache = new Map(); // Keyed by lowercase email and username

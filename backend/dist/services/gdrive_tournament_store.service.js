@@ -11,7 +11,7 @@ const logger_1 = require("../utils/logger");
 const db_1 = require("../database/db");
 const node_sqlite_1 = require("node:sqlite");
 class GDriveTournamentStore {
-    static FOLDER_ID = '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
+    static FOLDER_ID = process.env.GDRIVE_FOLDER_ID || '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
     static TOURNAMENTS_REGISTRY_FILENAME = 'tournaments_registry.json';
     static DELETED_TOURNAMENTS_FILENAME = 'deleted_tournaments.json';
     static tournamentsCache = new Map();
@@ -625,7 +625,16 @@ class GDriveTournamentStore {
                         mimeType: 'application/json',
                     }),
                 });
-                return res.ok;
+                if (res.ok) {
+                    const json = await res.json().catch(() => null);
+                    if (json && json.success === false) {
+                        logger_1.Logger.warn(`[GDRIVE Webhook] Cloud sync returned error: ${json.error || JSON.stringify(json)}`);
+                        return false;
+                    }
+                    logger_1.Logger.info(`[GDRIVE Webhook] Successfully uploaded ${fileName} to Google Drive.`);
+                    return true;
+                }
+                return false;
             }
             catch (err) {
                 logger_1.Logger.warn(`[GDRIVE Webhook] Cloud sync info: ${err.message}`);

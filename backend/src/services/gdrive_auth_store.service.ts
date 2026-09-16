@@ -45,7 +45,7 @@ export interface StoredPendingRegistration {
 }
 
 export class GDriveAuthStore {
-  public static readonly FOLDER_ID = '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
+  public static readonly FOLDER_ID = process.env.GDRIVE_FOLDER_ID || '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
   public static readonly PLAYERS_REGISTRY_FILENAME = 'players_registry.json';
   public static readonly PENDING_REGISTRATIONS_FILENAME = 'pending_registrations.json';
 

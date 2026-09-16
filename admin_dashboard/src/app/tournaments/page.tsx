@@ -41,8 +41,8 @@ export default function TournamentsPage() {
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
   const [isSavingRoom, setIsSavingRoom] = useState(false);
 
-  const fetchTournaments = async () => {
-    setIsLoading(true);
+  const fetchTournaments = async (isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
     try {
       const res = await AdminApi.getTournaments({
         mode: filterMode !== 'all' ? filterMode : undefined,
@@ -55,14 +55,14 @@ export default function TournamentsPage() {
     } catch (err) {
       console.error('Failed to load tournaments:', err);
     } finally {
-      setIsLoading(false);
+      if (!isBackground) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTournaments();
+    fetchTournaments(false);
     const interval = setInterval(() => {
-      fetchTournaments();
+      fetchTournaments(true);
     }, 5000);
     return () => clearInterval(interval);
   }, [filterMode, filterStatus]);
@@ -204,7 +204,7 @@ export default function TournamentsPage() {
           </div>
 
           <button
-            onClick={fetchTournaments}
+            onClick={() => fetchTournaments(false)}
             className="px-3 py-1.5 text-xs font-semibold text-textSecondary hover:text-textPrimary bg-surfaceMuted rounded-lg border border-hairline border-border flex items-center gap-1.5 transition-colors"
           >
             <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
@@ -267,7 +267,7 @@ export default function TournamentsPage() {
                             <span className="px-2 py-0.5 bg-surfaceMuted rounded text-primary border border-hairline border-border">
                               {t.room_id}
                             </span>
-                            {t.room_revealed === 1 ? (
+                            {Boolean(t.room_revealed) ? (
                               <span className="text-[10px] text-status-success font-sans font-semibold">Revealed</span>
                             ) : (
                               <span className="text-[10px] text-status-warning font-sans font-semibold">Hidden</span>
@@ -304,7 +304,7 @@ export default function TournamentsPage() {
                           </button>
 
                           {/* Reveal Room Early Button */}
-                          {t.room_id && t.room_revealed === 0 && t.status !== 'cancelled' && (
+                          {t.room_id && !t.room_revealed && t.status !== 'cancelled' && (
                             <button
                               onClick={() => handleManualReveal(t)}
                               title="Broadcast room details to players now"

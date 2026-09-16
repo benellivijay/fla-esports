@@ -57,7 +57,7 @@ export interface StoredTournamentRecord {
 }
 
 export class GDriveTournamentStore {
-  public static readonly FOLDER_ID = '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
+  public static readonly FOLDER_ID = process.env.GDRIVE_FOLDER_ID || '1aR8N0GpxbdNFbY-u24iFvW145vjR0MhO';
   public static readonly TOURNAMENTS_REGISTRY_FILENAME = 'tournaments_registry.json';
   public static readonly DELETED_TOURNAMENTS_FILENAME = 'deleted_tournaments.json';
 
@@ -811,7 +811,16 @@ export class GDriveTournamentStore {
             mimeType: 'application/json',
           }),
         });
-        return res.ok;
+        if (res.ok) {
+          const json = await res.json().catch(() => null);
+          if (json && json.success === false) {
+            Logger.warn(`[GDRIVE Webhook] Cloud sync returned error: ${json.error || JSON.stringify(json)}`);
+            return false;
+          }
+          Logger.info(`[GDRIVE Webhook] Successfully uploaded ${fileName} to Google Drive.`);
+          return true;
+        }
+        return false;
       } catch (err: any) {
         Logger.warn(`[GDRIVE Webhook] Cloud sync info: ${err.message}`);
       }

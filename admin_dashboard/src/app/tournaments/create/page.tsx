@@ -111,6 +111,7 @@ export default function CreateTournamentPage() {
 
       const res = await AdminApi.createTournament(payload);
       if (res.data?.success) {
+        router.refresh();
         router.push('/tournaments');
       }
     } catch (err: any) {

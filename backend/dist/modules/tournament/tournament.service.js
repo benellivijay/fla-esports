@@ -331,30 +331,30 @@ class TournamentService {
         const whereClauses = [];
         const params = [];
         // Strictly exclude any permanently deleted tournaments
-        whereClauses.push('id NOT IN (SELECT id FROM deleted_tournaments)');
+        whereClauses.push('NOT EXISTS (SELECT 1 FROM deleted_tournaments d WHERE d.id = tournaments.id)');
         if (filters.game) {
-            whereClauses.push('game = ?');
+            whereClauses.push('LOWER(game) = LOWER(?)');
             params.push(filters.game);
         }
         const requestedGameMode = filters.game_mode || filters.gameMode;
         if (requestedGameMode && requestedGameMode !== 'all') {
-            whereClauses.push('game_mode = ?');
+            whereClauses.push('LOWER(game_mode) = LOWER(?)');
             params.push(requestedGameMode);
         }
         if (filters.mode && filters.mode !== 'all') {
-            whereClauses.push('mode = ?');
+            whereClauses.push('LOWER(mode) = LOWER(?)');
             params.push(filters.mode);
         }
         if (filters.map && filters.map !== 'all') {
-            whereClauses.push('map = ?');
+            whereClauses.push('LOWER(map) = LOWER(?)');
             params.push(filters.map);
         }
         if (filters.entryType && filters.entryType !== 'all') {
-            whereClauses.push('entry_type = ?');
+            whereClauses.push('LOWER(entry_type) = LOWER(?)');
             params.push(filters.entryType);
         }
         if (filters.status && filters.status !== 'all') {
-            whereClauses.push('status = ?');
+            whereClauses.push('LOWER(status) = LOWER(?)');
             params.push(filters.status);
         }
         else {
@@ -370,9 +370,9 @@ class TournamentService {
         const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
         const limit = filters.limit || 50;
         const offset = filters.offset || 0;
-        const countRow = db.prepare(`SELECT COUNT(*) as total FROM tournaments ${whereSql}`).get(...params);
-        let total = countRow ? countRow.total : 0;
-        if (total === 0) {
+        // Only attempt recovery from cache if the entire tournaments table is completely empty on cold boot
+        const totalInDb = db.prepare('SELECT COUNT(*) as count FROM tournaments').get()?.count || 0;
+        if (totalInDb === 0) {
             try {
                 const allCached = await gdrive_tournament_store_service_1.GDriveTournamentStore.getAllTournaments();
                 if (allCached.length > 0) {
@@ -381,12 +381,12 @@ class TournamentService {
                             await gdrive_tournament_store_service_1.GDriveTournamentStore.saveTournament(t);
                         }
                     }
-                    const recount = db.prepare(`SELECT COUNT(*) as total FROM tournaments ${whereSql}`).get(...params);
-                    total = recount ? recount.total : 0;
                 }
             }
             catch (_) { }
         }
+        const countRow = db.prepare(`SELECT COUNT(*) as total FROM tournaments ${whereSql}`).get(...params);
+        const total = countRow ? countRow.total : 0;
         const isAdmin = userRole === 'admin' || userRole === 'moderator';
         const orderSql = isAdmin
             ? 'ORDER BY created_at DESC'
@@ -421,7 +421,7 @@ class TournamentService {
              SUM(CASE WHEN status IN ('ongoing', 'open') THEN 1 ELSE 0 END) as live_count,
              COUNT(*) as total_count
       FROM tournaments 
-      WHERE status != 'cancelled' AND id NOT IN (SELECT id FROM deleted_tournaments)
+      WHERE status != 'cancelled' AND NOT EXISTS (SELECT 1 FROM deleted_tournaments d WHERE d.id = tournaments.id)
       GROUP BY game_mode
     `).all();
         const stats = {

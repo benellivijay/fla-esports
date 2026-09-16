@@ -67,7 +67,7 @@ export interface TournamentItem {
   start_time: string;
   room_id?: string;
   room_password?: string;
-  room_revealed: number;
+  room_revealed: boolean | number;
   room_revealed_at?: string;
   status: 'upcoming' | 'open' | 'ongoing' | 'completed' | 'cancelled';
   payout_status?: 'unpaid' | 'previewed' | 'paid';
